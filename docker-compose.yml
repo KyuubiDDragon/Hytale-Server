@@ -51,15 +51,15 @@ services:
     ports:
       - "${SERVER_PORT:-5520}:${SERVER_PORT:-5520}/udp"
     
-    # Volumes
+    # Volumes - Bind Mounts zu /opt/hytale/
     volumes:
-      - hytale-server:/opt/hytale/server
-      - hytale-data:/opt/hytale/data
-      - hytale-backups:/opt/hytale/backups
-      - hytale-plugins:/opt/hytale/plugins
-      - hytale-mods:/opt/hytale/mods
-      - hytale-downloader:/opt/hytale/downloader
-      - hytale-auth:/opt/hytale/auth
+      - /opt/hytale/server:/opt/hytale/server
+      - /opt/hytale/data:/opt/hytale/data
+      - /opt/hytale/backups:/opt/hytale/backups
+      - /opt/hytale/plugins:/opt/hytale/plugins
+      - /opt/hytale/mods:/opt/hytale/mods
+      - /opt/hytale/downloader:/opt/hytale/downloader
+      - /opt/hytale/auth:/opt/hytale/auth
 
     # Console
     stdin_open: true
@@ -71,19 +71,3 @@ services:
       options:
         max-size: "50m"
         max-file: "5"
-
-volumes:
-  hytale-server:
-    name: hytale-server
-  hytale-data:
-    name: hytale-data
-  hytale-backups:
-    name: hytale-backups
-  hytale-plugins:
-    name: hytale-plugins
-  hytale-mods:
-    name: hytale-mods
-  hytale-downloader:
-    name: hytale-downloader
-  hytale-auth:
-    name: hytale-auth
