@@ -1,114 +1,127 @@
 # ============================================================
 # Hytale Dedicated Server - Docker Compose
-# Author: Andy (RamgeSoft)
 # ============================================================
-# 
-# SETUP:
-# 1. Kopiere HytaleServer.jar und Assets.zip in ./server/
-# 2. Passe die Umgebungsvariablen unten an
-# 3. Starte mit: docker-compose up -d
-# 4. Logs anschauen: docker-compose logs -f
-# 5. Beim ersten Start: /auth login device ausführen
+#
+# SETUP FÜR PORTAINER:
+# 1. Dieses Repo als Stack hinzufügen (Repository URL)
+# 2. EINE der Download-Optionen unten konfigurieren
+# 3. Deploy klicken
+# 4. Nach dem Start: /auth login device ausführen
 #
 # ============================================================
 
 services:
   hytale:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: hytale-server
+    build: .
+    image: hytale-server:latest
+    container_name: hytale
     hostname: hytale
     restart: unless-stopped
     
-    # ========================================================
-    # Environment Variables
-    # ========================================================
     environment:
-      # Java Memory Settings
+      # ====================
+      # Java / RAM Settings
+      # ====================
       - JAVA_MIN_RAM=3G
       - JAVA_MAX_RAM=4G
       
-      # Server Settings
+      # ====================
+      # Server Settings  
+      # ====================
       - SERVER_PORT=5520
       - SERVER_BIND=0.0.0.0
+      - TZ=Europe/Berlin
       
+      # ====================
       # Backup Settings
+      # ====================
       - ENABLE_BACKUP=true
       - BACKUP_FREQUENCY=30
       
-      # Auth Mode (authenticated oder offline für LAN)
+      # ====================
+      # Auth Mode
+      # ====================
+      # authenticated = Online-Modus (Standard)
+      # offline = LAN-only ohne Auth
       # - AUTH_MODE=offline
       
-      # Timezone
-      - TZ=Europe/Berlin
+      # ============================================================
+      # SERVER FILES DOWNLOAD - WÄHLE EINE OPTION:
+      # ============================================================
+      #
+      # OPTION A: Eigene URLs (empfohlen)
+      # ---------------------------------
+      # Lade die Dateien auf deinen eigenen Server/NAS hoch
+      # und gib hier die URLs an:
+      #
+      # - SERVER_JAR_URL=https://dein-nas.local/hytale/HytaleServer.jar
+      # - ASSETS_URL=https://dein-nas.local/hytale/Assets.zip
+      #
+      # OPTION B: Offizieller Hytale Downloader
+      # ---------------------------------------
+      # Nutzt den offiziellen Downloader (erfordert OAuth2 Login)
+      # Nach dem ersten Start musst du dich einmalig authentifizieren
+      #
+      # - USE_HYTALE_DOWNLOADER=true
+      # - HYTALE_PATCHLINE=release
+      #
+      # OPTION C: Manuell (nach Container-Start)
+      # ----------------------------------------
+      # Dateien nach dem Start manuell kopieren:
+      # docker cp HytaleServer.jar hytale:/opt/hytale/server/
+      # docker cp Assets.zip hytale:/opt/hytale/server/
+      #
+      # ============================================================
       
-      # User/Group IDs (match your host user for permissions)
-      - PUID=1000
-      - PGID=1000
-    
-    # ========================================================
-    # Ports - WICHTIG: UDP nicht TCP!
-    # ========================================================
+      # Aktiviere EINE der Optionen oben durch Entfernen des #
+      
+    # ====================
+    # Ports - UDP!
+    # ====================
     ports:
       - "5520:5520/udp"
     
-    # ========================================================
-    # Volumes
-    # ========================================================
+    # ====================
+    # Persistent Volumes
+    # ====================
     volumes:
-      # Server files (HytaleServer.jar, Assets.zip)
-      - ./server:/opt/hytale/server:ro
-      
-      # Persistent data (worlds, configs)
-      - ./data:/opt/hytale/data
-      
+      # Server-Dateien (persistent für Downloads)
+      - hytale-server:/opt/hytale/server
+      # Welten und Konfiguration
+      - hytale-data:/opt/hytale/data
       # Backups
-      - ./backups:/opt/hytale/backups
-      
+      - hytale-backups:/opt/hytale/backups
       # Plugins
-      - ./plugins:/opt/hytale/plugins
-      
+      - hytale-plugins:/opt/hytale/plugins
       # Mods
-      - ./mods:/opt/hytale/mods
-      
-      # Logs
-      - ./logs:/opt/hytale/logs
-    
-    # ========================================================
-    # Stdin for console commands
-    # ========================================================
+      - hytale-mods:/opt/hytale/mods
+
+    # ====================
+    # Console Access
+    # ====================
     stdin_open: true
     tty: true
     
-    # ========================================================
-    # Resource Limits (optional - adjust as needed)
-    # ========================================================
-    # deploy:
-    #   resources:
-    #     limits:
-    #       memory: 6G
-    #     reservations:
-    #       memory: 4G
-    
-    # ========================================================
+    # ====================
     # Logging
-    # ========================================================
+    # ====================
     logging:
       driver: "json-file"
       options:
         max-size: "50m"
         max-file: "5"
-    
-    # ========================================================
-    # Network
-    # ========================================================
-    networks:
-      - hytale-net
 
 # ============================================================
-# Networks
+# Named Volumes (persistent!)
 # ============================================================
-networks:
-  hytale-net:
-    driver: bridge
+volumes:
+  hytale-server:
+    name: hytale-server
+  hytale-data:
+    name: hytale-data
+  hytale-backups:
+    name: hytale-backups
+  hytale-plugins:
+    name: hytale-plugins
+  hytale-mods:
+    name: hytale-mods

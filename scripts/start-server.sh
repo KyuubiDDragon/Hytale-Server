@@ -3,17 +3,19 @@
 # Hytale Server - Start Script
 # ============================================================
 
-set -e
-
 cd /opt/hytale/server
 
-# Build Java arguments
+# Check for AOT cache
+AOT_FLAG=""
+if [ -f "HytaleServer.aot" ]; then
+    echo "[INFO] AOT cache found - enabling fast startup"
+    AOT_FLAG="-XX:AOTCache=HytaleServer.aot"
+fi
+
+# Java arguments (optimized for game servers)
 JAVA_ARGS=(
-    # Memory settings
     "-Xms${JAVA_MIN_RAM}"
     "-Xmx${JAVA_MAX_RAM}"
-    
-    # GC optimization for game servers
     "-XX:+UseG1GC"
     "-XX:+ParallelRefProcEnabled"
     "-XX:MaxGCPauseMillis=200"
@@ -32,22 +34,16 @@ JAVA_ARGS=(
     "-XX:SurvivorRatio=32"
     "-XX:+PerfDisableSharedMem"
     "-XX:MaxTenuringThreshold=1"
-    
-    # AOT cache if available
-    ${AOT_FLAG}
-    
-    # Disable Sentry crash reporting (optional - for privacy)
-    # Uncomment next line to disable:
-    # "--disable-sentry"
+    $AOT_FLAG
 )
 
-# Build server arguments
+# Server arguments
 SERVER_ARGS=(
-    "--assets" "${ASSETS_FILE}"
+    "--assets" "Assets.zip"
     "--bind" "${SERVER_BIND}:${SERVER_PORT}"
 )
 
-# Add backup arguments if enabled
+# Add backup if enabled
 if [ "${ENABLE_BACKUP}" = "true" ]; then
     SERVER_ARGS+=(
         "--backup"
@@ -56,27 +52,22 @@ if [ "${ENABLE_BACKUP}" = "true" ]; then
     )
 fi
 
-# Add auth mode if specified
+# Add auth mode if set
 if [ -n "${AUTH_MODE}" ]; then
     SERVER_ARGS+=("--auth-mode" "${AUTH_MODE}")
 fi
 
 echo "============================================================"
-echo "Starting Hytale Server with:"
-echo "  Java: ${JAVA_ARGS[*]}"
-echo "  Server: ${SERVER_ARGS[*]}"
+echo "Starting with: java ${JAVA_ARGS[*]} -jar HytaleServer.jar ${SERVER_ARGS[*]}"
 echo "============================================================"
 echo ""
 echo "╔══════════════════════════════════════════════════════════╗"
-echo "║  WICHTIG: Nach dem ersten Start musst du den Server     ║"
-echo "║  authentifizieren! Führe im Server-Console aus:         ║"
+echo "║  WICHTIG: Nach dem ersten Start authentifizieren!        ║"
 echo "║                                                          ║"
-echo "║    /auth login device                                    ║"
+echo "║  Im Server-Terminal eingeben:  /auth login device        ║"
 echo "║                                                          ║"
-echo "║  Dann öffne den angezeigten Link im Browser und         ║"
-echo "║  melde dich mit deinem Hytale-Account an.               ║"
+echo "║  Dann den angezeigten Link im Browser öffnen.            ║"
 echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
 
-# Start the server
-exec java "${JAVA_ARGS[@]}" -jar "${SERVER_JAR}" "${SERVER_ARGS[@]}"
+exec java "${JAVA_ARGS[@]}" -jar HytaleServer.jar "${SERVER_ARGS[@]}"

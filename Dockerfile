@@ -1,17 +1,16 @@
 # ============================================================
 # Hytale Dedicated Server - Docker Image
-# Author: Andy (RamgeSoft)
-# Date: 2026-01-13
+# Fully automated - downloads server files on first start
 # ============================================================
 
 FROM eclipse-temurin:25-jdk-noble
 
-LABEL maintainer="Andy <andy@ramgesoft.com>"
-LABEL description="Hytale Dedicated Server"
-LABEL version="1.0"
+LABEL maintainer="Andy - Kyuubi D. Dragon"
+LABEL description="Hytale Dedicated Server - Auto-Setup"
+LABEL version="2.0"
 
 # ============================================================
-# Environment Variables (can be overridden in docker-compose)
+# Environment Variables
 # ============================================================
 ENV JAVA_MIN_RAM="3G" \
     JAVA_MAX_RAM="4G" \
@@ -19,10 +18,14 @@ ENV JAVA_MIN_RAM="3G" \
     SERVER_BIND="0.0.0.0" \
     ENABLE_BACKUP="true" \
     BACKUP_FREQUENCY="30" \
-    VIEW_DISTANCE="12" \
     TZ="Europe/Berlin" \
-    PUID=1000 \
-    PGID=1000
+    # Download options (set one of these):
+    # Option 1: Direct URL to your hosted server files
+    SERVER_JAR_URL="" \
+    ASSETS_URL="" \
+    # Option 2: Use official Hytale downloader (requires auth)
+    USE_HYTALE_DOWNLOADER="false" \
+    HYTALE_PATCHLINE="release"
 
 # ============================================================
 # Install dependencies
@@ -34,54 +37,49 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     tzdata \
     gosu \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
     && echo $TZ > /etc/timezone
 
 # ============================================================
-# Create hytale user and directories
+# Create user and directories
 # ============================================================
-RUN groupadd -g ${PGID} hytale \
-    && useradd -u ${PUID} -g hytale -m -s /bin/bash hytale
-
-# Server directories
-RUN mkdir -p /opt/hytale/server \
-    /opt/hytale/data \
-    /opt/hytale/backups \
-    /opt/hytale/plugins \
-    /opt/hytale/mods \
-    /opt/hytale/logs \
+RUN groupadd -g 1000 hytale \
+    && useradd -u 1000 -g hytale -m -s /bin/bash hytale \
+    && mkdir -p /opt/hytale/server \
+                /opt/hytale/data \
+                /opt/hytale/backups \
+                /opt/hytale/plugins \
+                /opt/hytale/mods \
+                /opt/hytale/logs \
+                /opt/hytale/downloader \
     && chown -R hytale:hytale /opt/hytale
 
-WORKDIR /opt/hytale/server
+WORKDIR /opt/hytale
 
 # ============================================================
 # Copy scripts
 # ============================================================
-COPY --chown=hytale:hytale scripts/entrypoint.sh /opt/hytale/entrypoint.sh
-COPY --chown=hytale:hytale scripts/start-server.sh /opt/hytale/start-server.sh
-COPY --chown=hytale:hytale scripts/backup.sh /opt/hytale/backup.sh
-COPY --chown=hytale:hytale scripts/healthcheck.sh /opt/hytale/healthcheck.sh
-
-RUN chmod +x /opt/hytale/*.sh
+COPY --chmod=755 scripts/entrypoint.sh /opt/hytale/entrypoint.sh
+COPY --chmod=755 scripts/download.sh /opt/hytale/download.sh
+COPY --chmod=755 scripts/start-server.sh /opt/hytale/start-server.sh
+COPY --chmod=755 scripts/backup.sh /opt/hytale/backup.sh
 
 # ============================================================
-# Volumes
+# Volumes for persistent data
 # ============================================================
-VOLUME ["/opt/hytale/data", "/opt/hytale/backups", "/opt/hytale/plugins", "/opt/hytale/mods"]
+VOLUME ["/opt/hytale/data", "/opt/hytale/backups", "/opt/hytale/plugins", "/opt/hytale/mods", "/opt/hytale/server"]
 
 # ============================================================
-# Expose UDP port (QUIC protocol!)
+# Expose UDP port (QUIC protocol)
 # ============================================================
-EXPOSE ${SERVER_PORT}/udp
+EXPOSE 5520/udp
 
 # ============================================================
 # Health check
 # ============================================================
-HEALTHCHECK --interval=60s --timeout=10s --start-period=120s --retries=3 \
-    CMD /opt/hytale/healthcheck.sh || exit 1
+HEALTHCHECK --interval=60s --timeout=10s --start-period=180s --retries=3 \
+    CMD pgrep -f "HytaleServer.jar" > /dev/null || exit 1
 
-# ============================================================
-# Entrypoint
-# ============================================================
 ENTRYPOINT ["/opt/hytale/entrypoint.sh"]

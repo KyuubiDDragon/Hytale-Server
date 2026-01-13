@@ -1,15 +1,19 @@
 # Server files (too large for git)
-server/HytaleServer.jar
-server/Assets.zip
-server/HytaleServer.aot
+*.jar
+*.zip
+*.aot
 
-# Data directories
+# Local test data
 data/
 backups/
 logs/
+server/
 
-# Backup of old server
-server_backup/
+# IDE
+.idea/
+.vscode/
+*.swp
 
-# Docker
-.docker/
+# OS
+.DS_Store
+Thumbs.db
