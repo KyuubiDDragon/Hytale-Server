@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { setLocale, getLocale } from '@/i18n'
+import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
 import { serverApi, type ConfigFile } from '@/api/server'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const currentLocale = ref(getLocale())
 const configFiles = ref<ConfigFile[]>([])
@@ -79,7 +81,10 @@ function closeEditor() {
 const hasChanges = () => fileContent.value !== originalContent.value
 
 onMounted(() => {
-  loadConfigFiles()
+  // Only load config files if user has permission
+  if (authStore.canManageConfig) {
+    loadConfigFiles()
+  }
 })
 </script>
 
@@ -143,8 +148,8 @@ onMounted(() => {
       </div>
     </Card>
 
-    <!-- Server Configuration -->
-    <Card :title="t('settings.serverConfig')">
+    <!-- Server Configuration (only for users with permission) -->
+    <Card v-if="authStore.canManageConfig" :title="t('settings.serverConfig')">
       <div class="space-y-4">
         <!-- Error/Success Messages -->
         <div v-if="error" class="p-3 bg-status-error/20 border border-status-error/30 rounded-lg text-status-error text-sm">
