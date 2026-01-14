@@ -62,6 +62,7 @@ onMounted(() => {
     <div
       ref="terminalRef"
       class="terminal flex-1 min-h-0 overflow-y-auto"
+      style="max-height: calc(100vh - 280px);"
     >
       <div v-if="consoleStore.logs.length === 0" class="text-gray-500 text-center py-8">
         {{ t('console.noLogs') }}
@@ -72,17 +73,26 @@ onMounted(() => {
         :class="getLogClass(log.level)"
       >
         <span class="text-gray-500 mr-2">[{{ log.timestamp.split('T')[1]?.split('.')[0] || log.timestamp }}]</span>
+        <span
+          v-if="log.level && log.level !== 'INFO'"
+          :class="{
+            'bg-status-error/20 text-status-error': log.level === 'ERROR' || log.level === 'SEVERE',
+            'bg-status-warning/20 text-status-warning': log.level === 'WARN' || log.level === 'WARNING',
+            'bg-gray-500/20 text-gray-400': log.level === 'DEBUG'
+          }"
+          class="px-1.5 py-0.5 rounded text-xs font-medium mr-2"
+        >{{ log.level }}</span>
         <span :class="{
-          'text-status-error': log.level === 'ERROR',
-          'text-status-warning': log.level === 'WARN',
+          'text-status-error font-medium': log.level === 'ERROR' || log.level === 'SEVERE',
+          'text-status-warning': log.level === 'WARN' || log.level === 'WARNING',
           'text-gray-500': log.level === 'DEBUG',
-          'text-gray-300': log.level === 'INFO'
+          'text-gray-300': log.level === 'INFO' || !log.level
         }">{{ log.message }}</span>
       </div>
     </div>
 
-    <!-- Command Input -->
-    <div class="mt-4">
+    <!-- Command Input - Always visible at bottom -->
+    <div class="mt-4 flex-shrink-0">
       <form @submit.prevent="handleSubmit" class="flex gap-2">
         <input
           v-model="commandInput"

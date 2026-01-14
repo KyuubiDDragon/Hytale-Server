@@ -26,6 +26,21 @@ export interface ActionResponse {
   error?: string
 }
 
+export interface ConfigFile {
+  name: string
+  size: number
+  modified: string | null
+}
+
+export interface ConfigFilesResponse {
+  files: ConfigFile[]
+}
+
+export interface ConfigContentResponse {
+  filename: string
+  content: string
+}
+
 export const serverApi = {
   async getStatus(): Promise<ServerStatus> {
     const response = await api.get<ServerStatus>('/server/status')
@@ -49,6 +64,21 @@ export const serverApi = {
 
   async restart(): Promise<ActionResponse> {
     const response = await api.post<ActionResponse>('/server/restart')
+    return response.data
+  },
+
+  async getConfigFiles(): Promise<ConfigFilesResponse> {
+    const response = await api.get<ConfigFilesResponse>('/server/config/files')
+    return response.data
+  },
+
+  async getConfigContent(filename: string): Promise<ConfigContentResponse> {
+    const response = await api.get<ConfigContentResponse>(`/server/config/${encodeURIComponent(filename)}`)
+    return response.data
+  },
+
+  async saveConfigContent(filename: string, content: string): Promise<ActionResponse> {
+    const response = await api.put<ActionResponse>(`/server/config/${encodeURIComponent(filename)}`, { content })
     return response.data
   },
 }

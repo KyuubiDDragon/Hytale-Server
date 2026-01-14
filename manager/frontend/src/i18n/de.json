@@ -109,7 +109,13 @@
     "english": "English",
     "theme": "Design",
     "about": "Über",
-    "version": "Version"
+    "version": "Version",
+    "serverConfig": "Server Konfiguration",
+    "selectConfigFile": "Wähle eine Konfigurationsdatei zum Bearbeiten:",
+    "noConfigFiles": "Keine Konfigurationsdateien gefunden",
+    "unsavedChanges": "Ungespeicherte Änderungen",
+    "configSaved": "Konfiguration gespeichert",
+    "configWarning": "Achtung: Fehlerhafte Konfiguration kann den Server beschädigen. Nach dem Speichern ist ein Server-Neustart erforderlich."
   },
   "errors": {
     "connectionFailed": "Verbindung fehlgeschlagen",

@@ -153,15 +153,15 @@ export async function execCommand(command: string): Promise<ActionResponse> {
       return { success: false, error: 'Container not running' };
     }
 
+    // Escape single quotes in command and send to container's main process stdin
+    const escapedCommand = command.replace(/'/g, "'\\''");
     const exec = await container.exec({
-      Cmd: ['sh', '-c', `echo '${command}'`],
-      AttachStdin: true,
+      Cmd: ['sh', '-c', `echo '${escapedCommand}' > /proc/1/fd/0`],
       AttachStdout: true,
       AttachStderr: true,
-      Tty: true,
     });
 
-    const stream = await exec.start({ hijack: true, stdin: true });
+    const stream = await exec.start({});
 
     return new Promise((resolve) => {
       let output = '';
@@ -169,16 +169,16 @@ export async function execCommand(command: string): Promise<ActionResponse> {
         output += chunk.toString('utf-8');
       });
       stream.on('end', () => {
-        resolve({ success: true, message: output.trim() });
+        resolve({ success: true, message: `Command sent: ${command}` });
       });
       stream.on('error', (err: Error) => {
         resolve({ success: false, error: err.message });
       });
 
-      // Timeout after 5 seconds
+      // Timeout after 2 seconds
       setTimeout(() => {
-        resolve({ success: true, message: output.trim() || 'Command sent' });
-      }, 5000);
+        resolve({ success: true, message: `Command sent: ${command}` });
+      }, 2000);
     });
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };

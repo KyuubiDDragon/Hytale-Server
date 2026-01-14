@@ -109,7 +109,13 @@
     "english": "English",
     "theme": "Theme",
     "about": "About",
-    "version": "Version"
+    "version": "Version",
+    "serverConfig": "Server Configuration",
+    "selectConfigFile": "Select a configuration file to edit:",
+    "noConfigFiles": "No configuration files found",
+    "unsavedChanges": "Unsaved changes",
+    "configSaved": "Configuration saved",
+    "configWarning": "Warning: Invalid configuration may break the server. A server restart is required after saving."
   },
   "errors": {
     "connectionFailed": "Connection failed",
