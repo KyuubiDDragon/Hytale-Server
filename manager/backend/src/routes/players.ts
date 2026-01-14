@@ -17,13 +17,6 @@ interface WhitelistData {
   list: string[];
 }
 
-interface BanEntry {
-  player: string;
-  reason?: string;
-  bannedAt: string;
-  bannedBy?: string;
-}
-
 async function readWhitelist(): Promise<WhitelistData> {
   try {
     const content = await readFile(path.join(config.serverPath, 'whitelist.json'), 'utf-8');
@@ -37,18 +30,22 @@ async function writeWhitelist(data: WhitelistData): Promise<void> {
   await writeFile(path.join(config.serverPath, 'whitelist.json'), JSON.stringify(data, null, 2), 'utf-8');
 }
 
-async function readBans(): Promise<BanEntry[]> {
+// Name mapping for bans (UUID -> player name)
+interface BanNameMapping {
+  [uuid: string]: string;
+}
+
+async function readBansMapping(): Promise<BanNameMapping> {
   try {
-    const content = await readFile(path.join(config.serverPath, 'bans.json'), 'utf-8');
-    const data = JSON.parse(content);
-    return Array.isArray(data) ? data : [];
+    const content = await readFile(path.join(config.serverPath, 'bans-names.json'), 'utf-8');
+    return JSON.parse(content);
   } catch {
-    return [];
+    return {};
   }
 }
 
-async function writeBans(data: BanEntry[]): Promise<void> {
-  await writeFile(path.join(config.serverPath, 'bans.json'), JSON.stringify(data, null, 2), 'utf-8');
+async function writeBansMapping(mapping: BanNameMapping): Promise<void> {
+  await writeFile(path.join(config.serverPath, 'bans-names.json'), JSON.stringify(mapping, null, 2), 'utf-8');
 }
 
 // GET /api/players
@@ -106,25 +103,21 @@ router.post('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, res:
   // First kick the player if online
   await dockerService.execCommand(`/kick ${playerName} ${reason || 'You have been banned'}`);
 
-  // Then execute ban command
+  // Then execute ban command - server will update bans.json with UUID
   const command = reason ? `/ban ${playerName} ${reason}` : `/ban ${playerName}`;
   const result = await dockerService.execCommand(command);
 
   if (result.success) {
     playersService.removePlayer(playerName);
 
-    // Persist ban to bans.json
+    // Store player name in mapping file for display purposes
+    // The server's bans.json uses UUIDs, we need names for the UI
     try {
-      const bans = await readBans();
-      if (!bans.find(b => b.player === playerName)) {
-        bans.push({
-          player: playerName,
-          reason: reason || undefined,
-          bannedAt: new Date().toISOString(),
-          bannedBy: username,
-        });
-        await writeBans(bans);
-      }
+      const mapping = await readBansMapping();
+      // We'll update the mapping when the bans list is read
+      // For now, just ensure we have a way to associate names
+      mapping[playerName] = playerName; // Temporary - will be replaced with UUID mapping
+      await writeBansMapping(mapping);
 
       // Remove from whitelist if present
       const whitelist = await readWhitelist();
@@ -133,7 +126,7 @@ router.post('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, res:
         await writeWhitelist(whitelist);
       }
     } catch (err) {
-      console.error('Failed to persist ban:', err);
+      console.error('Failed to update ban mapping:', err);
     }
 
     // Log activity
@@ -158,18 +151,10 @@ router.delete('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, re
   const playerName = req.params.name;
   const username = req.user || 'system';
 
+  // Execute unban command - server will update bans.json
   const result = await dockerService.execCommand(`/unban ${playerName}`);
 
   if (result.success) {
-    // Remove from bans.json
-    try {
-      let bans = await readBans();
-      bans = bans.filter(b => b.player !== playerName);
-      await writeBans(bans);
-    } catch (err) {
-      console.error('Failed to remove ban from file:', err);
-    }
-
     // Log activity
     await logActivity(username, 'unban', 'player', true, playerName);
 

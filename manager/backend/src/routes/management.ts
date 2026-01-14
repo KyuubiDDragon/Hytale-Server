@@ -139,33 +139,75 @@ router.delete('/whitelist/:player', authMiddleware, async (req: Request, res: Re
 
 // ============== BANS ==============
 
+// Hytale server bans.json format
+interface HytaleBanEntry {
+  type: 'infinite' | 'temporary';
+  target: string; // UUID
+  by: string; // UUID of admin (00000000-0000-0000-0000-000000000000 for console)
+  timestamp: number; // Unix timestamp in ms
+  reason: string;
+}
+
+// Our display format with player name
 interface BanEntry {
-  player: string;
+  player: string; // Player name for display
+  target?: string; // UUID from Hytale
   reason?: string;
   bannedAt: string;
   bannedBy?: string;
+}
+
+// Separate file to store player name -> UUID mapping for display
+interface BanNameMapping {
+  [uuid: string]: string; // UUID -> player name
 }
 
 async function getBansPath(): Promise<string> {
   return path.join(config.serverPath, 'bans.json');
 }
 
+async function getBansMappingPath(): Promise<string> {
+  return path.join(config.serverPath, 'bans-names.json');
+}
+
+async function readBansMapping(): Promise<BanNameMapping> {
+  try {
+    const content = await readFile(await getBansMappingPath(), 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return {};
+  }
+}
+
+async function writeBansMapping(mapping: BanNameMapping): Promise<void> {
+  await writeFile(await getBansMappingPath(), JSON.stringify(mapping, null, 2), 'utf-8');
+}
+
 async function readBans(): Promise<BanEntry[]> {
   try {
     const content = await readFile(await getBansPath(), 'utf-8');
     const data = JSON.parse(content);
-    // Handle both array format and object format
+    const mapping = await readBansMapping();
+
     if (Array.isArray(data)) {
-      return data;
+      // Check if it's Hytale format (has 'target' and 'timestamp')
+      if (data.length > 0 && 'target' in data[0] && 'timestamp' in data[0]) {
+        // Convert Hytale format to our display format
+        return (data as HytaleBanEntry[]).map(ban => ({
+          player: mapping[ban.target] || ban.target.substring(0, 8) + '...', // Show UUID prefix if no name
+          target: ban.target,
+          reason: ban.reason !== 'No reason.' ? ban.reason : undefined,
+          bannedAt: new Date(ban.timestamp).toISOString(),
+          bannedBy: ban.by === '00000000-0000-0000-0000-000000000000' ? 'Console' : (mapping[ban.by] || 'Admin'),
+        }));
+      }
+      // Legacy format - return as is
+      return data as BanEntry[];
     }
     return [];
   } catch {
     return [];
   }
-}
-
-async function writeBans(data: BanEntry[]): Promise<void> {
-  await writeFile(await getBansPath(), JSON.stringify(data, null, 2), 'utf-8');
 }
 
 // GET /api/management/bans
@@ -178,38 +220,98 @@ router.get('/bans', authMiddleware, async (_req: Request, res: Response) => {
   }
 });
 
-// POST /api/management/bans/add
-router.post('/bans/add', authMiddleware, async (req: Request, res: Response) => {
+// POST /api/management/bans/add - Stores name mapping, server command handles actual ban
+router.post('/bans/add', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { player, reason } = req.body;
     if (!player || typeof player !== 'string') {
       res.status(400).json({ error: 'player name required' });
       return;
     }
-    const bans = await readBans();
-    const existing = bans.find(b => b.player === player);
-    if (!existing) {
-      bans.push({
-        player,
-        reason: reason || undefined,
-        bannedAt: new Date().toISOString(),
-        bannedBy: 'Admin',
-      });
-      await writeBans(bans);
+
+    // Import docker service to execute ban command
+    const { execCommand } = await import('../services/docker.js');
+
+    // First kick the player
+    await execCommand(`/kick ${player} ${reason || 'You have been banned'}`);
+
+    // Execute ban command - server will update bans.json
+    const banCommand = reason ? `/ban ${player} ${reason}` : `/ban ${player}`;
+    const result = await execCommand(banCommand);
+
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to ban player' });
+      return;
     }
+
+    // Log activity
+    await logActivity(
+      req.user || 'Admin',
+      'ban',
+      'player',
+      true,
+      player,
+      reason || undefined
+    );
+
+    // Wait a moment for server to update bans.json, then read it
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const bans = await readBans();
+
+    // Try to store the player name mapping for future display
+    // We need to find the new ban entry by checking which UUID doesn't have a name
+    const mapping = await readBansMapping();
+    let updated = false;
+    for (const ban of bans) {
+      if (ban.target && !mapping[ban.target]) {
+        // This might be the new ban - store the name
+        mapping[ban.target] = player;
+        updated = true;
+      }
+    }
+    if (updated) {
+      await writeBansMapping(mapping);
+      // Re-read bans with updated mapping
+      const updatedBans = await readBans();
+      res.json({ success: true, bans: updatedBans });
+      return;
+    }
+
     res.json({ success: true, bans });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add ban' });
   }
 });
 
-// DELETE /api/management/bans/:player
-router.delete('/bans/:player', authMiddleware, async (req: Request, res: Response) => {
+// DELETE /api/management/bans/:player - Execute unban command
+router.delete('/bans/:player', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { player } = req.params;
-    let bans = await readBans();
-    bans = bans.filter(b => b.player !== player);
-    await writeBans(bans);
+
+    // Import docker service to execute unban command
+    const { execCommand } = await import('../services/docker.js');
+
+    // Execute unban command - server will update bans.json
+    const result = await execCommand(`/unban ${player}`);
+
+    if (!result.success) {
+      res.status(500).json({ error: result.error || 'Failed to unban player' });
+      return;
+    }
+
+    // Log activity
+    await logActivity(
+      req.user || 'Admin',
+      'unban',
+      'player',
+      true,
+      player
+    );
+
+    // Wait a moment for server to update bans.json, then read it
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const bans = await readBans();
+
     res.json({ success: true, bans });
   } catch (error) {
     res.status(500).json({ error: 'Failed to remove ban' });
