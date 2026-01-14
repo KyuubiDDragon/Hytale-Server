@@ -22,14 +22,19 @@ const removeStorageItem = (key: string): void => {
   }
 }
 
+export type UserRole = 'admin' | 'moderator' | 'viewer'
+
 export const useAuthStore = defineStore('auth', () => {
   // State
   const accessToken = ref<string | null>(getStorageItem('accessToken'))
   const refreshToken = ref<string | null>(getStorageItem('refreshToken'))
   const username = ref<string | null>(getStorageItem('username'))
+  const role = ref<UserRole | null>((getStorageItem('role') as UserRole) || null)
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
+  const isAdmin = computed(() => role.value === 'admin')
+  const canManageServer = computed(() => role.value === 'admin' || role.value === 'moderator')
 
   // Actions
   function setTokens(access: string, refresh: string) {
@@ -39,15 +44,19 @@ export const useAuthStore = defineStore('auth', () => {
     setStorageItem('refreshToken', refresh)
   }
 
-  function setUser(name: string) {
+  function setUser(name: string, userRole?: UserRole) {
     username.value = name
     setStorageItem('username', name)
+    if (userRole) {
+      role.value = userRole
+      setStorageItem('role', userRole)
+    }
   }
 
   async function login(credentials: { username: string; password: string }) {
     const response = await authApi.login(credentials)
     setTokens(response.access_token, response.refresh_token)
-    setUser(credentials.username)
+    setUser(credentials.username, response.role as UserRole)
     return response
   }
 
@@ -64,9 +73,11 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken.value = null
     refreshToken.value = null
     username.value = null
+    role.value = null
     removeStorageItem('accessToken')
     removeStorageItem('refreshToken')
     removeStorageItem('username')
+    removeStorageItem('role')
   }
 
   return {
@@ -74,8 +85,11 @@ export const useAuthStore = defineStore('auth', () => {
     accessToken,
     refreshToken,
     username,
+    role,
     // Getters
     isAuthenticated,
+    isAdmin,
+    canManageServer,
     // Actions
     setTokens,
     setUser,

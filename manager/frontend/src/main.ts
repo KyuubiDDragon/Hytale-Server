@@ -19,6 +19,7 @@ import Worlds from './views/Worlds.vue'
 import Performance from './views/Performance.vue'
 import Configuration from './views/Configuration.vue'
 import Mods from './views/Mods.vue'
+import Users from './views/Users.vue'
 
 // Import auth store
 import { useAuthStore } from './stores/auth'
@@ -100,6 +101,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/users',
+      name: 'users',
+      component: Users,
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
       path: '/:pathMatch(.*)*',
       redirect: '/',
     },
@@ -120,6 +127,8 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.path === '/login' && authStore.isAuthenticated) {
+    next('/')
+  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
     next('/')
   } else {
     next()

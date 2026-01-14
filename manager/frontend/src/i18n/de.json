@@ -41,6 +41,7 @@
     "mods": "Mods & Plugins",
     "performance": "Performance",
     "configuration": "Konfiguration",
+    "users": "Benutzer",
     "server": "Server",
     "management": "Verwaltung",
     "data": "Daten"
@@ -223,6 +224,36 @@
     "unsavedChanges": "Ungespeicherte Änderungen",
     "configSaved": "Konfiguration gespeichert",
     "configWarning": "Achtung: Fehlerhafte Konfiguration kann den Server beschädigen. Nach dem Speichern ist ein Server-Neustart erforderlich."
+  },
+  "users": {
+    "title": "Benutzerverwaltung",
+    "subtitle": "Panel-Benutzer verwalten",
+    "addUser": "Benutzer hinzufügen",
+    "editUser": "Benutzer bearbeiten",
+    "usersList": "Benutzer",
+    "noUsers": "Keine Benutzer vorhanden",
+    "username": "Benutzername",
+    "usernamePlaceholder": "Benutzername eingeben...",
+    "password": "Passwort",
+    "passwordPlaceholder": "Passwort eingeben...",
+    "newPassword": "Neues Passwort",
+    "newPasswordPlaceholder": "Neues Passwort eingeben...",
+    "leaveBlank": "Leer lassen, um Passwort nicht zu ändern",
+    "role": "Rolle",
+    "roles": {
+      "admin": "Administrator",
+      "moderator": "Moderator",
+      "viewer": "Betrachter"
+    },
+    "rolesInfo": "Benutzerrollen",
+    "adminDesc": "Vollzugriff auf alle Funktionen",
+    "moderatorDesc": "Kann Server verwalten, aber keine Benutzer",
+    "viewerDesc": "Nur Lesezugriff",
+    "created": "Erstellt",
+    "lastLogin": "Letzter Login",
+    "you": "Du",
+    "confirmDelete": "Benutzer \"{username}\" wirklich löschen?",
+    "requiredFields": "Benutzername und Passwort erforderlich"
   },
   "errors": {
     "connectionFailed": "Verbindung fehlgeschlagen",

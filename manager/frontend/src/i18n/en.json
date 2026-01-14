@@ -41,6 +41,7 @@
     "mods": "Mods & Plugins",
     "performance": "Performance",
     "configuration": "Configuration",
+    "users": "Users",
     "server": "Server",
     "management": "Management",
     "data": "Data"
@@ -223,6 +224,36 @@
     "unsavedChanges": "Unsaved changes",
     "configSaved": "Configuration saved",
     "configWarning": "Warning: Invalid configuration may break the server. A server restart is required after saving."
+  },
+  "users": {
+    "title": "User Management",
+    "subtitle": "Manage panel users",
+    "addUser": "Add User",
+    "editUser": "Edit User",
+    "usersList": "Users",
+    "noUsers": "No users found",
+    "username": "Username",
+    "usernamePlaceholder": "Enter username...",
+    "password": "Password",
+    "passwordPlaceholder": "Enter password...",
+    "newPassword": "New Password",
+    "newPasswordPlaceholder": "Enter new password...",
+    "leaveBlank": "Leave blank to keep current password",
+    "role": "Role",
+    "roles": {
+      "admin": "Administrator",
+      "moderator": "Moderator",
+      "viewer": "Viewer"
+    },
+    "rolesInfo": "User Roles",
+    "adminDesc": "Full access to all features",
+    "moderatorDesc": "Can manage server but not users",
+    "viewerDesc": "Read-only access",
+    "created": "Created",
+    "lastLogin": "Last Login",
+    "you": "You",
+    "confirmDelete": "Really delete user \"{username}\"?",
+    "requiredFields": "Username and password required"
   },
   "errors": {
     "connectionFailed": "Connection failed",

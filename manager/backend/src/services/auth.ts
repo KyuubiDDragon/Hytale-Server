@@ -1,20 +1,20 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { config } from '../config.js';
 import type { JwtPayload } from '../types/index.js';
+import { verifyUserCredentials, updateLastLogin, type User } from './users.js';
 
-// Hash the password at startup
-const hashedPassword = bcrypt.hashSync(config.managerPassword, 12);
-
-export function verifyPassword(password: string): boolean {
-  return bcrypt.compareSync(password, hashedPassword);
-}
-
-export function verifyCredentials(username: string, password: string): boolean {
-  if (username !== config.managerUsername) {
-    return false;
+// Verify credentials using users service
+export async function verifyCredentials(
+  username: string,
+  password: string
+): Promise<{ valid: boolean; user?: Omit<User, 'passwordHash'>; role?: User['role'] }> {
+  const user = await verifyUserCredentials(username, password);
+  if (!user) {
+    return { valid: false };
   }
-  return verifyPassword(password);
+  await updateLastLogin(username);
+  const { passwordHash, ...userWithoutPassword } = user;
+  return { valid: true, user: userWithoutPassword, role: user.role };
 }
 
 export function createAccessToken(subject: string): string {
