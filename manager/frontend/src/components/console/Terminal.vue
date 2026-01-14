@@ -62,8 +62,9 @@ const knownCommands = [
 
 const filteredCommands = computed(() => {
   if (!commandInput.value.startsWith('/')) return []
+  if (commandInput.value === '/') return knownCommands.slice(0, 10)
   const input = commandInput.value.toLowerCase()
-  return knownCommands.filter(cmd => cmd.toLowerCase().startsWith(input)).slice(0, 8)
+  return knownCommands.filter(cmd => cmd.toLowerCase().startsWith(input)).slice(0, 10)
 })
 
 function selectSuggestion(cmd: string) {
@@ -94,7 +95,7 @@ function handleKeyDown(e: KeyboardEvent) {
 }
 
 watch(commandInput, (val) => {
-  if (val.startsWith('/') && val.length > 1) {
+  if (val.startsWith('/')) {
     showSuggestions.value = filteredCommands.value.length > 0
     selectedSuggestion.value = 0
   } else {

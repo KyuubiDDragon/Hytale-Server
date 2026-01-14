@@ -38,6 +38,7 @@
     "whitelist": "Whitelist",
     "permissions": "Permissions",
     "worlds": "Worlds",
+    "mods": "Mods & Plugins",
     "performance": "Performance",
     "configuration": "Configuration",
     "server": "Server",
@@ -175,6 +176,19 @@
     "saved": "Configuration saved successfully",
     "unsaved": "Unsaved changes",
     "warning": "Warning: Invalid configuration may break the server. A server restart is required after saving changes."
+  },
+  "mods": {
+    "title": "Mods & Plugins",
+    "subtitle": "Manage server mods and plugins",
+    "mods": "Mods",
+    "plugins": "Plugins",
+    "noMods": "No mods found",
+    "noPlugins": "No plugins found",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "active": "active",
+    "path": "Path",
+    "restartNote": "Server restart required after enabling/disabling mods or plugins."
   },
   "performance": {
     "title": "Performance Monitor",

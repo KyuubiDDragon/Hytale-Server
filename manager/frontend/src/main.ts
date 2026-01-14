@@ -18,6 +18,7 @@ import Permissions from './views/Permissions.vue'
 import Worlds from './views/Worlds.vue'
 import Performance from './views/Performance.vue'
 import Configuration from './views/Configuration.vue'
+import Mods from './views/Mods.vue'
 
 // Import auth store
 import { useAuthStore } from './stores/auth'
@@ -78,6 +79,12 @@ const router = createRouter({
       path: '/worlds',
       name: 'worlds',
       component: Worlds,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/mods',
+      name: 'mods',
+      component: Mods,
       meta: { requiresAuth: true },
     },
     {

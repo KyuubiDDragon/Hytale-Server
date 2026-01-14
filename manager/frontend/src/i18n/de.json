@@ -38,6 +38,7 @@
     "whitelist": "Whitelist",
     "permissions": "Berechtigungen",
     "worlds": "Welten",
+    "mods": "Mods & Plugins",
     "performance": "Performance",
     "configuration": "Konfiguration",
     "server": "Server",
@@ -175,6 +176,19 @@
     "saved": "Konfiguration erfolgreich gespeichert",
     "unsaved": "Ungespeicherte Änderungen",
     "warning": "Achtung: Fehlerhafte Konfiguration kann den Server beschädigen. Nach dem Speichern ist ein Server-Neustart erforderlich."
+  },
+  "mods": {
+    "title": "Mods & Plugins",
+    "subtitle": "Server-Mods und Plugins verwalten",
+    "mods": "Mods",
+    "plugins": "Plugins",
+    "noMods": "Keine Mods gefunden",
+    "noPlugins": "Keine Plugins gefunden",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "active": "aktiv",
+    "path": "Pfad",
+    "restartNote": "Server-Neustart erforderlich nach Aktivieren/Deaktivieren von Mods oder Plugins."
   },
   "performance": {
     "title": "Performance Monitor",

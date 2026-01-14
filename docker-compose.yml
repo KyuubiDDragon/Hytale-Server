@@ -124,6 +124,8 @@ services:
       - /opt/hytale-beta/server:/opt/hytale/server
       - /opt/hytale-beta/backups:/opt/hytale/backups
       - /opt/hytale-beta/data:/opt/hytale/data
+      - /opt/hytale-beta/mods:/opt/hytale/mods
+      - /opt/hytale-beta/plugins:/opt/hytale/plugins
 
       # Manager persistent data
       - manager-data:/app/data

@@ -386,6 +386,117 @@ router.get('/worlds', authMiddleware, async (_req: Request, res: Response) => {
   }
 });
 
+// ============== MODS & PLUGINS ==============
+
+interface ModInfo {
+  name: string;
+  filename: string;
+  size: number;
+  lastModified: string;
+  enabled: boolean;
+}
+
+async function scanDirectory(dirPath: string, type: 'mod' | 'plugin'): Promise<ModInfo[]> {
+  const items: ModInfo[] = [];
+  try {
+    const entries = await readdir(dirPath);
+
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry);
+      try {
+        const stats = await stat(entryPath);
+        if (stats.isFile()) {
+          // Check for common mod/plugin extensions
+          const ext = path.extname(entry).toLowerCase();
+          const isValidFile = ['.jar', '.zip', '.js', '.lua', '.dll', '.so'].includes(ext);
+          const isDisabled = entry.endsWith('.disabled');
+
+          if (isValidFile || isDisabled) {
+            items.push({
+              name: entry.replace('.disabled', '').replace(ext, ''),
+              filename: entry,
+              size: stats.size,
+              lastModified: stats.mtime.toISOString(),
+              enabled: !isDisabled,
+            });
+          }
+        }
+      } catch {
+        // Skip entries that can't be read
+      }
+    }
+  } catch {
+    // Directory doesn't exist or can't be read
+  }
+  return items;
+}
+
+// GET /api/management/mods
+router.get('/mods', authMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const mods = await scanDirectory(config.modsPath, 'mod');
+    res.json({ mods, path: config.modsPath });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read mods' });
+  }
+});
+
+// GET /api/management/plugins
+router.get('/plugins', authMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const plugins = await scanDirectory(config.pluginsPath, 'plugin');
+    res.json({ plugins, path: config.pluginsPath });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read plugins' });
+  }
+});
+
+// PUT /api/management/mods/:filename/toggle
+router.put('/mods/:filename/toggle', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(config.modsPath, filename);
+    const disabledPath = filePath.endsWith('.disabled')
+      ? filePath.slice(0, -9)
+      : filePath + '.disabled';
+
+    const { rename } = await import('fs/promises');
+
+    if (filename.endsWith('.disabled')) {
+      await rename(filePath, disabledPath);
+    } else {
+      await rename(filePath, disabledPath);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to toggle mod' });
+  }
+});
+
+// PUT /api/management/plugins/:filename/toggle
+router.put('/plugins/:filename/toggle', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { filename } = req.params;
+    const filePath = path.join(config.pluginsPath, filename);
+    const disabledPath = filePath.endsWith('.disabled')
+      ? filePath.slice(0, -9)
+      : filePath + '.disabled';
+
+    const { rename } = await import('fs/promises');
+
+    if (filename.endsWith('.disabled')) {
+      await rename(filePath, disabledPath);
+    } else {
+      await rename(filePath, disabledPath);
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to toggle plugin' });
+  }
+});
+
 // ============== PERFORMANCE STATS HISTORY ==============
 
 interface StatsEntry {

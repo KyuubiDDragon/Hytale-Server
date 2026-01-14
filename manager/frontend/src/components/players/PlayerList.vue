@@ -43,12 +43,12 @@ function sendMessage(name: string) {
 <template>
   <div>
     <!-- Loading State -->
-    <div v-if="loading" class="text-center text-gray-500 py-8">
+    <div v-if="loading" class="text-center text-gray-500 p-8">
       {{ t('common.loading') }}
     </div>
 
     <!-- Empty State -->
-    <div v-else-if="players.length === 0" class="text-center text-gray-500 py-8">
+    <div v-else-if="players.length === 0" class="text-center text-gray-500 p-8">
       {{ t('players.noPlayers') }}
     </div>
 

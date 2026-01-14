@@ -77,11 +77,16 @@
   }
 
   .card-header {
-    @apply px-5 py-4 border-b border-dark-50/50;
+    @apply flex items-center justify-between px-5 py-4 border-b border-dark-50/50;
   }
 
   .card-body {
     @apply p-5;
+  }
+
+  /* List items with padding for cards without padding prop */
+  .card-list-item {
+    @apply px-5 py-4 border-b border-dark-50/30 last:border-b-0;
   }
 
   /* Inputs */

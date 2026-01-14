@@ -117,6 +117,40 @@ export const worldsApi = {
   },
 }
 
+// ============== MODS & PLUGINS ==============
+
+export interface ModInfo {
+  name: string
+  filename: string
+  size: number
+  lastModified: string
+  enabled: boolean
+}
+
+export const modsApi = {
+  async get(): Promise<{ mods: ModInfo[]; path: string }> {
+    const response = await api.get<{ mods: ModInfo[]; path: string }>('/management/mods')
+    return response.data
+  },
+
+  async toggle(filename: string): Promise<{ success: boolean }> {
+    const response = await api.put<{ success: boolean }>(`/management/mods/${encodeURIComponent(filename)}/toggle`)
+    return response.data
+  },
+}
+
+export const pluginsApi = {
+  async get(): Promise<{ plugins: ModInfo[]; path: string }> {
+    const response = await api.get<{ plugins: ModInfo[]; path: string }>('/management/plugins')
+    return response.data
+  },
+
+  async toggle(filename: string): Promise<{ success: boolean }> {
+    const response = await api.put<{ success: boolean }>(`/management/plugins/${encodeURIComponent(filename)}/toggle`)
+    return response.data
+  },
+}
+
 // ============== STATS HISTORY ==============
 
 export interface StatsEntry {

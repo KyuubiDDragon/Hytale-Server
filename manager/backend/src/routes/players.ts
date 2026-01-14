@@ -170,7 +170,7 @@ router.post('/:name/message', authMiddleware, async (req: Request, res: Response
     return;
   }
 
-  const result = await dockerService.execCommand(`/tell ${playerName} ${message}`);
+  const result = await dockerService.execCommand(`/msg ${playerName} ${message}`);
 
   if (result.success) {
     res.json({
