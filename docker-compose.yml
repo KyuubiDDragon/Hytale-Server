@@ -2,7 +2,7 @@
 # Hytale Dedicated Server - Docker Compose
 # ============================================================
 #
-# HOST PFADE: /opt/hytale-beta/
+# HOST PFADE: /opt/hytale/
 # CONTAINER PFADE: /opt/hytale/
 #
 # PORTAINER SETUP:
@@ -23,10 +23,10 @@
 # ============================================================
 
 services:
-  hytale-beta:
+  hytale:
     build: .
-    container_name: hytale-beta
-    hostname: hytale-beta
+    container_name: hytale
+    hostname: hytale
     restart: on-failure:3
     
     environment:
@@ -61,15 +61,15 @@ services:
     ports:
       - "${SERVER_PORT:-5520}:${SERVER_PORT:-5520}/udp"
     
-    # Volumes - Bind Mounts zu /opt/hytale-beta/
+    # Volumes - Bind Mounts zu /opt/hytale/
     volumes:
-      - /opt/hytale-beta/server:/opt/hytale/server
-      - /opt/hytale-beta/data:/opt/hytale/data
-      - /opt/hytale-beta/backups:/opt/hytale/backups
-      - /opt/hytale-beta/plugins:/opt/hytale/plugins
-      - /opt/hytale-beta/mods:/opt/hytale/mods
-      - /opt/hytale-beta/downloader:/opt/hytale/downloader
-      - /opt/hytale-beta/auth:/opt/hytale/auth
+      - /opt/hytale/server:/opt/hytale/server
+      - /opt/hytale/data:/opt/hytale/data
+      - /opt/hytale/backups:/opt/hytale/backups
+      - /opt/hytale/plugins:/opt/hytale/plugins
+      - /opt/hytale/mods:/opt/hytale/mods
+      - /opt/hytale/downloader:/opt/hytale/downloader
+      - /opt/hytale/auth:/opt/hytale/auth
 
     # Console
     stdin_open: true
@@ -84,15 +84,15 @@ services:
 
     # Network for manager communication
     networks:
-      - hytale-beta-net
+      - hytale-net
 
   # ============================================================
   # Hytale Server Manager - Web UI
   # ============================================================
-  hytale-beta-manager:
+  hytale-manager:
     build: ./manager
-    container_name: hytale-beta-manager
-    hostname: hytale-beta-manager
+    container_name: hytale-manager
+    hostname: hytale-manager
     restart: unless-stopped
 
     environment:
@@ -102,7 +102,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-please-change-this-secret-key}
 
       # Target container
-      - GAME_CONTAINER_NAME=hytale-beta
+      - GAME_CONTAINER_NAME=hytale
 
       # Paths (inside container)
       - SERVER_PATH=/opt/hytale/server
@@ -119,22 +119,22 @@ services:
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-      # Shared volumes with game server (host: /opt/hytale-beta/, container: /opt/hytale/)
+      # Shared volumes with game server (host: /opt/hytale/, container: /opt/hytale/)
       # Server configs need write access for the config editor
-      - /opt/hytale-beta/server:/opt/hytale/server
-      - /opt/hytale-beta/backups:/opt/hytale/backups
-      - /opt/hytale-beta/data:/opt/hytale/data
-      - /opt/hytale-beta/mods:/opt/hytale/mods
-      - /opt/hytale-beta/plugins:/opt/hytale/plugins
+      - /opt/hytale/server:/opt/hytale/server
+      - /opt/hytale/backups:/opt/hytale/backups
+      - /opt/hytale/data:/opt/hytale/data
+      - /opt/hytale/mods:/opt/hytale/mods
+      - /opt/hytale/plugins:/opt/hytale/plugins
 
       # Manager persistent data
       - manager-data:/app/data
 
     networks:
-      - hytale-beta-net
+      - hytale-net
 
     depends_on:
-      - hytale-beta
+      - hytale
 
     # Logging
     logging:
@@ -147,7 +147,7 @@ services:
 # Networks
 # ============================================================
 networks:
-  hytale-beta-net:
+  hytale-net:
     driver: bridge
 
 # ============================================================

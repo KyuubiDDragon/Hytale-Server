@@ -101,9 +101,9 @@ Dateien findest du in: `%appdata%\Hytale\install\release\package\game\latest\`
 **Option C: Manuell kopieren**
 
 ```bash
-docker cp Server/HytaleServer.jar hytale-beta:/opt/hytale/server/
-docker cp Assets.zip hytale-beta:/opt/hytale/server/
-docker restart hytale-beta
+docker cp Server/HytaleServer.jar hytale:/opt/hytale/server/
+docker cp Assets.zip hytale:/opt/hytale/server/
+docker restart hytale
 ```
 
 #### 3. Server authentifizieren
@@ -111,7 +111,7 @@ docker restart hytale-beta
 Nach dem ersten Start muss der Hytale-Server authentifiziert werden:
 
 ```bash
-docker attach hytale-beta
+docker attach hytale
 /auth login device
 ```
 
@@ -182,25 +182,25 @@ Router Port-Forwarding:
 
 ```bash
 # Logs anzeigen
-docker logs -f hytale-beta
+docker logs -f hytale
 
 # Console öffnen (verlassen: Ctrl+P, Ctrl+Q)
-docker attach hytale-beta
+docker attach hytale
 
 # Manuelles Backup
-docker exec hytale-beta /opt/hytale/backup.sh
+docker exec hytale /opt/hytale/backup.sh
 
 # Neustart
-docker restart hytale-beta
+docker restart hytale
 ```
 
 ### Updates
 
 Mit Hytale Downloader:
 ```bash
-docker stop hytale-beta
+docker stop hytale
 docker volume rm hytale-server
-docker start hytale-beta
+docker start hytale
 ```
 
 ---
@@ -260,9 +260,9 @@ Files can be found in: `%appdata%\Hytale\install\release\package\game\latest\`
 **Option C: Manual Copy**
 
 ```bash
-docker cp Server/HytaleServer.jar hytale-beta:/opt/hytale/server/
-docker cp Assets.zip hytale-beta:/opt/hytale/server/
-docker restart hytale-beta
+docker cp Server/HytaleServer.jar hytale:/opt/hytale/server/
+docker cp Assets.zip hytale:/opt/hytale/server/
+docker restart hytale
 ```
 
 #### 3. Server Authentication
@@ -270,7 +270,7 @@ docker restart hytale-beta
 After first start, the Hytale server needs to be authenticated:
 
 ```bash
-docker attach hytale-beta
+docker attach hytale
 /auth login device
 ```
 
@@ -341,25 +341,25 @@ Router port forwarding:
 
 ```bash
 # View logs
-docker logs -f hytale-beta
+docker logs -f hytale
 
 # Open console (exit: Ctrl+P, Ctrl+Q)
-docker attach hytale-beta
+docker attach hytale
 
 # Manual backup
-docker exec hytale-beta /opt/hytale/backup.sh
+docker exec hytale /opt/hytale/backup.sh
 
 # Restart
-docker restart hytale-beta
+docker restart hytale
 ```
 
 ### Updates
 
 With Hytale Downloader:
 ```bash
-docker stop hytale-beta
+docker stop hytale
 docker volume rm hytale-server
-docker start hytale-beta
+docker start hytale
 ```
 
 ---
