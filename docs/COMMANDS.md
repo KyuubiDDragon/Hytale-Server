@@ -1,4 +1,11 @@
+<div align="center">
+
 # Hytale Server Commands Documentation
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
+[![Discord](https://img.shields.io/badge/Discord-KyuubiDDragon-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.com)
+
+</div>
 
 This document lists all available commands for the Hytale server. Commands can be executed through the Admin Panel console or directly in the server console.
 
@@ -241,5 +248,17 @@ Example permissions:
 
 ---
 
+<div align="center">
+
 *Last updated: January 2025*
 *Based on Hytale Server JAR analysis*
+
+---
+
+**[Back to README](../README.md)**
+
+Made with :heart: by [KyuubiDDragon](https://github.com/KyuubiDDragon)
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
+
+</div>

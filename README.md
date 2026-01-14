@@ -1,21 +1,71 @@
+<div align="center">
+
 # Hytale Dedicated Server - Docker
 
-[Deutsch](#deutsch) | [English](#english)
+### Vollautomatisches Docker-Setup mit Web Admin Panel
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
+[![Discord](https://img.shields.io/badge/Discord-KyuubiDDragon-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
+[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
+<img src="https://img.shields.io/badge/Hytale-Server-orange?style=for-the-badge" alt="Hytale Server"/>
+<img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
+<img src="https://img.shields.io/badge/Node.js-Backend-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/>
+<img src="https://img.shields.io/badge/Vue.js-Frontend-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue.js"/>
+
+---
+
+**[Deutsch](#deutsch)** | **[English](#english)** | **[Commands](docs/COMMANDS.md)**
+
+</div>
+
+---
+
+## Screenshots
+
+<div align="center">
+<table>
+<tr>
+<td align="center"><strong>Dashboard</strong></td>
+<td align="center"><strong>Console</strong></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/dashboard.png" width="400" alt="Dashboard"/></td>
+<td><img src="docs/screenshots/console.png" width="400" alt="Console"/></td>
+</tr>
+<tr>
+<td align="center"><strong>Player Management</strong></td>
+<td align="center"><strong>Performance</strong></td>
+</tr>
+<tr>
+<td><img src="docs/screenshots/players.png" width="400" alt="Players"/></td>
+<td><img src="docs/screenshots/performance.png" width="400" alt="Performance"/></td>
+</tr>
+</table>
+</div>
 
 ---
 
 ## Deutsch
 
-Vollautomatisches Docker-Setup für Hytale Server mit Web-basiertem Admin Panel.
+Vollautomatisches Docker-Setup für Hytale Server mit modernem Web-basiertem Admin Panel.
 
 ### Features
 
-- Automatischer Server-Download via offiziellem Hytale Downloader
-- Web-basiertes Admin Panel für Server-Verwaltung
-- Automatische Backups
-- Performance Monitoring
-- Whitelist/Ban Verwaltung
-- Permissions System
+| Feature | Beschreibung |
+|---------|--------------|
+| **Auto-Download** | Automatischer Server-Download via offiziellem Hytale Downloader |
+| **Web Admin Panel** | Modernes UI mit Dark Theme und Echtzeit-Updates |
+| **Multi-User** | Mehrere Benutzer mit Rollen (Admin, Moderator, Viewer) |
+| **Live Console** | Echtzeit-Logs mit Filterung und Auto-Scroll |
+| **Performance Monitor** | CPU, RAM und Spieler-Statistiken mit Graphen |
+| **Spieler Verwaltung** | Kick, Ban, Teleport, Gamemode, Items geben, Heal und mehr |
+| **Mods & Plugins** | Upload, Aktivieren/Deaktivieren, Config Editor |
+| **Backups** | Automatische und manuelle Backups mit Restore |
+| **Whitelist & Bans** | Komplette Zugriffskontrolle |
+| **Permissions** | Benutzer und Gruppen mit Berechtigungen |
+| **Activity Log** | Alle Admin-Aktionen werden protokolliert |
+| **Mehrsprachig** | Deutsch und Englisch |
 
 ### Quick Start mit Portainer
 
@@ -23,7 +73,7 @@ Vollautomatisches Docker-Setup für Hytale Server mit Web-basiertem Admin Panel.
 - Portainer → Stacks → Add Stack
 - Name: `hytale`
 - Build method: Repository
-- Repository URL: `https://github.com/DEIN-USER/hytale-docker`
+- Repository URL: `https://github.com/KyuubiDDragon/Hytale-Server`
 
 #### 2. Server-Dateien
 
@@ -71,19 +121,26 @@ Link im Browser öffnen, Code eingeben, fertig.
 
 Das Admin Panel ist unter `http://SERVER-IP:3000` erreichbar.
 
-Standard-Login:
-- User: `admin`
-- Password: `admin` (bitte ändern!)
+**Standard-Login:**
+| Feld | Wert |
+|------|------|
+| User | `admin` |
+| Password | `admin` |
 
-Features:
+> **Wichtig:** Bitte Passwort nach dem ersten Login ändern!
+
+**Panel Features:**
 - Dashboard mit Server-Status und Ressourcen
-- Live Console mit Log-Filterung
-- Performance Monitoring mit Graphen
-- Spieler Verwaltung
+- Live Console mit Log-Filterung und Command-Historie
+- Performance Monitoring mit Echtzeit-Graphen
+- Spieler Verwaltung mit erweiterten Aktionen
 - Whitelist & Ban System
-- Permissions Verwaltung
-- Backup System
-- Config Editor
+- Permissions Verwaltung (Benutzer & Gruppen)
+- Mods & Plugins mit Upload und Config Editor
+- Backup System mit Restore-Funktion
+- Server Config Editor
+- Activity Log für alle Aktionen
+- Multi-User mit Rollen-System
 
 ### Umgebungsvariablen
 
@@ -104,11 +161,11 @@ Features:
 
 ### Netzwerk
 
-Hytale nutzt UDP Port 5520 (QUIC), nicht TCP.
+Hytale nutzt **UDP Port 5520** (QUIC), nicht TCP.
 
 Router Port-Forwarding:
-- Protokoll: UDP
-- Port: 5520
+- Protokoll: **UDP**
+- Port: **5520**
 
 ### Volumes
 
@@ -150,16 +207,24 @@ docker start hytale-beta
 
 ## English
 
-Fully automated Docker setup for Hytale Server with web-based admin panel.
+Fully automated Docker setup for Hytale Server with modern web-based admin panel.
 
 ### Features
 
-- Automatic server download via official Hytale Downloader
-- Web-based admin panel for server management
-- Automatic backups
-- Performance monitoring
-- Whitelist/ban management
-- Permissions system
+| Feature | Description |
+|---------|-------------|
+| **Auto-Download** | Automatic server download via official Hytale Downloader |
+| **Web Admin Panel** | Modern UI with dark theme and real-time updates |
+| **Multi-User** | Multiple users with roles (Admin, Moderator, Viewer) |
+| **Live Console** | Real-time logs with filtering and auto-scroll |
+| **Performance Monitor** | CPU, RAM and player statistics with graphs |
+| **Player Management** | Kick, ban, teleport, gamemode, give items, heal and more |
+| **Mods & Plugins** | Upload, enable/disable, config editor |
+| **Backups** | Automatic and manual backups with restore |
+| **Whitelist & Bans** | Complete access control |
+| **Permissions** | Users and groups with permissions |
+| **Activity Log** | All admin actions are logged |
+| **Multilingual** | German and English |
 
 ### Quick Start with Portainer
 
@@ -167,7 +232,7 @@ Fully automated Docker setup for Hytale Server with web-based admin panel.
 - Portainer → Stacks → Add Stack
 - Name: `hytale`
 - Build method: Repository
-- Repository URL: `https://github.com/YOUR-USER/hytale-docker`
+- Repository URL: `https://github.com/KyuubiDDragon/Hytale-Server`
 
 #### 2. Server Files
 
@@ -215,19 +280,26 @@ Open link in browser, enter code, done.
 
 The admin panel is available at `http://SERVER-IP:3000`.
 
-Default login:
-- User: `admin`
-- Password: `admin` (please change!)
+**Default login:**
+| Field | Value |
+|-------|-------|
+| User | `admin` |
+| Password | `admin` |
 
-Features:
+> **Important:** Please change password after first login!
+
+**Panel Features:**
 - Dashboard with server status and resources
-- Live console with log filtering
-- Performance monitoring with graphs
-- Player management
+- Live console with log filtering and command history
+- Performance monitoring with real-time graphs
+- Player management with extended actions
 - Whitelist & ban system
-- Permissions management
-- Backup system
-- Config editor
+- Permissions management (users & groups)
+- Mods & plugins with upload and config editor
+- Backup system with restore function
+- Server config editor
+- Activity log for all actions
+- Multi-user with role system
 
 ### Environment Variables
 
@@ -248,11 +320,11 @@ Features:
 
 ### Network
 
-Hytale uses UDP port 5520 (QUIC), not TCP.
+Hytale uses **UDP port 5520** (QUIC), not TCP.
 
 Router port forwarding:
-- Protocol: UDP
-- Port: 5520
+- Protocol: **UDP**
+- Port: **5520**
 
 ### Volumes
 
@@ -292,7 +364,26 @@ docker start hytale-beta
 
 ---
 
-## Links
+## Documentation
 
+- **[Server Commands](docs/COMMANDS.md)** - Complete list of all Hytale server commands
 - [Hytale Server Manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual)
 - [Hytale Downloader](https://downloader.hytale.com/hytale-downloader.zip)
+
+---
+
+<div align="center">
+
+## Support
+
+If you find this project helpful, consider supporting me!
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
+
+**Discord:** KyuubiDDragon
+
+---
+
+Made with :heart: by [KyuubiDDragon](https://github.com/KyuubiDDragon)
+
+</div>
