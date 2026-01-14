@@ -55,7 +55,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // Refresh failed, logout
         authStore.logout()
-        window.location.href = '/login'
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
         return Promise.reject(refreshError)
       }
     }

@@ -55,7 +55,7 @@ RUN npm install --omit=dev && npm cache clean --force
 COPY --from=backend-builder /app/backend/dist ./dist
 
 # Copy frontend build from frontend builder
-COPY --from=frontend-builder /app/frontend/../static ./static
+COPY --from=frontend-builder /app/static ./static
 
 # Create data directory
 RUN mkdir -p /app/data

@@ -2,9 +2,12 @@
 # Hytale Dedicated Server - Docker Compose
 # ============================================================
 #
+# HOST PFADE: /opt/hytale-beta/
+# CONTAINER PFADE: /opt/hytale/
+#
 # PORTAINER SETUP:
 # 1. Repository URL eingeben
-# 2. Environment Variables setzen (siehe .env.example)
+# 2. Environment Variables in Portainer setzen (NICHT als .env Datei!)
 # 3. Deploy
 # 4. Nach Start: /auth login device
 #
@@ -58,15 +61,15 @@ services:
     ports:
       - "${SERVER_PORT:-5520}:${SERVER_PORT:-5520}/udp"
     
-    # Volumes - Bind Mounts zu /opt/hytale/
+    # Volumes - Bind Mounts zu /opt/hytale-beta/
     volumes:
-      - /opt/hytale/server:/opt/hytale/server
-      - /opt/hytale/data:/opt/hytale/data
-      - /opt/hytale/backups:/opt/hytale/backups
-      - /opt/hytale/plugins:/opt/hytale/plugins
-      - /opt/hytale/mods:/opt/hytale/mods
-      - /opt/hytale/downloader:/opt/hytale/downloader
-      - /opt/hytale/auth:/opt/hytale/auth
+      - /opt/hytale-beta/server:/opt/hytale/server
+      - /opt/hytale-beta/data:/opt/hytale/data
+      - /opt/hytale-beta/backups:/opt/hytale/backups
+      - /opt/hytale-beta/plugins:/opt/hytale/plugins
+      - /opt/hytale-beta/mods:/opt/hytale/mods
+      - /opt/hytale-beta/downloader:/opt/hytale/downloader
+      - /opt/hytale-beta/auth:/opt/hytale/auth
 
     # Console
     stdin_open: true
@@ -101,7 +104,7 @@ services:
       # Target container
       - GAME_CONTAINER_NAME=hytale
 
-      # Paths
+      # Paths (inside container)
       - SERVER_PATH=/opt/hytale/server
       - BACKUPS_PATH=/opt/hytale/backups
       - DATA_PATH=/opt/hytale/data
@@ -116,10 +119,10 @@ services:
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-      # Shared volumes with game server
-      - /opt/hytale/server:/opt/hytale/server:ro
-      - /opt/hytale/backups:/opt/hytale/backups
-      - /opt/hytale/data:/opt/hytale/data:ro
+      # Shared volumes with game server (host: /opt/hytale-beta/, container: /opt/hytale/)
+      - /opt/hytale-beta/server:/opt/hytale/server:ro
+      - /opt/hytale-beta/backups:/opt/hytale/backups
+      - /opt/hytale-beta/data:/opt/hytale/data:ro
 
       # Manager persistent data
       - manager-data:/app/data

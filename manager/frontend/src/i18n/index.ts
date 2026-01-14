@@ -3,7 +3,9 @@ import de from './de.json'
 import en from './en.json'
 
 // Get saved language or default to German
-const savedLocale = localStorage.getItem('locale') || 'de'
+const savedLocale = typeof localStorage !== 'undefined'
+  ? localStorage.getItem('locale') || 'de'
+  : 'de'
 
 export const i18n = createI18n({
   legacy: false,
