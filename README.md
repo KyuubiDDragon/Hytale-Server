@@ -6,7 +6,7 @@
 
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
 [![Discord](https://img.shields.io/badge/Discord-KyuubiDDragon-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 
 <img src="https://img.shields.io/badge/KyuubiSoft_Panel-orange?style=for-the-badge" alt="KyuubiSoft Panel"/>
 <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
