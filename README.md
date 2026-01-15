@@ -1,14 +1,14 @@
 <div align="center">
 
-# Hytale Dedicated Server - Docker
+# KyuubiSoft Panel - Hytale Server Management
 
-### Vollautomatisches Docker-Setup mit Web Admin Panel
+### Vollautomatisches Docker-Setup mit Web Admin Panel by KyuubiSoft
 
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
 [![Discord](https://img.shields.io/badge/Discord-KyuubiDDragon-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-<img src="https://img.shields.io/badge/Hytale-Server-orange?style=for-the-badge" alt="Hytale Server"/>
+<img src="https://img.shields.io/badge/KyuubiSoft_Panel-orange?style=for-the-badge" alt="KyuubiSoft Panel"/>
 <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
 <img src="https://img.shields.io/badge/Node.js-Backend-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"/>
 <img src="https://img.shields.io/badge/Vue.js-Frontend-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" alt="Vue.js"/>
@@ -48,7 +48,7 @@
 
 ## Deutsch
 
-Vollautomatisches Docker-Setup für Hytale Server mit modernem Web-basiertem Admin Panel.
+KyuubiSoft Panel - Vollautomatisches Docker-Setup für Hytale Server mit modernem Web-basiertem Admin Panel.
 
 ### Features
 
@@ -122,9 +122,9 @@ docker attach hytale
 
 Link im Browser öffnen, Code eingeben, fertig.
 
-### Admin Panel
+### KyuubiSoft Panel
 
-Das Admin Panel ist unter `http://SERVER-IP:3000` erreichbar.
+Das Admin Panel ist unter `http://SERVER-IP:18080` erreichbar.
 
 **Standard-Login:**
 | Feld | Wert |
@@ -226,7 +226,7 @@ docker start hytale
 
 ## English
 
-Fully automated Docker setup for Hytale Server with modern web-based admin panel.
+KyuubiSoft Panel - Fully automated Docker setup for Hytale Server with modern web-based admin panel.
 
 ### Features
 
@@ -300,9 +300,9 @@ docker attach hytale
 
 Open link in browser, enter code, done.
 
-### Admin Panel
+### KyuubiSoft Panel
 
-The admin panel is available at `http://SERVER-IP:3000`.
+The admin panel is available at `http://SERVER-IP:18080`.
 
 **Default login:**
 | Field | Value |
@@ -422,6 +422,6 @@ If you find this project helpful, consider supporting me!
 
 ---
 
-Made with :heart: by [KyuubiDDragon](https://github.com/KyuubiDDragon)
+KyuubiSoft Panel - Made with :heart: by [KyuubiSoft](https://github.com/KyuubiDDragon)
 
 </div>

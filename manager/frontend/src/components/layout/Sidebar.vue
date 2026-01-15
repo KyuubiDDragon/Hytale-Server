@@ -66,10 +66,13 @@ function isActive(path: string): boolean {
     <!-- Logo -->
     <div class="h-16 flex items-center px-6 border-b border-dark-50/50">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-gradient-to-br from-hytale-orange to-hytale-yellow rounded-lg flex items-center justify-center">
-          <span class="text-dark font-bold text-lg">H</span>
+        <div class="w-10 h-10 rounded-lg overflow-hidden bg-dark-100 flex items-center justify-center shadow-md">
+          <img src="/logo.png" alt="KyuubiSoft Panel" class="w-full h-full object-cover" />
         </div>
-        <span class="text-lg font-semibold text-white">Hytale Manager</span>
+        <div class="flex flex-col">
+          <span class="text-lg font-bold text-white leading-tight">KyuubiSoft Panel</span>
+          <span class="text-[10px] text-gray-500 leading-tight">Hytale Server Management</span>
+        </div>
       </div>
     </div>
 
@@ -264,8 +267,8 @@ function isActive(path: string): boolean {
       </div>
       <!-- Credits -->
       <div class="text-center">
-        <p class="text-xs text-gray-500">Made by <a href="https://github.com/KyuubiDDragon" target="_blank" class="text-hytale-orange hover:underline">KyuubiDDragon</a></p>
-        <p class="text-xs text-gray-600 mt-1">v1.0</p>
+        <p class="text-xs text-gray-500">by <a href="https://github.com/KyuubiDDragon" target="_blank" class="text-hytale-orange hover:underline font-medium">KyuubiSoft</a></p>
+        <p class="text-xs text-gray-600 mt-1">v1.0.0</p>
       </div>
     </div>
   </aside>
