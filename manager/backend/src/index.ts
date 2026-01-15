@@ -60,6 +60,8 @@ app.get('/api/health', (_req, res) => {
 // Serve static frontend files
 const staticPath = path.join(__dirname, '..', 'static');
 app.use('/assets', express.static(path.join(staticPath, 'assets')));
+// Serve root-level static files (logo.png, favicon.svg, etc.)
+app.use(express.static(staticPath, { index: false }));
 
 // SPA fallback - serve index.html for all non-API routes
 app.get('*', (req, res) => {
@@ -81,9 +83,10 @@ app.get('*', (req, res) => {
 server.listen(config.port, '0.0.0.0', () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
-║         Hytale Server Manager v1.0.0              ║
+║         KyuubiSoft Panel v1.0.0                   ║
+║         Hytale Server Management                  ║
 ╠═══════════════════════════════════════════════════╣
-║  Server running on http://0.0.0.0:${config.port}         ║
+║  Panel running on http://0.0.0.0:${config.port}          ║
 ║  Target container: ${config.gameContainerName.padEnd(28)}║
 ╚═══════════════════════════════════════════════════╝
   `);
