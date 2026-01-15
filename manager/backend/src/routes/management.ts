@@ -936,13 +936,46 @@ router.delete('/plugins/:filename', authMiddleware, async (req: AuthenticatedReq
 
 // ============== MOD/PLUGIN CONFIG FILES ==============
 
+// Helper: Extract base mod name without version (e.g., "EasyWebMap-v1.0.9" -> "EasyWebMap")
+function extractBaseModName(filename: string): string {
+  // Remove extension first
+  let name = filename.replace(/\.(jar|zip|disabled)$/i, '');
+  // Remove version patterns like -v1.0.0, -1.0.0, _v1.0.0
+  name = name.replace(/[-_]v?\d+(\.\d+)*$/i, '');
+  return name;
+}
+
+// Helper: Find config directories matching mod name (fuzzy search)
+async function findConfigDirs(baseDir: string, modName: string): Promise<string[]> {
+  const result: string[] = [];
+  const modNameLower = modName.toLowerCase();
+
+  try {
+    const entries = await readdir(baseDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        const entryLower = entry.name.toLowerCase();
+        // Match if folder contains mod name or mod name contains folder
+        if (entryLower.includes(modNameLower) || modNameLower.includes(entryLower.replace(/[_-]/g, ''))) {
+          result.push(path.join(baseDir, entry.name));
+        }
+      }
+    }
+  } catch {
+    // Directory doesn't exist
+  }
+
+  return result;
+}
+
 // GET /api/management/mods/:filename/configs
 router.get('/mods/:filename/configs', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { filename } = req.params;
     const modName = filename.replace(/\.(jar|zip|disabled)$/i, '');
+    const baseModName = extractBaseModName(filename);
 
-    // Check common config locations
+    // Check common config locations (exact match)
     const configPaths = [
       path.join(config.modsPath, modName),
       path.join(config.modsPath, 'config', modName),
@@ -950,18 +983,37 @@ router.get('/mods/:filename/configs', authMiddleware, async (req: Request, res: 
       path.join(config.dataPath, 'config', modName),
     ];
 
+    // Also search for fuzzy matches in config directories
+    const configDirs = [
+      path.join(config.modsPath),
+      path.join(config.serverPath, 'config'),
+      path.join(config.dataPath, 'config'),
+    ];
+
+    for (const dir of configDirs) {
+      const matchingDirs = await findConfigDirs(dir, baseModName);
+      configPaths.push(...matchingDirs);
+    }
+
+    // Deduplicate paths
+    const uniquePaths = [...new Set(configPaths)];
+
     const configs: { name: string; path: string }[] = [];
 
-    for (const configPath of configPaths) {
+    for (const configPath of uniquePaths) {
       try {
         const entries = await readdir(configPath);
         for (const entry of entries) {
           const ext = path.extname(entry).toLowerCase();
           if (['.json', '.yml', '.yaml', '.toml', '.cfg', '.conf', '.properties'].includes(ext)) {
-            configs.push({
-              name: entry,
-              path: path.join(configPath, entry),
-            });
+            const fullPath = path.join(configPath, entry);
+            // Avoid duplicates
+            if (!configs.some(c => c.path === fullPath)) {
+              configs.push({
+                name: entry,
+                path: fullPath,
+              });
+            }
           }
         }
       } catch {
@@ -980,8 +1032,9 @@ router.get('/plugins/:filename/configs', authMiddleware, async (req: Request, re
   try {
     const { filename } = req.params;
     const pluginName = filename.replace(/\.(jar|zip|disabled)$/i, '');
+    const basePluginName = extractBaseModName(filename);
 
-    // Check common config locations
+    // Check common config locations (exact match)
     const configPaths = [
       path.join(config.pluginsPath, pluginName),
       path.join(config.pluginsPath, 'config', pluginName),
@@ -989,18 +1042,37 @@ router.get('/plugins/:filename/configs', authMiddleware, async (req: Request, re
       path.join(config.dataPath, 'plugins', pluginName),
     ];
 
+    // Also search for fuzzy matches in config directories
+    const configDirs = [
+      path.join(config.pluginsPath),
+      path.join(config.serverPath, 'plugins'),
+      path.join(config.dataPath, 'plugins'),
+    ];
+
+    for (const dir of configDirs) {
+      const matchingDirs = await findConfigDirs(dir, basePluginName);
+      configPaths.push(...matchingDirs);
+    }
+
+    // Deduplicate paths
+    const uniquePaths = [...new Set(configPaths)];
+
     const configs: { name: string; path: string }[] = [];
 
-    for (const configPath of configPaths) {
+    for (const configPath of uniquePaths) {
       try {
         const entries = await readdir(configPath);
         for (const entry of entries) {
           const ext = path.extname(entry).toLowerCase();
           if (['.json', '.yml', '.yaml', '.toml', '.cfg', '.conf', '.properties'].includes(ext)) {
-            configs.push({
-              name: entry,
-              path: path.join(configPath, entry),
-            });
+            const fullPath = path.join(configPath, entry);
+            // Avoid duplicates
+            if (!configs.some(c => c.path === fullPath)) {
+              configs.push({
+                name: entry,
+                path: fullPath,
+              });
+            }
           }
         }
       } catch {

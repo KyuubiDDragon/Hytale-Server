@@ -34,8 +34,8 @@ function openWebMap() {
 
 async function checkWebMapStatus() {
   try {
-    const mods = await modStoreApi.getAvailable()
-    const webMap = mods.find(m => m.id === 'easywebmap')
+    const result = await modStoreApi.getAvailable()
+    const webMap = result.mods.find(m => m.id === 'easywebmap')
     if (webMap && webMap.installed) {
       webMapInstalled.value = true
       // Get port from config if available
