@@ -8,6 +8,11 @@
 import { config } from '../config.js';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// Get directory name in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Plugin version (should match the built JAR version)
 export const PLUGIN_VERSION = '1.0.0';
@@ -185,7 +190,8 @@ export function isUpdateAvailable(): { available: boolean; currentVersion: strin
  */
 export function getBundledPluginPath(): string {
   // The JAR is stored in the manager's assets folder
-  return path.join(process.cwd(), 'assets', 'plugins', PLUGIN_JAR_NAME);
+  // __dirname is src/services, so we go up two levels to get to the backend root
+  return path.join(__dirname, '..', '..', 'assets', 'plugins', PLUGIN_JAR_NAME);
 }
 
 /**
