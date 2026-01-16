@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { useServerStats } from '@/composables/useServerStats'
 import { serverApi, type ServerMemoryStats, type UpdateCheckResponse } from '@/api/server'
 import { authApi, type HytaleAuthStatus } from '@/api/auth'
+import { schedulerApi, type SchedulerStatus } from '@/api/scheduler'
 import StatusCard from '@/components/dashboard/StatusCard.vue'
 import QuickActions from '@/components/dashboard/QuickActions.vue'
 import PluginBanner from '@/components/dashboard/PluginBanner.vue'
@@ -27,6 +28,9 @@ const hytaleAuthStatus = ref<HytaleAuthStatus>({ authenticated: false })
 const showAuthBanner = ref(false)
 const showMemoryOnlyWarning = ref(false)
 const enablingPersistence = ref(false)
+
+// Scheduler status
+const schedulerStatus = ref<SchedulerStatus | null>(null)
 
 async function fetchServerMemory() {
   try {
@@ -104,12 +108,22 @@ async function enablePersistence() {
   }
 }
 
+async function fetchSchedulerStatus() {
+  try {
+    schedulerStatus.value = await schedulerApi.getStatus()
+  } catch {
+    // Silently fail
+  }
+}
+
 onMounted(() => {
   fetchServerMemory()
   checkHytaleAuth()
+  fetchSchedulerStatus()
   memoryInterval = setInterval(() => {
     fetchServerMemory()
     checkHytaleAuth()
+    fetchSchedulerStatus()
   }, 10000) // Every 10 seconds
 })
 
@@ -399,6 +413,85 @@ function refreshAll() {
               <p class="text-xs text-gray-400 mb-1">{{ t('settings.authStatus') }}</p>
               <p class="text-sm font-semibold truncate" :class="hytaleAuthStatus.authenticated ? 'text-status-success' : 'text-status-warning'">
                 {{ hytaleAuthStatus.authenticated ? t('settings.authenticated') : t('settings.notAuthenticated') }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scheduler Status Cards -->
+    <div v-if="schedulerStatus" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <!-- Backup Status Card -->
+      <div class="card">
+        <div class="card-body p-4">
+          <div class="flex items-center gap-3">
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="schedulerStatus.backups.enabled ? 'bg-hytale-orange/20' : 'bg-gray-600/20'">
+                <svg class="w-5 h-5" :class="schedulerStatus.backups.enabled ? 'text-hytale-orange' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+                </svg>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-gray-400 mb-0.5">{{ t('dashboard.backupStatus') }}</p>
+              <p v-if="!schedulerStatus.backups.enabled" class="text-sm text-gray-500">{{ t('dashboard.backupsDisabled') }}</p>
+              <template v-else>
+                <p v-if="schedulerStatus.backups.lastRun" class="text-xs text-gray-400">
+                  {{ t('scheduler.lastBackup') }}: {{ new Date(schedulerStatus.backups.lastRun).toLocaleString() }}
+                </p>
+                <p v-if="schedulerStatus.backups.nextRun" class="text-sm font-medium text-hytale-orange">
+                  {{ t('scheduler.nextBackup') }}: {{ new Date(schedulerStatus.backups.nextRun).toLocaleTimeString() }}
+                </p>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Restart Status Card -->
+      <div class="card" :class="schedulerStatus.scheduledRestarts.pendingRestart ? 'border-status-warning' : ''">
+        <div class="card-body p-4">
+          <div class="flex items-center gap-3">
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="schedulerStatus.scheduledRestarts.enabled ? 'bg-hytale-orange/20' : 'bg-gray-600/20'">
+                <svg class="w-5 h-5" :class="schedulerStatus.scheduledRestarts.pendingRestart ? 'text-status-warning animate-pulse' : (schedulerStatus.scheduledRestarts.enabled ? 'text-hytale-orange' : 'text-gray-500')" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-gray-400 mb-0.5">{{ t('dashboard.restartStatus') }}</p>
+              <p v-if="!schedulerStatus.scheduledRestarts.enabled" class="text-sm text-gray-500">{{ t('dashboard.restartsDisabled') }}</p>
+              <template v-else>
+                <p v-if="schedulerStatus.scheduledRestarts.pendingRestart" class="text-sm font-medium text-status-warning">
+                  {{ t('scheduler.pendingRestart') }}: {{ new Date(schedulerStatus.scheduledRestarts.pendingRestart.scheduledAt).toLocaleTimeString() }}
+                </p>
+                <p v-else-if="schedulerStatus.scheduledRestarts.nextRestart" class="text-sm font-medium text-hytale-orange">
+                  {{ t('scheduler.nextRestart') }}: {{ new Date(schedulerStatus.scheduledRestarts.nextRestart).toLocaleTimeString() }}
+                </p>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Announcements Status Card -->
+      <div class="card">
+        <div class="card-body p-4">
+          <div class="flex items-center gap-3">
+            <div class="flex-shrink-0">
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center" :class="schedulerStatus.announcements.enabled ? 'bg-hytale-orange/20' : 'bg-gray-600/20'">
+                <svg class="w-5 h-5" :class="schedulerStatus.announcements.enabled ? 'text-hytale-orange' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+                </svg>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-gray-400 mb-0.5">{{ t('dashboard.announcementsStatus') }}</p>
+              <p v-if="!schedulerStatus.announcements.enabled" class="text-sm text-gray-500">{{ t('dashboard.announcementsDisabled') }}</p>
+              <p v-else class="text-sm font-medium text-hytale-orange">
+                {{ schedulerStatus.announcements.activeCount }} {{ t('dashboard.activeAnnouncements') }}
               </p>
             </div>
           </div>
