@@ -19,6 +19,8 @@ import {
   getFeaturedMods,
   getRecentMods,
   clearModtaleCache,
+  isValidProjectId,
+  isValidVersion,
   type ModtaleSortOption,
   type ModtaleClassification,
 } from '../services/modtale.js';
@@ -1664,6 +1666,13 @@ router.get('/modtale/search', authMiddleware, async (req: Request, res: Response
 router.get('/modtale/projects/:projectId', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
+
+    // Security: Validate projectId format
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: 'Invalid project ID format' });
+      return;
+    }
+
     const project = await modtaleGetDetails(projectId);
 
     if (!project) {
@@ -1684,6 +1693,18 @@ router.post('/modtale/install', authMiddleware, async (req: AuthenticatedRequest
 
     if (!projectId) {
       res.status(400).json({ error: 'projectId required' });
+      return;
+    }
+
+    // Security: Validate projectId format
+    if (!isValidProjectId(projectId)) {
+      res.status(400).json({ error: 'Invalid project ID format' });
+      return;
+    }
+
+    // Security: Validate versionId format if provided
+    if (versionId && !isValidVersion(versionId)) {
+      res.status(400).json({ error: 'Invalid version ID format' });
       return;
     }
 
