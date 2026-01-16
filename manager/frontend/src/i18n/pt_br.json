@@ -80,6 +80,13 @@
     "authMemoryOnlyShort": "Apenas Memória (Não Persistente)",
     "enablePersistence": "Habilitar Persistência",
     "enablingPersistence": "Habilitando...",
+    "backupStatus": "Status do Backup",
+    "restartStatus": "Status da Reinicialização",
+    "announcementsStatus": "Anúncios",
+    "backupsDisabled": "Desativado",
+    "restartsDisabled": "Desativado",
+    "announcementsDisabled": "Desativado",
+    "activeAnnouncements": "anúncios ativos",
     "plugin": {
       "notInstalled": "Plugin KyuubiSoft API não instalado",
       "notRunning": "Plugin KyuubiSoft API não ativo",
