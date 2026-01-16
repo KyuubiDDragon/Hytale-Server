@@ -90,7 +90,12 @@
       "installSuccess": "Plugin erfolgreich installiert. Starte den Server neu, um es zu aktivieren.",
       "installFailed": "Installation fehlgeschlagen",
       "version": "Version",
-      "updateAvailable": "Update verfügbar"
+      "updateAvailable": "Plugin-Update verfügbar",
+      "updateHint": "Version {current} → {latest}. Aktualisiere das Plugin für die neuesten Features.",
+      "update": "Plugin aktualisieren",
+      "updating": "Aktualisiere...",
+      "updateSuccess": "Plugin erfolgreich aktualisiert. Starte den Server neu, um es zu aktivieren.",
+      "updateFailed": "Aktualisierung fehlgeschlagen"
     }
   },
   "console": {
