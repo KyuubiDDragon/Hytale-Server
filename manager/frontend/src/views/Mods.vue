@@ -825,20 +825,20 @@ onMounted(loadData)
             <div class="flex items-center gap-4 mt-2 text-sm">
               <span v-if="modtaleStatus?.apiAvailable" class="flex items-center gap-1 text-green-400">
                 <span class="w-2 h-2 bg-green-400 rounded-full"></span>
-                API Online
+                {{ t('mods.apiOnline') }}
               </span>
               <span v-else class="flex items-center gap-1 text-red-400">
                 <span class="w-2 h-2 bg-red-400 rounded-full"></span>
-                API Offline
+                {{ t('mods.apiOffline') }}
               </span>
               <span v-if="modtaleStatus?.hasApiKey" class="text-cyan-400">
                 {{ modtaleStatus.rateLimit?.limit }} req/min
               </span>
               <span v-else class="text-gray-500">
-                10 req/min (No API Key)
+                10 req/min ({{ t('mods.noApiKey') }})
               </span>
               <span class="text-gray-500">
-                {{ modtaleTotalElements }} Mods gefunden
+                {{ modtaleTotalElements }} {{ t('mods.modsFound') }}
               </span>
             </div>
           </div>
@@ -937,7 +937,7 @@ onMounted(loadData)
                     {{ mod.classification }}
                   </span>
                   <span v-if="modtaleInstallSuccess === mod.id" class="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-400 animate-pulse">
-                    Installiert!
+                    {{ t('mods.installSuccess') }}
                   </span>
                 </div>
                 <p class="text-sm text-gray-400 mt-1 line-clamp-1">{{ mod.description }}</p>
@@ -1010,7 +1010,7 @@ onMounted(loadData)
     <div v-if="showModtaleSettings" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-dark-200 rounded-xl w-full max-w-md">
         <div class="p-4 border-b border-dark-50/50 flex items-center justify-between">
-          <h2 class="text-xl font-bold text-white">Modtale API Settings</h2>
+          <h2 class="text-xl font-bold text-white">{{ t('mods.modtaleApiSettings') }}</h2>
           <button @click="showModtaleSettings = false" class="text-gray-400 hover:text-white">
             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1020,22 +1020,22 @@ onMounted(loadData)
 
         <div class="p-6 space-y-4">
           <div class="p-4 bg-dark-100 rounded-lg">
-            <h3 class="font-medium text-white mb-2">API Status</h3>
+            <h3 class="font-medium text-white mb-2">{{ t('mods.apiStatus') }}</h3>
             <div class="space-y-2 text-sm">
               <div class="flex justify-between">
-                <span class="text-gray-400">Status:</span>
+                <span class="text-gray-400">{{ t('mods.statusLabel') }}:</span>
                 <span :class="modtaleStatus?.apiAvailable ? 'text-green-400' : 'text-red-400'">
-                  {{ modtaleStatus?.apiAvailable ? 'Online' : 'Offline' }}
+                  {{ modtaleStatus?.apiAvailable ? t('mods.online') : t('mods.offline') }}
                 </span>
               </div>
               <div class="flex justify-between">
-                <span class="text-gray-400">API Key:</span>
+                <span class="text-gray-400">{{ t('mods.apiKeyLabel') }}:</span>
                 <span :class="modtaleStatus?.hasApiKey ? 'text-green-400' : 'text-yellow-400'">
-                  {{ modtaleStatus?.hasApiKey ? 'Konfiguriert' : 'Nicht konfiguriert' }}
+                  {{ modtaleStatus?.hasApiKey ? t('mods.configured') : t('mods.notConfigured') }}
                 </span>
               </div>
               <div class="flex justify-between">
-                <span class="text-gray-400">Rate Limit:</span>
+                <span class="text-gray-400">{{ t('mods.rateLimitLabel') }}:</span>
                 <span class="text-cyan-400">
                   {{ modtaleStatus?.rateLimit?.limit || 10 }} req/min
                 </span>
@@ -1048,22 +1048,22 @@ onMounted(loadData)
               <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              API Key einrichten
+              {{ t('mods.setupApiKey') }}
             </h3>
             <p class="text-sm text-gray-400 mb-3">
-              Um mehr Anfragen pro Minute zu erhalten (300 statt 10), erstelle einen kostenlosen API Key auf modtale.net:
+              {{ t('mods.apiKeyInstructions') }}
             </p>
             <ol class="text-sm text-gray-400 space-y-1 list-decimal list-inside mb-3">
-              <li>Gehe zu <a href="https://modtale.net" target="_blank" class="text-cyan-400 hover:underline">modtale.net</a></li>
-              <li>Erstelle ein Konto / Logge dich ein</li>
-              <li>Gehe zu Developer Settings</li>
-              <li>Generiere einen API Key</li>
+              <li>{{ t('mods.apiKeyStep1') }} <a href="https://modtale.net" target="_blank" class="text-cyan-400 hover:underline">modtale.net</a></li>
+              <li>{{ t('mods.apiKeyStep2') }}</li>
+              <li>{{ t('mods.apiKeyStep3') }}</li>
+              <li>{{ t('mods.apiKeyStep4') }}</li>
             </ol>
             <p class="text-sm text-gray-400">
-              Trage den Key in deine <code class="bg-dark-300 px-1.5 py-0.5 rounded text-cyan-400">.env</code> Datei ein:
+              {{ t('mods.apiKeyEnvInstructions') }}
             </p>
             <code class="block mt-2 p-2 bg-dark-300 rounded text-sm text-green-400 font-mono">
-              MODTALE_API_KEY=md_dein_api_key_hier
+              MODTALE_API_KEY=md_your_api_key_here
             </code>
           </div>
 
@@ -1071,7 +1071,7 @@ onMounted(loadData)
             @click="showModtaleSettings = false"
             class="w-full px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-colors"
           >
-            Schliessen
+            {{ t('mods.close') }}
           </button>
         </div>
       </div>
@@ -1081,7 +1081,7 @@ onMounted(loadData)
     <div v-if="showModtaleDetail" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div class="bg-dark-200 rounded-xl w-full max-w-3xl max-h-[85vh] flex flex-col">
         <div class="p-4 border-b border-dark-50/50 flex items-center justify-between shrink-0">
-          <h2 class="text-xl font-bold text-white">{{ modtaleDetailProject?.title || 'Loading...' }}</h2>
+          <h2 class="text-xl font-bold text-white">{{ modtaleDetailProject?.title || t('common.loading') }}</h2>
           <button @click="showModtaleDetail = false" class="text-gray-400 hover:text-white">
             <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -1120,7 +1120,7 @@ onMounted(loadData)
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    {{ formatDownloads(modtaleDetailProject.downloads) }} Downloads
+                    {{ formatDownloads(modtaleDetailProject.downloads) }} {{ t('mods.sortDownloads') }}
                   </span>
                   <span v-if="modtaleDetailProject.rating > 0" class="flex items-center gap-1">
                     <svg class="w-4 h-4 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
@@ -1131,7 +1131,7 @@ onMounted(loadData)
                 </div>
                 <div v-if="modtaleDetailProject.repositoryUrl" class="mt-2">
                   <a :href="modtaleDetailProject.repositoryUrl" target="_blank" class="text-cyan-400 hover:underline text-sm">
-                    Repository
+                    {{ t('mods.repository') }}
                   </a>
                 </div>
               </div>
@@ -1139,7 +1139,7 @@ onMounted(loadData)
 
             <!-- Versions -->
             <div v-if="modtaleDetailProject.versions?.length" class="mb-6">
-              <h3 class="font-semibold text-white mb-3">Versionen</h3>
+              <h3 class="font-semibold text-white mb-3">{{ t('mods.versions') }}</h3>
               <div class="space-y-2">
                 <div
                   v-for="version in modtaleDetailProject.versions.slice(0, 5)"
@@ -1159,7 +1159,7 @@ onMounted(loadData)
                     @click="modtaleApi.install(modtaleDetailProject!.id, version.versionNumber).then(() => { loadData(); showModtaleDetail = false; })"
                     class="px-3 py-1 bg-cyan-500 text-white rounded hover:bg-cyan-400 transition-colors text-sm"
                   >
-                    Installieren
+                    {{ t('mods.install') }}
                   </button>
                 </div>
               </div>
@@ -1167,7 +1167,7 @@ onMounted(loadData)
 
             <!-- Description -->
             <div v-if="modtaleDetailProject.about" class="prose prose-invert max-w-none">
-              <h3 class="font-semibold text-white mb-3">Beschreibung</h3>
+              <h3 class="font-semibold text-white mb-3">{{ t('mods.description') }}</h3>
               <div class="text-gray-400 whitespace-pre-wrap">{{ modtaleDetailProject.about }}</div>
             </div>
           </template>

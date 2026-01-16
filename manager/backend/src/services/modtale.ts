@@ -8,6 +8,11 @@ import { writeFile, mkdir, access } from 'fs/promises';
 import path from 'path';
 import https from 'https';
 import { config } from '../config.js';
+import { sanitizeFileName, isPathSafe } from '../utils/pathSecurity.js';
+
+// Security: Regex pattern for validating project IDs
+const PROJECT_ID_PATTERN = /^[a-zA-Z0-9_-]{1,64}$/;
+const VERSION_PATTERN = /^[a-zA-Z0-9._-]{1,32}$/;
 
 // Modtale API Configuration
 const MODTALE_API_BASE = 'https://api.modtale.net';
@@ -104,6 +109,52 @@ function setCache<T>(key: string, data: T): void {
 export function clearModtaleCache(): void {
   cache.clear();
   console.log('Modtale cache cleared');
+}
+
+// ============== Security Validation ==============
+
+/**
+ * Validate a project ID to prevent injection attacks
+ */
+export function isValidProjectId(projectId: string): boolean {
+  if (!projectId || typeof projectId !== 'string') {
+    return false;
+  }
+  return PROJECT_ID_PATTERN.test(projectId);
+}
+
+/**
+ * Validate a version string to prevent path traversal
+ */
+export function isValidVersion(version: string): boolean {
+  if (!version || typeof version !== 'string') {
+    return false;
+  }
+  return VERSION_PATTERN.test(version);
+}
+
+/**
+ * Sanitize a string for use in filenames
+ * Returns null if the string cannot be safely sanitized
+ */
+function sanitizeForFilename(input: string): string | null {
+  if (!input || typeof input !== 'string') {
+    return null;
+  }
+  // Remove any path traversal attempts and invalid characters
+  const sanitized = input
+    .replace(/\.\./g, '') // Remove path traversal
+    .replace(/[/\\:*?"<>|]/g, '') // Remove invalid filename chars
+    .replace(/[^a-zA-Z0-9._-]/g, '-') // Replace other chars with dash
+    .replace(/-+/g, '-') // Collapse multiple dashes
+    .replace(/^-|-$/g, '') // Remove leading/trailing dashes
+    .slice(0, 64); // Limit length
+
+  if (!sanitized || sanitized.length === 0) {
+    return null;
+  }
+
+  return sanitized;
 }
 
 // ============== API Client ==============
@@ -312,13 +363,19 @@ export async function searchMods(options: {
  * Get mod details by ID
  */
 export async function getModDetails(projectId: string): Promise<ModtaleProjectDetails | null> {
+  // Security: Validate projectId before using in URL
+  if (!isValidProjectId(projectId)) {
+    console.error(`Invalid project ID format: ${projectId}`);
+    return null;
+  }
+
   const cacheKey = `project:${projectId}`;
   const cached = getCached<ModtaleProjectDetails>(cacheKey);
   if (cached) {
     return cached;
   }
 
-  const result = await modtaleRequest<ModtaleProjectDetails>(`/api/v1/projects/${projectId}`);
+  const result = await modtaleRequest<ModtaleProjectDetails>(`/api/v1/projects/${encodeURIComponent(projectId)}`);
 
   if (result) {
     setCache(cacheKey, result);
@@ -395,7 +452,17 @@ export async function installModFromModtale(
   projectId: string,
   versionId?: string
 ): Promise<ModtaleInstallResult> {
-  // Get project details
+  // Security: Validate projectId
+  if (!isValidProjectId(projectId)) {
+    return { success: false, error: 'Invalid project ID format' };
+  }
+
+  // Security: Validate versionId if provided
+  if (versionId && !isValidVersion(versionId)) {
+    return { success: false, error: 'Invalid version ID format' };
+  }
+
+  // Get project details (getModDetails also validates projectId)
   const project = await getModDetails(projectId);
   if (!project) {
     return { success: false, error: 'Project not found or API unavailable' };
@@ -421,21 +488,37 @@ export async function installModFromModtale(
     return { success: false, error: 'No download URL available for this version' };
   }
 
-  // Construct download URL
+  // Security: Validate version number from API response
+  const safeVersion = sanitizeForFilename(version.versionNumber);
+  if (!safeVersion) {
+    return { success: false, error: 'Invalid version number in API response' };
+  }
+
+  // Security: Sanitize project title for filename
+  const safeTitle = sanitizeForFilename(project.title);
+  if (!safeTitle) {
+    return { success: false, error: 'Invalid project title for filename' };
+  }
+
+  // Construct download URL with encoded components
   let downloadUrl = version.fileUrl;
   if (!downloadUrl.startsWith('http')) {
-    // Relative URL - construct full URL
-    downloadUrl = `${MODTALE_API_BASE}/api/v1/projects/${projectId}/versions/${version.versionNumber}/download`;
+    // Relative URL - construct full URL with encoded components
+    downloadUrl = `${MODTALE_API_BASE}/api/v1/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(safeVersion)}/download`;
   }
 
   // Determine target path based on classification
   let targetPath: string;
-  let filename: string;
 
-  // Generate filename from project title and version
-  const safeTitle = project.title.replace(/[^a-zA-Z0-9-_]/g, '-').replace(/-+/g, '-');
+  // Generate filename from sanitized project title and version
   const extension = project.classification === 'PLUGIN' ? 'jar' : 'zip';
-  filename = `${safeTitle}-${version.versionNumber}.${extension}`;
+  const filename = `${safeTitle}-${safeVersion}.${extension}`;
+
+  // Security: Final filename validation using existing utility
+  const validatedFilename = sanitizeFileName(filename);
+  if (!validatedFilename) {
+    return { success: false, error: 'Generated filename failed security validation' };
+  }
 
   // Choose target directory based on classification
   switch (project.classification) {
@@ -461,8 +544,17 @@ export async function installModFromModtale(
     await mkdir(targetPath, { recursive: true });
   }
 
+  // Security: Construct destination path and verify it's within allowed directory
+  const destPath = path.join(targetPath, validatedFilename);
+  const resolvedDest = path.resolve(destPath);
+  const resolvedTarget = path.resolve(targetPath);
+
+  if (!resolvedDest.startsWith(resolvedTarget + path.sep)) {
+    console.error(`Path traversal attempt detected: ${destPath}`);
+    return { success: false, error: 'Invalid destination path' };
+  }
+
   // Download the file
-  const destPath = path.join(targetPath, filename);
   const downloaded = await downloadFile(downloadUrl, destPath);
 
   if (!downloaded) {
@@ -471,8 +563,8 @@ export async function installModFromModtale(
 
   return {
     success: true,
-    filename,
-    version: version.versionNumber,
+    filename: validatedFilename,
+    version: safeVersion,
     projectId: project.id,
     projectTitle: project.title,
   };
@@ -542,5 +634,7 @@ export default {
   getFeaturedMods,
   getRecentMods,
   clearModtaleCache,
+  isValidProjectId,
+  isValidVersion,
   MODTALE_TAGS,
 };
