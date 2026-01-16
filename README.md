@@ -65,7 +65,7 @@ KyuubiSoft Panel - Vollautomatisches Docker-Setup für Hytale Server mit moderne
 - Portainer → Stacks → Add Stack
 - Name: `hytale`
 - Build method: Repository
-- Repository URL: `https://github.com/KyuubiDDragon/Hytale-Server`
+- Repository URL: `https://github.com/KyuubiDDragon/KyuubiSoft-Hytale-Panel`
 
 #### 2. Server-Dateien
 
@@ -243,7 +243,7 @@ KyuubiSoft Panel - Fully automated Docker setup for Hytale Server with modern we
 - Portainer → Stacks → Add Stack
 - Name: `hytale`
 - Build method: Repository
-- Repository URL: `https://github.com/KyuubiDDragon/Hytale-Server`
+- Repository URL: `https://github.com/KyuubiDDragon/KyuubiSoft-Hytale-Panel`
 
 #### 2. Server Files
 

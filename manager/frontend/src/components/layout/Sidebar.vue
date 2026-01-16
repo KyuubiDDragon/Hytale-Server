@@ -254,7 +254,7 @@ function isActive(path: string): boolean {
           </svg>
         </a>
         <a
-          href="https://github.com/KyuubiDDragon/Hytale-Server"
+          href="https://github.com/KyuubiDDragon/KyuubiSoft-Hytale-Panel"
           target="_blank"
           rel="noopener noreferrer"
           class="p-2 rounded-lg bg-gray-500/10 text-gray-400 hover:bg-gray-500/20 transition-colors"
