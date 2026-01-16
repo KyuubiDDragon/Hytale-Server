@@ -477,9 +477,9 @@ export function deleteQuickCommand(id: string): boolean {
 
 // Get scheduler status
 export function getSchedulerStatus(): {
-  backups: { enabled: boolean; nextRun: string | null; lastRun: string | null };
+  backups: { enabled: boolean; nextRun: string | null; lastRun: string | null; schedule: string };
   announcements: { enabled: boolean; activeCount: number };
-  scheduledRestarts: { enabled: boolean; nextRestart: string | null; pendingRestart: { time: string; scheduledAt: string } | null };
+  scheduledRestarts: { enabled: boolean; nextRestart: string | null; pendingRestart: { time: string; scheduledAt: string } | null; times: string[] };
 } {
   const nextBackup = getNextBackupTime();
   const backups = listBackups();
@@ -491,6 +491,7 @@ export function getSchedulerStatus(): {
       enabled: schedulerConfig.backups.enabled,
       nextRun: nextBackup?.toISOString() || null,
       lastRun: lastAutoBackup?.created_at || null,
+      schedule: schedulerConfig.backups.schedule,
     },
     announcements: {
       enabled: schedulerConfig.announcements.enabled,
@@ -500,6 +501,7 @@ export function getSchedulerStatus(): {
       enabled: schedulerConfig.scheduledRestarts.enabled,
       nextRestart: nextRestart?.date.toISOString() || null,
       pendingRestart: getPendingRestart(),
+      times: schedulerConfig.scheduledRestarts.times,
     },
   };
 }

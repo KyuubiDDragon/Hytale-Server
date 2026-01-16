@@ -43,6 +43,7 @@ export interface SchedulerStatus {
     enabled: boolean
     nextRun: string | null
     lastRun: string | null
+    schedule: string
   }
   announcements: {
     enabled: boolean
@@ -52,6 +53,7 @@ export interface SchedulerStatus {
     enabled: boolean
     nextRestart: string | null
     pendingRestart: { time: string; scheduledAt: string } | null
+    times: string[]
   }
 }
 
