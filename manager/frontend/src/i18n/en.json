@@ -330,7 +330,20 @@
     "close": "Close",
     "versions": "Versions",
     "description": "Description",
-    "repository": "Repository"
+    "repository": "Repository",
+    "stackmartDescription": "Browse and install free resources from StackMart.org - plugins, mods, scripts and tools.",
+    "stackmartUnavailable": "StackMart API unavailable. Please try again later.",
+    "searchStackMart": "Search resources on StackMart...",
+    "sortPopular": "Popular",
+    "sortRecent": "Recent",
+    "allCategories": "All Categories",
+    "stackmartResults": "StackMart Results",
+    "noStackMartResults": "No resources found",
+    "resourcesFound": "resources found",
+    "stackmartApiKeyInstructions": "To use publisher features, create an API key on stackmart.org:",
+    "stackmartApiKeyStep1": "Go to",
+    "stackmartApiKeyStep2": "Create a publisher account",
+    "stackmartApiKeyStep3": "Generate a Publisher API Key"
   },
   "performance": {
     "title": "Performance Monitor",
