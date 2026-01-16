@@ -224,18 +224,43 @@ export async function initiateDeviceLogin(): Promise<HytaleDeviceCodeResponse> {
 }
 
 /**
- * Lists all files in the auth directory
+ * Gets the base Hytale path (parent of serverPath)
+ * e.g., if serverPath is /opt/hytale/server, returns /opt/hytale
+ */
+function getHytaleBasePath(): string {
+  return path.dirname(config.serverPath);
+}
+
+/**
+ * Lists all files in the auth directories
+ * Checks both /opt/hytale/auth and /opt/hytale/server/auth
  */
 export async function listAuthFiles(): Promise<string[]> {
-  try {
-    const authDir = path.join(config.serverPath, '.auth');
-    const files = await fs.readdir(authDir);
-    console.log(`[HytaleAuth] Files in .auth directory:`, files);
-    return files;
-  } catch (error) {
-    console.log('[HytaleAuth] No .auth directory or error reading it:', error);
-    return [];
+  const allFiles: string[] = [];
+  const basePath = getHytaleBasePath();
+
+  // Check auth directories at different locations
+  const authDirs = [
+    path.join(basePath, 'auth'),           // /opt/hytale/auth (main auth folder)
+    path.join(config.serverPath, 'auth'),  // /opt/hytale/server/auth
+    path.join(config.serverPath, '.auth'), // /opt/hytale/server/.auth
+  ];
+
+  for (const authDir of authDirs) {
+    try {
+      const files = await fs.readdir(authDir);
+      console.log(`[HytaleAuth] Files in ${authDir}:`, files);
+      allFiles.push(...files);
+    } catch {
+      // Directory doesn't exist, continue
+    }
   }
+
+  if (allFiles.length === 0) {
+    console.log('[HytaleAuth] No auth directories found or they are empty');
+  }
+
+  return allFiles;
 }
 
 /**
@@ -296,17 +321,33 @@ async function checkTokenFileExists(): Promise<boolean> {
     // First, list what's in the auth directory
     const authFiles = await listAuthFiles();
 
+    const basePath = getHytaleBasePath();
+
     // Try common token file locations
     const possiblePaths = [
+      // Main auth folder at /opt/hytale/auth (same level as server)
+      path.join(basePath, 'auth', 'credentials.json'),
+      path.join(basePath, 'auth', 'credentials.enc'),
+      path.join(basePath, 'auth', 'auth.enc'),
+      path.join(basePath, 'auth', 'token'),
+      path.join(basePath, 'auth', 'oauth_token'),
+      // Root server folder
+      path.join(config.serverPath, 'auth.enc'),
       path.join(config.serverPath, '.hytale_token'),
       path.join(config.serverPath, 'auth_token'),
       path.join(config.serverPath, 'oauth_token.json'),
       path.join(config.serverPath, '.oauth_token'),
+      // Config folder
       path.join(config.serverPath, 'config', 'auth_token'),
       path.join(config.serverPath, 'config', 'oauth_token.json'),
+      // 'auth' subfolder in server
+      path.join(config.serverPath, 'auth', 'credentials.json'),
+      path.join(config.serverPath, 'auth', 'credentials.enc'),
+      path.join(config.serverPath, 'auth', 'auth.enc'),
+      // '.auth' subfolder in server
+      path.join(config.serverPath, '.auth', 'credentials.json'),
       path.join(config.serverPath, '.auth', 'credentials.enc'),
-      path.join(config.serverPath, '.auth', 'token'),
-      path.join(config.serverPath, '.auth', 'oauth_token'),
+      path.join(config.serverPath, '.auth', 'auth.enc'),
     ];
 
     for (const tokenPath of possiblePaths) {
@@ -466,25 +507,37 @@ export async function checkAuthCompletion(): Promise<ActionResponse> {
       };
     }
 
-    // Priority 4: Server is asking for authentication
-    if (hasAuthRequired || hasAuthFailure) {
+    // Priority 4: Check saved status - if we were authenticated before and no failures, stay authenticated
+    // This is important for memory-only auth where there's no token file
+    if (status.authenticated) {
+      // Only invalidate if there are explicit failure messages
+      if (hasAuthFailure) {
+        await saveAuthStatus({
+          authenticated: false,
+          lastChecked: Date.now(),
+        });
+        return {
+          success: false,
+          error: 'Authentication may have expired. Please re-authenticate.',
+        };
+      }
+
+      // Was authenticated before and no failures = still authenticated
       await saveAuthStatus({
-        authenticated: false,
+        ...status,
         lastChecked: Date.now(),
       });
-
-      return {
-        success: false,
-        error: 'Server requires authentication. Please initiate the authentication process.',
-      };
-    }
-
-    // No clear indicators - check saved status
-    if (status.authenticated) {
-      // Was authenticated before, assume still valid
       return {
         success: true,
         message: 'Server appears to be authenticated.',
+      };
+    }
+
+    // Priority 5: Server is asking for authentication (only if not already authenticated)
+    if (hasAuthRequired) {
+      return {
+        success: false,
+        error: 'Server requires authentication. Please initiate the authentication process.',
       };
     }
 
