@@ -69,7 +69,19 @@
     "restart": "Restart",
     "createBackup": "Create Backup",
     "recentActivity": "Recent Activity",
-    "noActivity": "No activity"
+    "noActivity": "No activity",
+    "plugin": {
+      "notInstalled": "KyuubiSoft API Plugin not installed",
+      "notRunning": "KyuubiSoft API Plugin not active",
+      "installHint": "Install the plugin for accurate player data, server statistics, and real-time events.",
+      "restartHint": "Restart the server to activate the plugin.",
+      "install": "Install Plugin",
+      "installing": "Installing...",
+      "installSuccess": "Plugin installed successfully. Restart the server to activate.",
+      "installFailed": "Installation failed",
+      "version": "Version",
+      "updateAvailable": "Update available"
+    }
   },
   "console": {
     "title": "Server Console",
