@@ -5,7 +5,7 @@
 ### Vollautomatisches Docker-Setup mit Web Admin Panel by KyuubiSoft
 
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Support%20Me-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
-[![Discord](https://img.shields.io/badge/Discord-KyuubiDDragon-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com)
+[![Discord](https://img.shields.io/badge/Discord-Support%20Server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://dsc.gg/kyuubisoft)
 [![License](https://img.shields.io/badge/License-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 
 <img src="https://img.shields.io/badge/KyuubiSoft_Panel-orange?style=for-the-badge" alt="KyuubiSoft Panel"/>
@@ -21,27 +21,14 @@
 
 ---
 
-## Screenshots
+## Demo Video
 
 <div align="center">
-<table>
-<tr>
-<td align="center"><strong>Dashboard</strong></td>
-<td align="center"><strong>Console</strong></td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/dashboard.png" width="400" alt="Dashboard"/></td>
-<td><img src="docs/screenshots/console.png" width="400" alt="Console"/></td>
-</tr>
-<tr>
-<td align="center"><strong>Player Management</strong></td>
-<td align="center"><strong>Performance</strong></td>
-</tr>
-<tr>
-<td><img src="docs/screenshots/players.png" width="400" alt="Players"/></td>
-<td><img src="docs/screenshots/performance.png" width="400" alt="Performance"/></td>
-</tr>
-</table>
+
+[![KyuubiSoft Panel Demo](https://img.youtube.com/vi/9DudIP-Os_0/maxresdefault.jpg)](https://youtu.be/9DudIP-Os_0)
+
+**[Watch Demo Video on YouTube](https://youtu.be/9DudIP-Os_0)**
+
 </div>
 
 ---
@@ -417,8 +404,9 @@ docker start hytale
 If you find this project helpful, consider supporting me!
 
 [![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy%20me%20a%20coffee-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/kyuubiddragon)
+[![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://dsc.gg/kyuubisoft)
 
-**Discord:** KyuubiDDragon
+**Discord Support Server:** [dsc.gg/kyuubisoft](https://dsc.gg/kyuubisoft)
 
 ---
 
