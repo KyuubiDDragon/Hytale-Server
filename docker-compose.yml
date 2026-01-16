@@ -129,6 +129,9 @@ services:
       # Settings
       - TZ=${TZ:-Europe/Berlin}
 
+      # Modtale API (optional)
+      - MODTALE_API_KEY=${MODTALE_API_KEY:-}
+
     ports:
       - "${MANAGER_PORT:-18080}:18080"
 
