@@ -43,7 +43,8 @@ interface QuickCommand {
   category: string;
 }
 
-const CONFIG_FILE = path.join(config.serverPath, '..', 'manager-config.json');
+// Store config in data directory which is a persistent volume
+const CONFIG_FILE = path.join(config.dataPath, 'manager-config.json');
 
 // Default configuration
 const DEFAULT_CONFIG: ScheduleConfig = {
