@@ -84,7 +84,8 @@ let restartWarningTimers: NodeJS.Timeout[] = [];
 let pendingRestart: { time: string; scheduledAt: Date } | null = null;
 
 // Deep merge helper for nested objects
-function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial<T>): T {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function deepMerge(target: any, source: any): any {
   const result = { ...target };
 
   for (const key in source) {
@@ -101,13 +102,10 @@ function deepMerge<T extends Record<string, unknown>>(target: T, source: Partial
         !Array.isArray(targetValue)
       ) {
         // Recursively merge nested objects
-        (result as Record<string, unknown>)[key] = deepMerge(
-          targetValue as Record<string, unknown>,
-          sourceValue as Record<string, unknown>
-        );
+        result[key] = deepMerge(targetValue, sourceValue);
       } else {
         // Direct assignment for primitives and arrays
-        (result as Record<string, unknown>)[key] = sourceValue;
+        result[key] = sourceValue;
       }
     }
   }
