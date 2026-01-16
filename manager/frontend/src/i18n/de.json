@@ -330,7 +330,20 @@
     "close": "Schliessen",
     "versions": "Versionen",
     "description": "Beschreibung",
-    "repository": "Repository"
+    "repository": "Repository",
+    "stackmartDescription": "Durchsuche und installiere kostenlose Ressourcen von StackMart.org - Plugins, Mods, Scripts und Tools.",
+    "stackmartUnavailable": "StackMart API nicht verfügbar. Bitte später erneut versuchen.",
+    "searchStackMart": "Ressourcen auf StackMart suchen...",
+    "sortPopular": "Beliebt",
+    "sortRecent": "Aktuell",
+    "allCategories": "Alle Kategorien",
+    "stackmartResults": "StackMart Ergebnisse",
+    "noStackMartResults": "Keine Ressourcen gefunden",
+    "resourcesFound": "Ressourcen gefunden",
+    "stackmartApiKeyInstructions": "Um Publisher-Funktionen zu nutzen, erstelle einen API-Key auf stackmart.org:",
+    "stackmartApiKeyStep1": "Gehe zu",
+    "stackmartApiKeyStep2": "Erstelle einen Publisher-Account",
+    "stackmartApiKeyStep3": "Generiere einen Publisher API Key"
   },
   "performance": {
     "title": "Performance Monitor",
