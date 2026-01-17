@@ -334,6 +334,7 @@ async function checkTokenFileExists(): Promise<boolean> {
     const possiblePaths = [
       // Main auth folder at /opt/hytale/auth (same level as server)
       path.join(basePath, 'auth', 'credentials.json'),
+      path.join(basePath, 'auth', 'oauth_credentials.json'),
       path.join(basePath, 'auth', 'credentials.enc'),
       path.join(basePath, 'auth', 'auth.enc'),
       path.join(basePath, 'auth', 'token'),
@@ -343,16 +344,19 @@ async function checkTokenFileExists(): Promise<boolean> {
       path.join(config.serverPath, '.hytale_token'),
       path.join(config.serverPath, 'auth_token'),
       path.join(config.serverPath, 'oauth_token.json'),
+      path.join(config.serverPath, 'oauth_credentials.json'),
       path.join(config.serverPath, '.oauth_token'),
       // Config folder
       path.join(config.serverPath, 'config', 'auth_token'),
       path.join(config.serverPath, 'config', 'oauth_token.json'),
       // 'auth' subfolder in server
       path.join(config.serverPath, 'auth', 'credentials.json'),
+      path.join(config.serverPath, 'auth', 'oauth_credentials.json'),
       path.join(config.serverPath, 'auth', 'credentials.enc'),
       path.join(config.serverPath, 'auth', 'auth.enc'),
       // '.auth' subfolder in server
       path.join(config.serverPath, '.auth', 'credentials.json'),
+      path.join(config.serverPath, '.auth', 'oauth_credentials.json'),
       path.join(config.serverPath, '.auth', 'credentials.enc'),
       path.join(config.serverPath, '.auth', 'auth.enc'),
     ];
