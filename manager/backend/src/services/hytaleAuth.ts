@@ -172,12 +172,10 @@ export async function initiateDeviceLogin(): Promise<HytaleDeviceCodeResponse> {
     const cleanLogs = stripAnsiCodes(logs);
 
     // Parse logs to extract device code information
-    // Hytale server output format:
-    // "Please visit the following URL to authenticate:"
-    // "https://oauth.accounts.hytale.com/oauth2/device/verify?user_code=XXXXXX"
-    // "Or visit the following URL and enter the code:"
-    // "https://oauth.accounts.hytale.com/oauth2/device/verify"
-    // "Authorization code: XXXXXX"
+    // Hytale server output format (may vary between versions):
+    // "Visit: https://oauth.accounts.hytale.com/oauth2/device/verify"
+    // "Enter code: fHmkjxFE"
+    // "Or visit: https://oauth.accounts.hytale.com/oauth2/device/verify?user_code=fHmkjxFE"
 
     // First, try to get the complete URL with user_code parameter (preferred)
     const completeUrlMatch = cleanLogs.match(/(https?:\/\/oauth\.accounts\.hytale\.com\/[^\s]*\?user_code=[a-zA-Z0-9]+)/i);
@@ -185,8 +183,8 @@ export async function initiateDeviceLogin(): Promise<HytaleDeviceCodeResponse> {
     // Fallback: get any oauth URL
     const basicUrlMatch = cleanLogs.match(/(https?:\/\/oauth\.accounts\.hytale\.com\/[^\s?]+)/i);
 
-    // Get the authorization code
-    const codeMatch = cleanLogs.match(/authorization\s+code:\s*([a-zA-Z0-9]+)/i);
+    // Get the code - try multiple patterns (Enter code, Authorization code, etc.)
+    const codeMatch = cleanLogs.match(/(?:enter|authorization)\s+code:\s*([a-zA-Z0-9]+)/i);
 
     // Use complete URL if available, otherwise use basic URL
     let verificationUrl = completeUrlMatch ? completeUrlMatch[1].trim() : (basicUrlMatch ? basicUrlMatch[1].trim() : null);
