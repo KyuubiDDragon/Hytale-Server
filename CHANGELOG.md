@@ -6,6 +6,26 @@ All notable changes to the Hytale Server Manager will be documented in this file
 
 ### Added
 
+- **Asset Explorer**: New feature to browse and analyze Hytale game assets
+  - Extract and browse the contents of Assets.zip from the server
+  - Directory navigation with breadcrumb trail
+  - File viewers for different content types:
+    - JSON viewer with syntax highlighting
+    - Image preview (PNG, JPG, GIF, WebP, BMP, SVG)
+    - Text viewer for config files, scripts, UI files, shaders
+    - Hex viewer for binary files
+  - Advanced search functionality:
+    - Plain text search in filenames
+    - Glob patterns (`*.json`, `sign*.json`, `data/**/*.png`)
+    - Regex support (`/sign\d+\.json/i`)
+    - File type filter dropdown (JSON, Images, UI, Shaders, etc.)
+    - Content search within text files
+  - Async extraction with live progress display (file count, current file)
+  - Handles large archives (3GB+) without timeout or memory issues
+  - Persistent cache via Docker volume (survives container rebuilds)
+  - Assets are excluded from backups (server-provided data)
+  - Automatic update detection when Assets.zip changes
+
 - **Reverse Proxy Support**: Added `TRUST_PROXY` environment variable for domain routing behind reverse proxies
   - Enables proper handling of `X-Forwarded-*` headers when running behind nginx, traefik, caddy, etc.
   - Required for HTTPS access via custom domains (e.g., `manager.example.com`)
