@@ -4,6 +4,7 @@ import path from 'path';
 import { authMiddleware } from '../middleware/auth.js';
 import * as playersService from '../services/players.js';
 import * as dockerService from '../services/docker.js';
+import * as kyuubiApi from '../services/kyuubiApi.js';
 import { config } from '../config.js';
 import { logActivity } from '../services/activityLog.js';
 import type { AuthenticatedRequest } from '../types/index.js';
@@ -595,7 +596,21 @@ router.post('/:name/heal', authMiddleware, async (req: Request, res: Response) =
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
-  // Use --player flag for console commands
+  // Try plugin API first
+  try {
+    const pluginResult = await kyuubiApi.healPlayerViaPlugin(playerName);
+    if (pluginResult.success) {
+      res.json({
+        success: true,
+        message: `Player ${playerName} healed`,
+      });
+      return;
+    }
+  } catch {
+    // Plugin not available, fall back to console command
+  }
+
+  // Fallback: Use console command
   const result = await dockerService.execCommand(`/player stats settomax --player ${playerName}`);
 
   if (result.success) {
@@ -659,6 +674,24 @@ router.post('/:name/effect', authMiddleware, async (req: Request, res: Response)
 router.post('/:name/inventory/clear', authMiddleware, async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
+  // SECURITY: Validate player name
+  if (!validatePlayerName(res, playerName)) return;
+
+  // Try plugin API first
+  try {
+    const pluginResult = await kyuubiApi.clearInventoryViaPlugin(playerName);
+    if (pluginResult.success) {
+      res.json({
+        success: true,
+        message: `Cleared ${playerName}'s inventory`,
+      });
+      return;
+    }
+  } catch {
+    // Plugin not available, fall back to console command
+  }
+
+  // Fallback: Use console command
   const result = await dockerService.execCommand(`/inventory clear ${playerName}`);
 
   if (result.success) {
