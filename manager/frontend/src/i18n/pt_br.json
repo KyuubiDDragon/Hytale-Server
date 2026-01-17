@@ -407,7 +407,13 @@
     "authExpired": "Código de autenticação expirado. Por favor, tente novamente.",
     "openAuthUrl": "Abrir Página de Autenticação",
     "authCode": "Código de Autenticação",
-    "copyCode": "Copiar Código"
+    "copyCode": "Copiar Código",
+    "patchlineTitle": "Versão do Servidor (Patchline)",
+    "patchlineDesc": "Escolha entre a versão de lançamento estável ou a versão pre-release para acesso antecipado a novos recursos.",
+    "currentPatchline": "Patchline Atual",
+    "patchlineReleaseDesc": "Estável e recomendado",
+    "patchlinePreReleaseDesc": "Acesso antecipado, pode ser instável",
+    "patchlineRestartNote": "Após alterar a patchline, o servidor deve ser reiniciado para que a alteração tenha efeito."
   },
   "users": {
     "title": "Gerenciamento de Usuários",

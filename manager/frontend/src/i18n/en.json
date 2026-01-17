@@ -407,7 +407,13 @@
     "authExpired": "Authentication code expired. Please try again.",
     "openAuthUrl": "Open Authentication Page",
     "authCode": "Authentication Code",
-    "copyCode": "Copy Code"
+    "copyCode": "Copy Code",
+    "patchlineTitle": "Server Version (Patchline)",
+    "patchlineDesc": "Choose between the stable release version or the pre-release version for early access to new features.",
+    "currentPatchline": "Current Patchline",
+    "patchlineReleaseDesc": "Stable & recommended",
+    "patchlinePreReleaseDesc": "Early access, may be unstable",
+    "patchlineRestartNote": "After changing the patchline, the server must be restarted for the change to take effect."
   },
   "users": {
     "title": "User Management",

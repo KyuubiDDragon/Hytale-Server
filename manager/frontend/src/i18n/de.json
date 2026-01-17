@@ -407,7 +407,13 @@
     "authExpired": "Authentifizierungscode abgelaufen. Bitte erneut versuchen.",
     "openAuthUrl": "Authentifizierungsseite öffnen",
     "authCode": "Authentifizierungscode",
-    "copyCode": "Code kopieren"
+    "copyCode": "Code kopieren",
+    "patchlineTitle": "Server-Version (Patchline)",
+    "patchlineDesc": "Wähle zwischen der stabilen Release-Version oder der Pre-Release-Version für frühen Zugang zu neuen Features.",
+    "currentPatchline": "Aktuelle Patchline",
+    "patchlineReleaseDesc": "Stabil & empfohlen",
+    "patchlinePreReleaseDesc": "Früher Zugang, kann instabil sein",
+    "patchlineRestartNote": "Nach dem Ändern der Patchline muss der Server neugestartet werden, damit die Änderung wirksam wird."
   },
   "users": {
     "title": "Benutzerverwaltung",

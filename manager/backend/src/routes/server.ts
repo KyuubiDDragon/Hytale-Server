@@ -180,6 +180,68 @@ router.post('/restart', authMiddleware, async (_req: Request, res: Response) => 
   res.json(result);
 });
 
+// Panel config file path (for patchline setting)
+const PANEL_CONFIG_PATH = '/opt/hytale/data/panel-config.json';
+
+// Helper to read panel config
+async function readPanelConfig(): Promise<{ patchline: string }> {
+  try {
+    const content = await readFile(PANEL_CONFIG_PATH, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    // Return defaults if file doesn't exist
+    return { patchline: process.env.HYTALE_PATCHLINE || 'release' };
+  }
+}
+
+// Helper to write panel config
+async function writePanelConfig(config: { patchline: string }): Promise<void> {
+  await writeFile(PANEL_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+}
+
+// GET /api/server/patchline - Get current patchline setting
+router.get('/patchline', authMiddleware, async (_req: Request, res: Response) => {
+  try {
+    const panelConfig = await readPanelConfig();
+    res.json({
+      patchline: panelConfig.patchline,
+      options: ['release', 'pre-release']
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get patchline setting',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PUT /api/server/patchline - Set patchline setting
+router.put('/patchline', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { patchline } = req.body;
+
+    if (!patchline || !['release', 'pre-release'].includes(patchline)) {
+      res.status(400).json({ error: 'Invalid patchline. Must be "release" or "pre-release"' });
+      return;
+    }
+
+    const panelConfig = await readPanelConfig();
+    panelConfig.patchline = patchline;
+    await writePanelConfig(panelConfig);
+
+    res.json({
+      success: true,
+      patchline,
+      message: 'Patchline updated. Restart the server to apply changes.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to set patchline',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // GET /api/server/check-update - Check if a Hytale server update is available
 router.get('/check-update', authMiddleware, async (_req: Request, res: Response) => {
   try {
@@ -192,10 +254,14 @@ router.get('/check-update', authMiddleware, async (_req: Request, res: Response)
       // Version file doesn't exist yet
     }
 
+    // Get current patchline setting from panel config
+    const panelConfig = await readPanelConfig();
+    const patchline = panelConfig.patchline;
+
     // Get latest version by running the downloader with -print-version inside container
     // We need to exec into the container to run this
     const checkResult = await dockerService.execInContainer(
-      'cd /opt/hytale/downloader && ./hytale-downloader-linux-amd64 -patchline release -print-version 2>/dev/null | grep -oE "[0-9]+\\.[0-9]+\\.[0-9]+" | head -1'
+      `cd /opt/hytale/downloader && ./hytale-downloader-linux-amd64 -patchline ${patchline} -print-version 2>/dev/null | grep -oE "[0-9]+\\.[0-9]+\\.[0-9]+" | head -1`
     );
 
     let latestVersion = 'unknown';
@@ -211,6 +277,7 @@ router.get('/check-update', authMiddleware, async (_req: Request, res: Response)
       installedVersion,
       latestVersion,
       updateAvailable,
+      patchline,
       message: updateAvailable
         ? `Update available: ${installedVersion} → ${latestVersion}`
         : installedVersion === latestVersion
