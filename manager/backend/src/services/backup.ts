@@ -25,29 +25,54 @@ export function listBackups(): BackupInfo[] {
 
   for (const file of files) {
     const ext = path.extname(file).toLowerCase();
-    if (!['.gz', '.tar', '.zip'].includes(ext) && !file.endsWith('.tar.gz')) {
+    // Support common backup extensions and Hytale server backup format
+    const isBackupFile = ['.gz', '.tar', '.zip', '.bak', '.backup'].includes(ext) ||
+                         file.endsWith('.tar.gz') ||
+                         file.startsWith('backup_') ||
+                         file.startsWith('hytale_');
+    if (!isBackupFile) {
       continue;
     }
 
     const filePath = path.join(config.backupsPath, file);
-    const stat = fs.statSync(filePath);
+    try {
+      const stat = fs.statSync(filePath);
 
-    // Extract ID from filename
-    let id = file;
-    if (file.endsWith('.tar.gz')) {
-      id = file.replace('.tar.gz', '');
-    } else {
-      id = path.basename(file, ext);
+      // Skip if not a file or still being written (0 bytes)
+      if (!stat.isFile()) {
+        continue;
+      }
+
+      // Extract ID from filename
+      let id = file;
+      if (file.endsWith('.tar.gz')) {
+        id = file.replace('.tar.gz', '');
+      } else if (ext) {
+        id = path.basename(file, ext);
+      }
+
+      // Calculate size - show at least 0.01 MB for small files
+      const sizeMb = stat.size / (1024 * 1024);
+      const displaySizeMb = stat.size > 0 ? Math.max(0.01, Math.round(sizeMb * 100) / 100) : 0;
+
+      // Determine type: auto if includes 'auto', 'scheduled', or created by Hytale server
+      const isAuto = file.includes('auto') ||
+                     file.includes('scheduled') ||
+                     file.startsWith('backup_'); // Hytale server format
+
+      backups.push({
+        id,
+        filename: file,
+        size_bytes: stat.size,
+        size_mb: displaySizeMb,
+        created_at: stat.mtime.toISOString(),
+        type: isAuto ? 'auto' : 'manual',
+      });
+    } catch (err) {
+      // Skip files that can't be read (permission issues, etc.)
+      console.warn(`[Backup] Could not read file ${file}:`, err);
+      continue;
     }
-
-    backups.push({
-      id,
-      filename: file,
-      size_bytes: stat.size,
-      size_mb: Math.round(stat.size / (1024 * 1024) * 100) / 100,
-      created_at: stat.mtime.toISOString(),
-      type: file.includes('auto') ? 'auto' : 'manual',
-    });
   }
 
   // Sort by creation time (newest first)
