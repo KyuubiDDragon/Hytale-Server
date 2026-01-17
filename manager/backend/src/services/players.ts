@@ -6,6 +6,32 @@ import type { PlayerInfo } from '../types/index.js';
 
 // Player tracking state
 const onlinePlayers: Map<string, Date> = new Map();
+let onlinePlayersLoaded = false;
+
+// Blacklist of names that should never be considered players
+const PLAYER_NAME_BLACKLIST = new Set([
+  'client',
+  'server',
+  'system',
+  'admin',
+  'console',
+  'websocket',
+  'socket',
+  'connection',
+  'user',
+  'player',  // generic "player" without actual name
+]);
+
+// Minimum player name length to be considered valid
+const MIN_PLAYER_NAME_LENGTH = 3;
+
+function isValidPlayerName(name: string): boolean {
+  if (!name || name.length < MIN_PLAYER_NAME_LENGTH) return false;
+  if (PLAYER_NAME_BLACKLIST.has(name.toLowerCase())) return false;
+  // Player names should be alphanumeric with underscores, start with a letter
+  if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(name)) return false;
+  return true;
+}
 
 // Player history tracking
 export interface PlayerHistoryEntry {
@@ -22,6 +48,43 @@ let historyLoaded = false;
 
 async function getHistoryPath(): Promise<string> {
   return path.join(config.serverPath, 'player-history.json');
+}
+
+async function getOnlinePlayersPath(): Promise<string> {
+  return path.join(config.serverPath, 'online-players.json');
+}
+
+interface OnlinePlayerEntry {
+  name: string;
+  joinedAt: string;
+}
+
+async function loadOnlinePlayers(): Promise<void> {
+  if (onlinePlayersLoaded) return;
+  try {
+    const content = await readFile(await getOnlinePlayersPath(), 'utf-8');
+    const data: OnlinePlayerEntry[] = JSON.parse(content);
+    if (Array.isArray(data)) {
+      for (const entry of data) {
+        if (isValidPlayerName(entry.name)) {
+          onlinePlayers.set(entry.name, new Date(entry.joinedAt));
+        }
+      }
+      console.log(`[Players] Loaded ${onlinePlayers.size} online players from persistent storage`);
+    }
+  } catch {
+    // File doesn't exist yet, start with empty list
+    console.log('[Players] No persistent online players file found, starting fresh');
+  }
+  onlinePlayersLoaded = true;
+}
+
+async function saveOnlinePlayers(): Promise<void> {
+  const data: OnlinePlayerEntry[] = [];
+  for (const [name, joinedAt] of onlinePlayers) {
+    data.push({ name, joinedAt: joinedAt.toISOString() });
+  }
+  await writeFile(await getOnlinePlayersPath(), JSON.stringify(data, null, 2), 'utf-8');
 }
 
 async function loadPlayerHistory(): Promise<void> {
@@ -111,14 +174,13 @@ const JOIN_PATTERNS = [
   /Starting authenticated flow for (\w+)/i,
   /Connection complete for (\w+)/i,
   /Identity token validated for (\w+)/i,
-  // Generic fallback patterns
+  // Generic fallback patterns (more specific to avoid false positives)
   /Player\s+(\w+)\s+joined/i,
-  /Player\s+(\w+)\s+connected/i,
+  /Player\s+(\w+)\s+connected to the server/i,
   /(\w+)\s+joined the game/i,
   /(\w+)\s+joined the server/i,
-  /(\w+)\s+has joined/i,
-  /(\w+)\s+connected/i,
-  /(\w+)\s+logged in/i,
+  /(\w+)\s+has joined the game/i,
+  /(\w+)\s+logged in with entity id/i,
 ];
 
 const LEAVE_PATTERNS = [
@@ -151,10 +213,14 @@ function formatDuration(ms: number): string {
 }
 
 export async function scanLogs(): Promise<void> {
+  // Load persisted online players first
+  await loadOnlinePlayers();
+
   const logs = await getLogs(500);
   if (!logs) return;
 
   const lines = logs.split('\n');
+  let changed = false;
 
   for (const line of lines) {
     // Check for join
@@ -162,8 +228,9 @@ export async function scanLogs(): Promise<void> {
       const match = pattern.exec(line);
       if (match) {
         const player = match[1];
-        if (!onlinePlayers.has(player)) {
+        if (isValidPlayerName(player) && !onlinePlayers.has(player)) {
           onlinePlayers.set(player, new Date());
+          changed = true;
         }
         break;
       }
@@ -174,10 +241,18 @@ export async function scanLogs(): Promise<void> {
       const match = pattern.exec(line);
       if (match) {
         const player = match[1];
-        onlinePlayers.delete(player);
+        if (isValidPlayerName(player) && onlinePlayers.has(player)) {
+          onlinePlayers.delete(player);
+          changed = true;
+        }
         break;
       }
     }
+  }
+
+  // Persist changes
+  if (changed) {
+    saveOnlinePlayers().catch(err => console.error('Failed to save online players:', err));
   }
 }
 
@@ -206,7 +281,22 @@ export async function getPlayerCount(): Promise<number> {
 }
 
 export function removePlayer(name: string): void {
-  onlinePlayers.delete(name);
+  if (onlinePlayers.has(name)) {
+    onlinePlayers.delete(name);
+    saveOnlinePlayers().catch(err => console.error('Failed to save online players:', err));
+  }
+}
+
+/**
+ * Initialize player tracking - loads persisted data and scans logs
+ * Call this on server startup to restore state
+ */
+export async function initializePlayerTracking(): Promise<void> {
+  console.log('[Players] Initializing player tracking...');
+  await loadOnlinePlayers();
+  await loadPlayerHistory();
+  await scanLogs();
+  console.log(`[Players] Initialized with ${onlinePlayers.size} online players`);
 }
 
 /**
@@ -219,20 +309,29 @@ export function clearOnlinePlayers(): void {
     recordPlayerLeave(name);
   }
   onlinePlayers.clear();
+  // Clear the persisted file as well
+  saveOnlinePlayers().catch(err => console.error('Failed to clear online players file:', err));
   console.log('[Players] Cleared online players list (server stop/restart)');
 }
 
 export function processLogLine(line: string): { event: 'join' | 'leave'; player: string } | null {
-  // Initialize history loading
+  // Initialize history and online players loading
   loadPlayerHistory().catch(() => {});
+  loadOnlinePlayers().catch(() => {});
 
   // Check for join
   for (const pattern of JOIN_PATTERNS) {
     const match = pattern.exec(line);
     if (match) {
       const player = match[1];
+      // Validate player name to avoid false positives like "client"
+      if (!isValidPlayerName(player)) {
+        continue;
+      }
       onlinePlayers.set(player, new Date());
       recordPlayerJoin(player);
+      // Persist the change
+      saveOnlinePlayers().catch(err => console.error('Failed to save online players:', err));
       return { event: 'join', player };
     }
   }
@@ -242,8 +341,14 @@ export function processLogLine(line: string): { event: 'join' | 'leave'; player:
     const match = pattern.exec(line);
     if (match) {
       const player = match[1];
+      // Validate player name to avoid false positives
+      if (!isValidPlayerName(player)) {
+        continue;
+      }
       recordPlayerLeave(player);
       onlinePlayers.delete(player);
+      // Persist the change
+      saveOnlinePlayers().catch(err => console.error('Failed to save online players:', err));
       return { event: 'leave', player };
     }
   }
