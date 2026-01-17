@@ -284,23 +284,47 @@ function getLogClass(level: string): string {
   }
 }
 
+// Scroll to bottom helper
+function scrollToBottom() {
+  if (terminalRef.value) {
+    terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+  }
+}
+
 // Auto-scroll to bottom when new logs arrive
 // Using logsUpdated computed which tracks both length and update counter
+// flush: 'post' ensures the watcher runs after DOM updates
 watch(
   () => consoleStore.logsUpdated,
-  async () => {
-    if (consoleStore.autoScroll && terminalRef.value) {
-      await nextTick()
-      terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+  () => {
+    if (consoleStore.autoScroll) {
+      // Use requestAnimationFrame to ensure DOM is fully rendered
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
     }
-  }
+  },
+  { flush: 'post' }
+)
+
+// Also watch the logs array directly as a fallback
+watch(
+  () => consoleStore.logs,
+  () => {
+    if (consoleStore.autoScroll) {
+      requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+    }
+  },
+  { deep: false, flush: 'post' }
 )
 
 // Initial scroll
 onMounted(() => {
-  if (terminalRef.value) {
-    terminalRef.value.scrollTop = terminalRef.value.scrollHeight
-  }
+  requestAnimationFrame(() => {
+    scrollToBottom()
+  })
 })
 </script>
 
