@@ -71,3 +71,9 @@ All notable changes to the Hytale Server Manager will be documented in this file
 - **Backup Download**: Fixed "Missing or invalid authorization header" error when downloading backups
   - Changed from direct URL open to blob download via axios with auth header
   - Creates temporary download link for the file blob
+
+- **Backup Size Display**: Fixed Hytale server backups showing as 0 MB
+  - Added support for additional backup formats (.bak, .backup, backup_*, hytale_*)
+  - Small files now show at least 0.01 MB instead of rounding to 0
+  - Hytale server backups (backup_*) are now correctly detected as "auto" type
+  - Added error handling for files with permission issues
