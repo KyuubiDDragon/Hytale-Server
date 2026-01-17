@@ -1,6 +1,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useConsoleStore } from '@/stores/console'
+import api from '@/services/api'
 
 export function useWebSocket() {
   const authStore = useAuthStore()
@@ -161,6 +162,44 @@ export function useWebSocket() {
     }
   }
 
+  function reconnect() {
+    console.log('Manual reconnect requested')
+    reconnectAttempts.value = 0
+    connect()
+  }
+
+  const isLoadingLogs = ref(false)
+
+  async function loadAllLogs(limit: number = 0) {
+    if (isLoadingLogs.value) return
+
+    isLoadingLogs.value = true
+    try {
+      const response = await api.get('/console/logs', {
+        params: { tail: limit }
+      })
+
+      if (response.data.logs && response.data.logs.length > 0) {
+        // Clear existing logs and add all fetched logs
+        consoleStore.clearLogs()
+        for (const log of response.data.logs) {
+          consoleStore.addLog({
+            timestamp: log.timestamp,
+            level: log.level,
+            message: log.message,
+          })
+        }
+      }
+
+      return response.data.count
+    } catch (error) {
+      console.error('Failed to load logs:', error)
+      throw error
+    } finally {
+      isLoadingLogs.value = false
+    }
+  }
+
   // Keep-alive ping
   let pingInterval: ReturnType<typeof setInterval> | null = null
 
@@ -183,8 +222,11 @@ export function useWebSocket() {
 
   return {
     connected: consoleStore.connected,
+    isLoadingLogs,
     connect,
     disconnect,
+    reconnect,
     sendCommand,
+    loadAllLogs,
   }
 }
