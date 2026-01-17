@@ -618,10 +618,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                             v-if="!iconFailed(item.itemId)"
                             :src="getItemIconUrl(item.itemId)"
                             :alt="item.displayName"
-                            class="w-10 h-10 object-contain"
+                            class="w-14 h-14 object-contain"
                             @error="onIconError(item.itemId)"
                           />
-                          <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                          <div v-else :class="['w-14 h-14 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                             {{ ['H', 'C', 'G', 'L'][index] }}
                           </div>
                           <!-- Durability bar -->
@@ -659,10 +659,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                             v-if="!iconFailed(item.itemId)"
                             :src="getItemIconUrl(item.itemId)"
                             :alt="item.displayName"
-                            class="w-10 h-10 object-contain"
+                            class="w-14 h-14 object-contain"
                             @error="onIconError(item.itemId)"
                           />
-                          <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                          <div v-else :class="['w-14 h-14 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                             U
                           </div>
                           <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -698,10 +698,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                             v-if="!iconFailed(item.itemId)"
                             :src="getItemIconUrl(item.itemId)"
                             :alt="item.displayName"
-                            class="w-10 h-10 object-contain"
+                            class="w-14 h-14 object-contain"
                             @error="onIconError(item.itemId)"
                           />
-                          <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                          <div v-else :class="['w-14 h-14 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                             T
                           </div>
                           <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -743,10 +743,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                           v-if="!iconFailed(item.itemId)"
                           :src="getItemIconUrl(item.itemId)"
                           :alt="item.displayName"
-                          class="w-10 h-10 object-contain"
+                          class="w-14 h-14 object-contain"
                           @error="onIconError(item.itemId)"
                         />
-                        <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                        <div v-else :class="['w-14 h-14 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                           {{ getFallbackLetter(item.itemId) }}
                         </div>
                         <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -782,10 +782,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                           v-if="!iconFailed(item.itemId)"
                           :src="getItemIconUrl(item.itemId)"
                           :alt="item.displayName"
-                          class="w-10 h-10 object-contain"
+                          class="w-14 h-14 object-contain"
                           @error="onIconError(item.itemId)"
                         />
-                        <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                        <div v-else :class="['w-14 h-14 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                           {{ getFallbackLetter(item.itemId) }}
                         </div>
                         <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
