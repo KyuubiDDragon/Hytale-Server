@@ -4,6 +4,24 @@ import * as assetService from '../services/assets.js';
 
 const router = Router();
 
+// Cache for found icon paths - speeds up repeated lookups significantly
+const iconPathCache = new Map<string, string | null>();
+const ICON_CACHE_MAX_SIZE = 1000;
+
+function getCachedIconPath(itemId: string): string | null | undefined {
+  return iconPathCache.get(itemId);
+}
+
+function setCachedIconPath(itemId: string, path: string | null): void {
+  // Prevent unbounded cache growth
+  if (iconPathCache.size >= ICON_CACHE_MAX_SIZE) {
+    // Remove oldest entries (first 100)
+    const keysToDelete = Array.from(iconPathCache.keys()).slice(0, 100);
+    keysToDelete.forEach(k => iconPathCache.delete(k));
+  }
+  iconPathCache.set(itemId, path);
+}
+
 // GET /api/assets/status - Get extraction status
 router.get('/status', authMiddleware, (_req: Request, res: Response) => {
   const status = assetService.getAssetStatus();
@@ -13,6 +31,9 @@ router.get('/status', authMiddleware, (_req: Request, res: Response) => {
 // POST /api/assets/extract - Extract assets from archive
 router.post('/extract', authMiddleware, (_req: Request, res: Response) => {
   const result = assetService.extractAssets();
+
+  // Clear icon path cache when re-extracting
+  iconPathCache.clear();
 
   if (!result.success) {
     res.status(400).json(result);
@@ -28,6 +49,9 @@ router.post('/extract', authMiddleware, (_req: Request, res: Response) => {
 // DELETE /api/assets/cache - Clear extracted assets
 router.delete('/cache', authMiddleware, (_req: Request, res: Response) => {
   const result = assetService.clearAssets();
+
+  // Clear icon path cache as well
+  iconPathCache.clear();
 
   if (!result.success) {
     res.status(500).json(result);
@@ -177,6 +201,26 @@ router.get('/item-icon/:itemId', (req: Request, res: Response) => {
     itemId = itemId.split(':')[1];
   }
 
+  // Check cache first for fast lookup
+  const cachedPath = getCachedIconPath(itemId);
+  if (cachedPath !== undefined) {
+    if (cachedPath === null) {
+      // Cached as not found
+      res.status(404).json({ detail: 'Item icon not found (cached)', itemId });
+      return;
+    }
+    // Found in cache - serve directly
+    const result = assetService.readAssetFile(cachedPath);
+    if (result.success && result.isBinary && result.mimeType?.startsWith('image/')) {
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(Buffer.from(result.content as string, 'base64'));
+      return;
+    }
+    // Cached path no longer valid, remove from cache
+    iconPathCache.delete(itemId);
+  }
+
   // Create variations of the item name for searching
   const itemLower = itemId.toLowerCase();
   const itemWithSlashes = itemId.replace(/_/g, '/');
@@ -238,6 +282,8 @@ router.get('/item-icon/:itemId', (req: Request, res: Response) => {
   for (const iconPath of possiblePaths) {
     const result = assetService.readAssetFile(iconPath);
     if (result.success && result.isBinary && result.mimeType?.startsWith('image/')) {
+      // Cache the found path
+      setCachedIconPath(itemId, iconPath);
       res.setHeader('Content-Type', result.mimeType);
       res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
       res.send(Buffer.from(result.content as string, 'base64'));
@@ -270,6 +316,8 @@ router.get('/item-icon/:itemId', (req: Request, res: Response) => {
         searchResult.path.toLowerCase().includes('ui')) {
       const result = assetService.readAssetFile(searchResult.path);
       if (result.success && result.isBinary && result.mimeType?.startsWith('image/')) {
+        // Cache the found path
+        setCachedIconPath(itemId, searchResult.path);
         res.setHeader('Content-Type', result.mimeType);
         res.setHeader('Cache-Control', 'public, max-age=86400');
         res.send(Buffer.from(result.content as string, 'base64'));
@@ -282,12 +330,17 @@ router.get('/item-icon/:itemId', (req: Request, res: Response) => {
   if (searchResults.length > 0) {
     const result = assetService.readAssetFile(searchResults[0].path);
     if (result.success && result.isBinary && result.mimeType?.startsWith('image/')) {
+      // Cache the found path
+      setCachedIconPath(itemId, searchResults[0].path);
       res.setHeader('Content-Type', result.mimeType);
       res.setHeader('Cache-Control', 'public, max-age=86400');
       res.send(Buffer.from(result.content as string, 'base64'));
       return;
     }
   }
+
+  // Cache as not found to avoid repeated searches
+  setCachedIconPath(itemId, null);
 
   // If not found, return 404 with debug info
   res.status(404).json({
