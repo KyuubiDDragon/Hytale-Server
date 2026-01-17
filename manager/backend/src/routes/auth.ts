@@ -184,8 +184,13 @@ router.delete('/users/:username', authMiddleware, async (req: AuthenticatedReque
 // GET /api/auth/hytale/status - Get Hytale authentication status
 router.get('/hytale/status', authMiddleware, async (_req: Request, res: Response) => {
   try {
+    // Always verify auth status by checking for token files
+    const result = await checkAuthCompletion();
     const status = await getAuthStatus();
-    res.json(status);
+    res.json({
+      ...status,
+      authenticated: result.success || status.authenticated,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get auth status' });
   }
