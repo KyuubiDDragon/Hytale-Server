@@ -262,10 +262,18 @@ function hideTooltip() {
   hoveredItem.value = null
 }
 
+// Filter out editor tools from display
+function isEditorTool(itemId: string): boolean {
+  const id = itemId.toLowerCase()
+  return id.includes('editortool') || id.includes('editor_tool')
+}
+
 // Generate grid for a container with specified capacity
 function generateGrid(items: FileInventoryItem[], capacity: number): (FileInventoryItem | null)[] {
   const grid: (FileInventoryItem | null)[] = Array(capacity).fill(null)
   for (const item of items) {
+    // Skip editor tools
+    if (isEditorTool(item.itemId)) continue
     if (item.slot >= 0 && item.slot < capacity) {
       grid[item.slot] = item
     }
@@ -527,11 +535,11 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                           v-if="!iconFailed(item.itemId)"
                           :src="getItemIconUrl(item.itemId)"
                           :alt="item.displayName"
-                          class="w-8 h-8 object-contain"
+                          class="w-12 h-12 object-contain"
                           @error="onIconError(item.itemId)"
                         />
                         <!-- Fallback icon -->
-                        <div v-else :class="['w-8 h-8 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                        <div v-else :class="['w-12 h-12 rounded flex items-center justify-center text-lg font-bold', getItemColorClass(item.itemId)]">
                           {{ getFallbackLetter(item.itemId) }}
                         </div>
                         <span class="absolute bottom-0.5 right-1 text-[10px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -572,10 +580,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                             v-if="!iconFailed(item.itemId)"
                             :src="getItemIconUrl(item.itemId)"
                             :alt="item.displayName"
-                            class="w-7 h-7 object-contain"
+                            class="w-10 h-10 object-contain"
                             @error="onIconError(item.itemId)"
                           />
-                          <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-xs font-bold', getItemColorClass(item.itemId)]">
+                          <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                             {{ ['H', 'C', 'G', 'L'][index] }}
                           </div>
                           <!-- Durability bar -->
@@ -613,10 +621,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                             v-if="!iconFailed(item.itemId)"
                             :src="getItemIconUrl(item.itemId)"
                             :alt="item.displayName"
-                            class="w-7 h-7 object-contain"
+                            class="w-10 h-10 object-contain"
                             @error="onIconError(item.itemId)"
                           />
-                          <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-xs font-bold', getItemColorClass(item.itemId)]">
+                          <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                             U
                           </div>
                           <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -652,10 +660,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                             v-if="!iconFailed(item.itemId)"
                             :src="getItemIconUrl(item.itemId)"
                             :alt="item.displayName"
-                            class="w-7 h-7 object-contain"
+                            class="w-10 h-10 object-contain"
                             @error="onIconError(item.itemId)"
                           />
-                          <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-xs font-bold', getItemColorClass(item.itemId)]">
+                          <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                             T
                           </div>
                           <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -697,10 +705,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                           v-if="!iconFailed(item.itemId)"
                           :src="getItemIconUrl(item.itemId)"
                           :alt="item.displayName"
-                          class="w-7 h-7 object-contain"
+                          class="w-10 h-10 object-contain"
                           @error="onIconError(item.itemId)"
                         />
-                        <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold', getItemColorClass(item.itemId)]">
+                        <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                           {{ getFallbackLetter(item.itemId) }}
                         </div>
                         <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
@@ -736,10 +744,10 @@ const toolsGrid = computed(() => inventory.value ? generateGrid(inventory.value.
                           v-if="!iconFailed(item.itemId)"
                           :src="getItemIconUrl(item.itemId)"
                           :alt="item.displayName"
-                          class="w-7 h-7 object-contain"
+                          class="w-10 h-10 object-contain"
                           @error="onIconError(item.itemId)"
                         />
-                        <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-[10px] font-bold', getItemColorClass(item.itemId)]">
+                        <div v-else :class="['w-10 h-10 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                           {{ getFallbackLetter(item.itemId) }}
                         </div>
                         <span class="absolute bottom-0.5 right-0.5 text-[9px] font-bold text-white drop-shadow-lg bg-black/50 px-0.5 rounded">
