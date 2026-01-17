@@ -153,6 +153,7 @@ services:
       - ${HOST_DATA_PATH:-/opt/hytale}/data:/opt/hytale/data
       - ${HOST_DATA_PATH:-/opt/hytale}/mods:/opt/hytale/mods
       - ${HOST_DATA_PATH:-/opt/hytale}/plugins:/opt/hytale/plugins
+      - ${HOST_DATA_PATH:-/opt/hytale}/auth:/opt/hytale/auth:ro
 
       # Manager persistent data
       - manager-data:/app/data
