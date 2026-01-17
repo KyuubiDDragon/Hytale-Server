@@ -2,7 +2,7 @@
 # Hytale Dedicated Server - Docker Compose
 # ============================================================
 #
-# HOST PFADE: /opt/hytale/
+# HOST PFADE: ${HOST_DATA_PATH} (Standard: /opt/hytale)
 # CONTAINER PFADE: /opt/hytale/
 #
 # PORTAINER SETUP:
@@ -13,7 +13,7 @@
 #
 # LOKAL:
 # 1. cp .env.example .env
-# 2. .env anpassen
+# 2. .env anpassen (HOST_DATA_PATH, Ports, etc.)
 # 3. docker-compose up -d
 #
 # WEB MANAGER:
@@ -67,15 +67,15 @@ services:
       - "${WEBMAP_PORT:-18081}:${WEBMAP_PORT:-18081}/tcp"
       - "${WEBMAP_WS_PORT:-18082}:${WEBMAP_WS_PORT:-18082}/tcp"
     
-    # Volumes - Bind Mounts zu /opt/hytale/
+    # Volumes - Bind Mounts (HOST_DATA_PATH -> /opt/hytale im Container)
     volumes:
-      - /opt/hytale/server:/opt/hytale/server
-      - /opt/hytale/data:/opt/hytale/data
-      - /opt/hytale/backups:/opt/hytale/backups
-      - /opt/hytale/plugins:/opt/hytale/plugins
-      - /opt/hytale/mods:/opt/hytale/mods
-      - /opt/hytale/downloader:/opt/hytale/downloader
-      - /opt/hytale/auth:/opt/hytale/auth
+      - ${HOST_DATA_PATH:-/opt/hytale}/server:/opt/hytale/server
+      - ${HOST_DATA_PATH:-/opt/hytale}/data:/opt/hytale/data
+      - ${HOST_DATA_PATH:-/opt/hytale}/backups:/opt/hytale/backups
+      - ${HOST_DATA_PATH:-/opt/hytale}/plugins:/opt/hytale/plugins
+      - ${HOST_DATA_PATH:-/opt/hytale}/mods:/opt/hytale/mods
+      - ${HOST_DATA_PATH:-/opt/hytale}/downloader:/opt/hytale/downloader
+      - ${HOST_DATA_PATH:-/opt/hytale}/auth:/opt/hytale/auth
 
     # Console
     stdin_open: true
@@ -142,13 +142,13 @@ services:
       # Docker socket for container management
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-      # Shared volumes with game server (host: /opt/hytale/, container: /opt/hytale/)
+      # Shared volumes with game server (HOST_DATA_PATH -> /opt/hytale im Container)
       # Server configs need write access for the config editor
-      - /opt/hytale/server:/opt/hytale/server
-      - /opt/hytale/backups:/opt/hytale/backups
-      - /opt/hytale/data:/opt/hytale/data
-      - /opt/hytale/mods:/opt/hytale/mods
-      - /opt/hytale/plugins:/opt/hytale/plugins
+      - ${HOST_DATA_PATH:-/opt/hytale}/server:/opt/hytale/server
+      - ${HOST_DATA_PATH:-/opt/hytale}/backups:/opt/hytale/backups
+      - ${HOST_DATA_PATH:-/opt/hytale}/data:/opt/hytale/data
+      - ${HOST_DATA_PATH:-/opt/hytale}/mods:/opt/hytale/mods
+      - ${HOST_DATA_PATH:-/opt/hytale}/plugins:/opt/hytale/plugins
 
       # Manager persistent data
       - manager-data:/app/data
