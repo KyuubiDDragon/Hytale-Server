@@ -67,19 +67,33 @@ async function fetchPlayers() {
     const response = await playersApi.getAll()
     allPlayers.value = response.players
 
-    // Check if plugin is available for enhanced online player data
+    // Check if plugin is available for accurate online player data
     try {
       const pluginResponse = await serverApi.getPluginPlayers()
       if (pluginResponse.success && pluginResponse.data) {
         pluginAvailable.value = true
-        // Merge plugin data into our unified list for online players
-        for (const pluginPlayer of pluginResponse.data.players) {
-          const player = allPlayers.value.find(p => p.name.toLowerCase() === pluginPlayer.name.toLowerCase())
-          if (player) {
-            player.health = pluginPlayer.health
-            player.position = pluginPlayer.position
-            player.world = pluginPlayer.world
-            player.gameMode = pluginPlayer.gameMode
+
+        // Build set of online player names from plugin (source of truth for online status)
+        const onlineNames = new Set(
+          pluginResponse.data.players.map(p => p.name.toLowerCase())
+        )
+
+        // Update online status and merge plugin data
+        for (const player of allPlayers.value) {
+          const isOnline = onlineNames.has(player.name.toLowerCase())
+          player.online = isOnline
+
+          // Merge additional data from plugin for online players
+          if (isOnline) {
+            const pluginPlayer = pluginResponse.data.players.find(
+              p => p.name.toLowerCase() === player.name.toLowerCase()
+            )
+            if (pluginPlayer) {
+              player.health = pluginPlayer.health
+              player.position = pluginPlayer.position
+              player.world = pluginPlayer.world
+              player.gameMode = pluginPlayer.gameMode
+            }
           }
         }
       }
