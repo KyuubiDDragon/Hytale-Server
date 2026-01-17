@@ -638,60 +638,122 @@ router.delete('/permissions/groups/:name', authMiddleware, async (req: Request, 
 
 // ============== WORLDS ==============
 
+interface WorldFileInfo {
+  name: string;
+  path: string;  // relative path within world (e.g., "config.json" or "resources/Time.json")
+  size: number;
+  lastModified: string;
+}
+
 interface WorldInfo {
   name: string;
   path: string;
   size: number;
   lastModified: string;
+  hasConfig: boolean;
+  files: WorldFileInfo[];  // All editable JSON files in this world
 }
 
-// Possible world paths to check
+// Possible world paths to check - only actual world directories
 function getWorldsPaths(): string[] {
   return [
-    path.join(config.dataPath, 'worlds'),
-    path.join(config.serverPath, 'worlds'),
-    path.join(config.serverPath, 'data', 'worlds'),
-    path.join(config.dataPath),
+    path.join(config.dataPath, 'worlds'),                    // /opt/hytale/data/worlds
+    path.join(config.serverPath, 'universe', 'worlds'),      // /opt/hytale/server/universe/worlds (symlink)
+    path.join(config.serverPath, 'worlds'),                  // /opt/hytale/server/worlds (fallback)
   ];
+}
+
+async function scanWorldFiles(worldPath: string): Promise<WorldFileInfo[]> {
+  const files: WorldFileInfo[] = [];
+
+  // Scan root level JSON files (config.json, etc.)
+  try {
+    const rootEntries = await readdir(worldPath, { withFileTypes: true });
+    for (const entry of rootEntries) {
+      if (entry.isFile() && entry.name.endsWith('.json') && !entry.name.endsWith('.bak')) {
+        const filePath = path.join(worldPath, entry.name);
+        try {
+          const stats = await stat(filePath);
+          files.push({
+            name: entry.name,
+            path: entry.name,
+            size: stats.size,
+            lastModified: stats.mtime.toISOString(),
+          });
+        } catch {
+          // Skip
+        }
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  // Scan resources folder
+  const resourcesPath = path.join(worldPath, 'resources');
+  try {
+    const resourceEntries = await readdir(resourcesPath, { withFileTypes: true });
+    for (const entry of resourceEntries) {
+      if (entry.isFile() && entry.name.endsWith('.json') && !entry.name.endsWith('.bak')) {
+        const filePath = path.join(resourcesPath, entry.name);
+        try {
+          const stats = await stat(filePath);
+          files.push({
+            name: entry.name,
+            path: `resources/${entry.name}`,
+            size: stats.size,
+            lastModified: stats.mtime.toISOString(),
+          });
+        } catch {
+          // Skip
+        }
+      }
+    }
+  } catch {
+    // resources folder doesn't exist
+  }
+
+  return files;
 }
 
 async function scanWorldsInPath(worldsPath: string): Promise<WorldInfo[]> {
   const worlds: WorldInfo[] = [];
   try {
-    const entries = await readdir(worldsPath);
+    const entries = await readdir(worldsPath, { withFileTypes: true });
 
     for (const entry of entries) {
-      const entryPath = path.join(worldsPath, entry);
+      if (!entry.isDirectory()) continue;
+
+      const entryPath = path.join(worldsPath, entry.name);
       try {
         const stats = await stat(entryPath);
-        if (stats.isDirectory()) {
-          // Check if it looks like a world (has level.dat or world files)
-          let isWorld = false;
-          let size = 0;
-          try {
-            const files = await readdir(entryPath);
-            // A world directory typically has certain files
-            isWorld = files.length > 0;
-            for (const file of files) {
-              try {
-                const fileStat = await stat(path.join(entryPath, file));
-                size += fileStat.size;
-              } catch {
-                // Ignore
-              }
-            }
-          } catch {
-            // Ignore
-          }
 
-          if (isWorld) {
-            worlds.push({
-              name: entry,
-              path: entryPath,
-              size,
-              lastModified: stats.mtime.toISOString(),
-            });
-          }
+        // Check if this is a real world by looking for config.json
+        const configPath = path.join(entryPath, 'config.json');
+        let hasConfig = false;
+        try {
+          await stat(configPath);
+          hasConfig = true;
+        } catch {
+          // No config.json
+        }
+
+        // Scan all JSON files in this world
+        const files = await scanWorldFiles(entryPath);
+
+        // Calculate total size
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+
+        // Only include directories that have config.json (actual worlds)
+        if (hasConfig) {
+          worlds.push({
+            name: entry.name,
+            path: entryPath,
+            size: totalSize,
+            lastModified: stats.mtime.toISOString(),
+            hasConfig: true,
+            files,
+          });
         }
       } catch {
         // Skip entries that can't be read
@@ -1431,41 +1493,7 @@ interface WorldConfig {
   };
 }
 
-// GET /api/management/worlds - List all worlds
-router.get('/worlds', authMiddleware, async (_req: Request, res: Response) => {
-  try {
-    const worldsPath = path.join(config.serverPath, 'worlds');
-
-    // Check if worlds directory exists
-    try {
-      await stat(worldsPath);
-    } catch {
-      res.json({ worlds: [] });
-      return;
-    }
-
-    const entries = await readdir(worldsPath, { withFileTypes: true });
-    const worlds: { name: string; hasConfig: boolean }[] = [];
-
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        const configPath = path.join(worldsPath, entry.name, 'config.json');
-        let hasConfig = false;
-        try {
-          await stat(configPath);
-          hasConfig = true;
-        } catch {
-          // No config file
-        }
-        worlds.push({ name: entry.name, hasConfig });
-      }
-    }
-
-    res.json({ worlds });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to list worlds' });
-  }
-});
+// Note: /worlds route is defined earlier in this file with improved world scanning
 
 // GET /api/management/worlds/:worldName/config - Get world config
 router.get('/worlds/:worldName/config', authMiddleware, async (req: Request, res: Response) => {
@@ -1478,16 +1506,25 @@ router.get('/worlds/:worldName/config', authMiddleware, async (req: Request, res
       return;
     }
 
-    const configPath = path.join(config.serverPath, 'worlds', worldName, 'config.json');
+    // Try multiple possible paths for world config
+    const possiblePaths = getWorldsPaths().map(wp => path.join(wp, worldName, 'config.json'));
+    let configPath: string | null = null;
+    let content: string | null = null;
 
-    // Check path is safe
-    const realPath = getRealPathIfSafe(configPath, [path.join(config.serverPath, 'worlds')]);
-    if (!realPath) {
-      res.status(403).json({ error: 'Access denied' });
-      return;
+    for (const tryPath of possiblePaths) {
+      try {
+        content = await readFile(tryPath, 'utf-8');
+        configPath = tryPath;
+        break;
+      } catch {
+        // Try next path
+      }
     }
 
-    const content = await readFile(configPath, 'utf-8');
+    if (!configPath || !content) {
+      res.status(404).json({ error: 'World config not found' });
+      return;
+    }
     const worldConfig = JSON.parse(content);
 
     // Return normalized config
@@ -1544,17 +1581,27 @@ router.put('/worlds/:worldName/config', authMiddleware, async (req: Authenticate
       return;
     }
 
-    const configPath = path.join(config.serverPath, 'worlds', worldName, 'config.json');
+    // Try multiple possible paths for world config
+    const possiblePaths = getWorldsPaths().map(wp => path.join(wp, worldName, 'config.json'));
+    let configPath: string | null = null;
+    let content: string | null = null;
 
-    // Check path is safe
-    const realPath = getRealPathIfSafe(configPath, [path.join(config.serverPath, 'worlds')]);
-    if (!realPath) {
-      res.status(403).json({ error: 'Access denied' });
+    for (const tryPath of possiblePaths) {
+      try {
+        content = await readFile(tryPath, 'utf-8');
+        configPath = tryPath;
+        break;
+      } catch {
+        // Try next path
+      }
+    }
+
+    if (!configPath || !content) {
+      res.status(404).json({ error: 'World config not found' });
       return;
     }
 
     // Read existing config
-    const content = await readFile(configPath, 'utf-8');
     const worldConfig = JSON.parse(content);
 
     // Apply updates (map camelCase to PascalCase)
@@ -1627,6 +1674,155 @@ router.put('/worlds/:worldName/config', authMiddleware, async (req: Authenticate
       res.status(404).json({ error: 'World config not found' });
     } else {
       res.status(500).json({ error: 'Failed to update world config' });
+    }
+  }
+});
+
+// GET /api/management/worlds/:worldName/files/:filePath - Read any JSON file in a world
+router.get('/worlds/:worldName/files/*', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { worldName } = req.params;
+    const filePath = req.params[0]; // The wildcard part (e.g., "resources/Time.json")
+
+    // Security: validate world name
+    if (!worldName || worldName.includes('..') || worldName.includes('\\')) {
+      res.status(400).json({ error: 'Invalid world name' });
+      return;
+    }
+
+    // Security: validate file path
+    if (!filePath || filePath.includes('..') || !filePath.endsWith('.json')) {
+      res.status(400).json({ error: 'Invalid file path. Only .json files are allowed.' });
+      return;
+    }
+
+    // Only allow files in root or resources folder
+    const pathParts = filePath.split('/');
+    if (pathParts.length > 2 || (pathParts.length === 2 && pathParts[0] !== 'resources')) {
+      res.status(400).json({ error: 'Invalid file path. Only root and resources/ folder allowed.' });
+      return;
+    }
+
+    // Try multiple possible paths for the file
+    const possiblePaths = getWorldsPaths().map(wp => path.join(wp, worldName, filePath));
+    let content: string | null = null;
+
+    for (const tryPath of possiblePaths) {
+      try {
+        content = await readFile(tryPath, 'utf-8');
+        break;
+      } catch {
+        // Try next path
+      }
+    }
+
+    if (!content) {
+      res.status(404).json({ error: 'File not found' });
+      return;
+    }
+
+    // Parse and return as JSON
+    const data = JSON.parse(content);
+    res.json({
+      worldName,
+      filePath,
+      fileName: pathParts[pathParts.length - 1],
+      content: data,
+      raw: content,
+    });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      res.status(404).json({ error: 'File not found' });
+    } else if (error instanceof SyntaxError) {
+      res.status(400).json({ error: 'Invalid JSON file' });
+    } else {
+      res.status(500).json({ error: 'Failed to read file' });
+    }
+  }
+});
+
+// PUT /api/management/worlds/:worldName/files/:filePath - Update any JSON file in a world
+router.put('/worlds/:worldName/files/*', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { worldName } = req.params;
+    const filePath = req.params[0];
+    const { content } = req.body;
+
+    // Security: validate world name
+    if (!worldName || worldName.includes('..') || worldName.includes('\\')) {
+      res.status(400).json({ error: 'Invalid world name' });
+      return;
+    }
+
+    // Security: validate file path
+    if (!filePath || filePath.includes('..') || !filePath.endsWith('.json')) {
+      res.status(400).json({ error: 'Invalid file path. Only .json files are allowed.' });
+      return;
+    }
+
+    // Only allow files in root or resources folder
+    const pathParts = filePath.split('/');
+    if (pathParts.length > 2 || (pathParts.length === 2 && pathParts[0] !== 'resources')) {
+      res.status(400).json({ error: 'Invalid file path. Only root and resources/ folder allowed.' });
+      return;
+    }
+
+    if (content === undefined) {
+      res.status(400).json({ error: 'Content is required' });
+      return;
+    }
+
+    // Validate JSON
+    let jsonContent: string;
+    if (typeof content === 'string') {
+      // Validate it's valid JSON
+      JSON.parse(content);
+      jsonContent = content;
+    } else {
+      // Convert object to JSON string
+      jsonContent = JSON.stringify(content, null, 2);
+    }
+
+    // Try multiple possible paths for the file
+    const possiblePaths = getWorldsPaths().map(wp => path.join(wp, worldName, filePath));
+    let targetPath: string | null = null;
+
+    // Find existing file
+    for (const tryPath of possiblePaths) {
+      try {
+        await stat(tryPath);
+        targetPath = tryPath;
+        break;
+      } catch {
+        // Try next path
+      }
+    }
+
+    if (!targetPath) {
+      res.status(404).json({ error: 'File not found' });
+      return;
+    }
+
+    // Write file
+    await writeFile(targetPath, jsonContent, 'utf-8');
+
+    // Log activity
+    const fileName = pathParts[pathParts.length - 1];
+    await logActivity(
+      (req.user as { username?: string })?.username || 'unknown',
+      'update_world_file',
+      'config',
+      true,
+      `${worldName}/${filePath}`,
+      `Updated ${fileName} in world ${worldName}`
+    );
+
+    res.json({ success: true, message: `File ${fileName} updated` });
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      res.status(400).json({ error: 'Invalid JSON content' });
+    } else {
+      res.status(500).json({ error: 'Failed to update file' });
     }
   }
 });
