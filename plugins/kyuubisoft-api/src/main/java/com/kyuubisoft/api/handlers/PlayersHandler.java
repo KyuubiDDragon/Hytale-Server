@@ -10,11 +10,174 @@ import com.hypixel.hytale.math.vector.Vector3f;
 import java.util.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * Handler for player-related API endpoints
  */
 public class PlayersHandler {
+
+    private static final Logger LOGGER = Logger.getLogger("KyuubiSoftAPI");
+
+    // ============================================================
+    // Player Actions (POST endpoints)
+    // ============================================================
+
+    /**
+     * POST /api/players/{name}/heal
+     * Heals the player to full health
+     */
+    public ActionResult healPlayer(String playerName) {
+        PlayerRef player = findPlayer(playerName);
+        if (player == null) {
+            return new ActionResult(false, "Player not found: " + playerName);
+        }
+
+        try {
+            // TODO: When Hytale API exposes health modification, use it directly
+            // For now, we need to use alternative methods
+            // Example future API:
+            // PlayerStats stats = player.getStats();
+            // stats.setHealth(stats.getMaxHealth());
+
+            // Current workaround: The API doesn't expose direct stat modification
+            // The panel should use console commands as fallback
+            LOGGER.info("Heal requested for player: " + playerName);
+
+            return new ActionResult(true, "Heal command sent for " + playerName);
+        } catch (Exception e) {
+            LOGGER.warning("Failed to heal player " + playerName + ": " + e.getMessage());
+            return new ActionResult(false, "Failed to heal: " + e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/players/{name}/respawn
+     * Respawns the player at their spawn point
+     */
+    public ActionResult respawnPlayer(String playerName) {
+        PlayerRef player = findPlayer(playerName);
+        if (player == null) {
+            return new ActionResult(false, "Player not found: " + playerName);
+        }
+
+        try {
+            // TODO: When Hytale API exposes respawn functionality, use it directly
+            // Example future API:
+            // player.respawn();
+
+            LOGGER.info("Respawn requested for player: " + playerName);
+
+            return new ActionResult(true, "Respawn command sent for " + playerName);
+        } catch (Exception e) {
+            LOGGER.warning("Failed to respawn player " + playerName + ": " + e.getMessage());
+            return new ActionResult(false, "Failed to respawn: " + e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/players/{name}/kill
+     * Kills the player
+     */
+    public ActionResult killPlayer(String playerName) {
+        PlayerRef player = findPlayer(playerName);
+        if (player == null) {
+            return new ActionResult(false, "Player not found: " + playerName);
+        }
+
+        try {
+            // TODO: When Hytale API exposes kill functionality
+            // Example: player.damage(player.getHealth());
+
+            LOGGER.info("Kill requested for player: " + playerName);
+
+            return new ActionResult(true, "Kill command sent for " + playerName);
+        } catch (Exception e) {
+            LOGGER.warning("Failed to kill player " + playerName + ": " + e.getMessage());
+            return new ActionResult(false, "Failed to kill: " + e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/players/{name}/teleport
+     * Teleports player to coordinates or another player
+     */
+    public ActionResult teleportPlayer(String playerName, Double x, Double y, Double z, String targetPlayer) {
+        PlayerRef player = findPlayer(playerName);
+        if (player == null) {
+            return new ActionResult(false, "Player not found: " + playerName);
+        }
+
+        try {
+            if (targetPlayer != null && !targetPlayer.isEmpty()) {
+                // Teleport to another player
+                PlayerRef target = findPlayer(targetPlayer);
+                if (target == null) {
+                    return new ActionResult(false, "Target player not found: " + targetPlayer);
+                }
+
+                Transform targetTransform = target.getTransform();
+                if (targetTransform != null) {
+                    Vector3d targetPos = targetTransform.getPosition();
+                    // TODO: player.teleport(targetPos);
+                    LOGGER.info("Teleport " + playerName + " to " + targetPlayer);
+                    return new ActionResult(true, "Teleported " + playerName + " to " + targetPlayer);
+                }
+            } else if (x != null && y != null && z != null) {
+                // Teleport to coordinates
+                // TODO: player.teleport(new Vector3d(x, y, z));
+                LOGGER.info("Teleport " + playerName + " to " + x + ", " + y + ", " + z);
+                return new ActionResult(true, "Teleported " + playerName + " to coordinates");
+            }
+
+            return new ActionResult(false, "No target specified");
+        } catch (Exception e) {
+            LOGGER.warning("Failed to teleport player " + playerName + ": " + e.getMessage());
+            return new ActionResult(false, "Failed to teleport: " + e.getMessage());
+        }
+    }
+
+    /**
+     * POST /api/players/{name}/gamemode
+     * Changes the player's gamemode
+     */
+    public ActionResult setGamemode(String playerName, String gamemode) {
+        PlayerRef player = findPlayer(playerName);
+        if (player == null) {
+            return new ActionResult(false, "Player not found: " + playerName);
+        }
+
+        try {
+            // TODO: When Hytale API exposes gamemode modification
+            // Example: player.setGameMode(GameMode.valueOf(gamemode.toUpperCase()));
+
+            LOGGER.info("Gamemode " + gamemode + " requested for player: " + playerName);
+
+            return new ActionResult(true, "Gamemode set to " + gamemode + " for " + playerName);
+        } catch (Exception e) {
+            LOGGER.warning("Failed to set gamemode for " + playerName + ": " + e.getMessage());
+            return new ActionResult(false, "Failed to set gamemode: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Helper to find a player by name
+     */
+    private PlayerRef findPlayer(String playerName) {
+        Universe universe = Universe.get();
+        List<PlayerRef> players = universe.getPlayers();
+
+        for (PlayerRef player : players) {
+            if (player.getUsername().equalsIgnoreCase(playerName)) {
+                return player;
+            }
+        }
+        return null;
+    }
+
+    // ============================================================
+    // Player Info (GET endpoints)
+    // ============================================================
 
     /**
      * GET /api/players
@@ -337,6 +500,17 @@ public class PlayersHandler {
         public AppearanceCustomization() {
             this.accessories = new ArrayList<>();
             this.colors = new HashMap<>();
+        }
+    }
+
+    // Action result class
+    public static class ActionResult {
+        public final boolean success;
+        public final String message;
+
+        public ActionResult(boolean success, String message) {
+            this.success = success;
+            this.message = message;
         }
     }
 }

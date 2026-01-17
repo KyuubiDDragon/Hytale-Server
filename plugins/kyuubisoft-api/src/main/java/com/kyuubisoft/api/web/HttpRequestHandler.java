@@ -26,7 +26,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     private static final Logger LOGGER = Logger.getLogger("KyuubiSoftAPI");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    // Route patterns
+    // Route patterns - GET
     private static final Pattern PLAYERS_PATTERN = Pattern.compile("^/api/players(?:/([\\w-]+))?$");
     private static final Pattern PLAYER_DETAILS_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/details$");
     private static final Pattern PLAYER_INVENTORY_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/inventory$");
@@ -36,6 +36,13 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
     private static final Pattern SERVER_INFO_PATTERN = Pattern.compile("^/api/server/info$");
     private static final Pattern SERVER_PERFORMANCE_PATTERN = Pattern.compile("^/api/server/performance$");
     private static final Pattern SERVER_MEMORY_PATTERN = Pattern.compile("^/api/server/memory$");
+
+    // Route patterns - POST (Player Actions)
+    private static final Pattern PLAYER_HEAL_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/heal$");
+    private static final Pattern PLAYER_RESPAWN_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/respawn$");
+    private static final Pattern PLAYER_KILL_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/kill$");
+    private static final Pattern PLAYER_TELEPORT_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/teleport$");
+    private static final Pattern PLAYER_GAMEMODE_PATTERN = Pattern.compile("^/api/players/([\\w-]+)/gamemode$");
 
     private final PlayersHandler playersHandler = new PlayersHandler();
     private final WorldsHandler worldsHandler = new WorldsHandler();
@@ -49,19 +56,75 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             return;
         }
 
-        // Only handle GET requests for now
-        if (request.method() != HttpMethod.GET) {
-            sendError(ctx, HttpResponseStatus.METHOD_NOT_ALLOWED);
-            return;
-        }
-
         String uri = request.uri();
         Object response = null;
         HttpResponseStatus status = HttpResponseStatus.OK;
 
         try {
-            // Route the request
+            // Route the request based on HTTP method
             Matcher matcher;
+
+            // Handle POST requests (Player Actions)
+            if (request.method() == HttpMethod.POST) {
+                // POST /api/players/{name}/heal
+                if ((matcher = PLAYER_HEAL_PATTERN.matcher(uri)).matches()) {
+                    String playerName = matcher.group(1);
+                    response = playersHandler.healPlayer(playerName);
+                }
+                // POST /api/players/{name}/respawn
+                else if ((matcher = PLAYER_RESPAWN_PATTERN.matcher(uri)).matches()) {
+                    String playerName = matcher.group(1);
+                    response = playersHandler.respawnPlayer(playerName);
+                }
+                // POST /api/players/{name}/kill
+                else if ((matcher = PLAYER_KILL_PATTERN.matcher(uri)).matches()) {
+                    String playerName = matcher.group(1);
+                    response = playersHandler.killPlayer(playerName);
+                }
+                // POST /api/players/{name}/teleport
+                else if ((matcher = PLAYER_TELEPORT_PATTERN.matcher(uri)).matches()) {
+                    String playerName = matcher.group(1);
+                    // Parse JSON body for teleport parameters
+                    String body = request.content().toString(CharsetUtil.UTF_8);
+                    TeleportRequest teleportReq = GSON.fromJson(body, TeleportRequest.class);
+                    if (teleportReq != null) {
+                        response = playersHandler.teleportPlayer(playerName, teleportReq.x, teleportReq.y, teleportReq.z, teleportReq.target);
+                    } else {
+                        response = playersHandler.teleportPlayer(playerName, null, null, null, null);
+                    }
+                }
+                // POST /api/players/{name}/gamemode
+                else if ((matcher = PLAYER_GAMEMODE_PATTERN.matcher(uri)).matches()) {
+                    String playerName = matcher.group(1);
+                    String body = request.content().toString(CharsetUtil.UTF_8);
+                    GamemodeRequest gamemodeReq = GSON.fromJson(body, GamemodeRequest.class);
+                    if (gamemodeReq != null && gamemodeReq.gamemode != null) {
+                        response = playersHandler.setGamemode(playerName, gamemodeReq.gamemode);
+                    } else {
+                        sendError(ctx, HttpResponseStatus.BAD_REQUEST, "Gamemode required");
+                        return;
+                    }
+                }
+                else {
+                    sendError(ctx, HttpResponseStatus.NOT_FOUND, "POST endpoint not found: " + uri);
+                    return;
+                }
+
+                sendJson(ctx, response, status);
+                return;
+            }
+
+            // Handle OPTIONS requests (CORS preflight)
+            if (request.method() == HttpMethod.OPTIONS) {
+                sendCorsResponse(ctx);
+                return;
+            }
+
+            // Only handle GET requests for info endpoints
+            if (request.method() != HttpMethod.GET) {
+                sendError(ctx, HttpResponseStatus.METHOD_NOT_ALLOWED);
+                return;
+            }
 
             // GET /api/players or /api/players/{world}
             if ((matcher = PLAYERS_PATTERN.matcher(uri)).matches()) {
@@ -177,6 +240,19 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         ctx.close();
     }
 
+    private void sendCorsResponse(ChannelHandlerContext ctx) {
+        FullHttpResponse response = new DefaultFullHttpResponse(
+                HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.EMPTY_BUFFER);
+
+        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, OPTIONS");
+        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, Authorization");
+        response.headers().set(HttpHeaderNames.ACCESS_CONTROL_MAX_AGE, 86400);
+        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, 0);
+
+        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+    }
+
     /**
      * Error response structure
      */
@@ -188,5 +264,22 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
             this.status = status;
             this.error = error;
         }
+    }
+
+    /**
+     * Request body for teleport
+     */
+    private static class TeleportRequest {
+        public Double x;
+        public Double y;
+        public Double z;
+        public String target;
+    }
+
+    /**
+     * Request body for gamemode
+     */
+    private static class GamemodeRequest {
+        public String gamemode;
     }
 }
