@@ -145,10 +145,23 @@ function stripAnsiCodes(text: string): string {
 
 /**
  * Initiates the device code flow by executing /auth login device
+ * Automatically sets persistence to Encrypted first to ensure tokens are saved to disk
  * Parses the server console output to extract the device code and verification URL
  */
 export async function initiateDeviceLogin(): Promise<HytaleDeviceCodeResponse> {
   try {
+    // First, set persistence to Encrypted so tokens are saved to disk
+    console.log('[HytaleAuth] Setting persistence to Encrypted before login...');
+    const persistenceResult = await execCommand('/auth persistence Encrypted');
+
+    if (!persistenceResult.success) {
+      console.warn('[HytaleAuth] Failed to set persistence, continuing with login anyway:', persistenceResult.error);
+    } else {
+      // Wait for persistence command to complete
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('[HytaleAuth] Persistence set to Encrypted');
+    }
+
     // Execute the auth command
     const result = await execCommand('/auth login device');
 
