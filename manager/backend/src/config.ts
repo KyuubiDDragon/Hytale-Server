@@ -30,6 +30,11 @@ export const config = {
   port: parseInt(process.env.MANAGER_PORT || '18080', 10),
   corsOrigins: process.env.CORS_ORIGINS || '*',
 
+  // Reverse Proxy Support
+  // Set to true/1 when running behind a reverse proxy (nginx, traefik, etc.)
+  // This enables proper handling of X-Forwarded-* headers
+  trustProxy: process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1',
+
   // Timezone
   tz: process.env.TZ || 'Europe/Berlin',
 

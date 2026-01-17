@@ -28,6 +28,13 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const server = createServer(app);
 
+// Reverse Proxy Support - must be set before other middleware
+// This enables proper handling of X-Forwarded-* headers when behind nginx, traefik, etc.
+if (config.trustProxy) {
+  app.set('trust proxy', 1);
+  console.log('Reverse proxy mode enabled (TRUST_PROXY=true)');
+}
+
 // WebSocket server
 const wss = new WebSocketServer({ server, path: '/api/console/ws' });
 setupWebSocket(wss);
