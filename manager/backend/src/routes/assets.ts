@@ -355,16 +355,50 @@ router.get('/item-icon/:itemId', (req: Request, res: Response) => {
 // GET /api/assets/player-avatar - Get a player avatar/face texture
 // Searches for player character textures in the assets
 router.get('/player-avatar', (req: Request, res: Response) => {
-  // Search for player/character face/avatar textures
+  // Try specific paths first (common Hytale asset locations)
+  const specificPaths = [
+    // UI portraits/avatars
+    'hytale/textures/ui/portraits/player.png',
+    'hytale/textures/ui/avatars/default.png',
+    'hytale/textures/ui/icons/player.png',
+    'hytale/textures/ui/hud/player_portrait.png',
+    // Entity textures
+    'hytale/textures/entity/player/face.png',
+    'hytale/textures/entity/player/head.png',
+    'hytale/textures/entity/player/default.png',
+    'hytale/textures/entity/human/face.png',
+    'hytale/textures/entity/npc/human_face.png',
+    // Character model textures
+    'hytale/textures/models/player/face.png',
+    'hytale/textures/models/character/face.png',
+    // Alternative structures
+    'textures/entity/player/face.png',
+    'textures/ui/portraits/player.png',
+    'ui/portraits/player.png',
+    'ui/avatars/default.png',
+  ];
+
+  // Try specific paths first
+  for (const avatarPath of specificPaths) {
+    const result = assetService.readAssetFile(avatarPath);
+    if (result.success && result.isBinary && result.mimeType?.startsWith('image/')) {
+      res.setHeader('Content-Type', result.mimeType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(Buffer.from(result.content as string, 'base64'));
+      return;
+    }
+  }
+
+  // Fallback: Search for player/character face/avatar textures
   const searchTerms = [
-    'character',
-    'player',
-    'face',
-    'head',
-    'avatar',
-    'portrait',
-    'npc_human',
     'human_face',
+    'player_face',
+    'character_face',
+    'portrait',
+    'avatar',
+    'npc_human',
+    'face_texture',
+    'player_icon',
   ];
 
   for (const term of searchTerms) {
