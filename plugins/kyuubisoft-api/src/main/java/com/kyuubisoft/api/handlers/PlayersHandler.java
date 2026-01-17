@@ -33,22 +33,15 @@ public class PlayersHandler {
             return new ActionResult(false, "Player not found: " + playerName);
         }
 
-        try {
-            // TODO: When Hytale API exposes health modification, use it directly
-            // For now, we need to use alternative methods
-            // Example future API:
-            // PlayerStats stats = player.getStats();
-            // stats.setHealth(stats.getMaxHealth());
+        // TODO: When Hytale API exposes health modification, implement it here
+        // For now, return false so the panel uses console commands as fallback
+        // Example future API:
+        // PlayerStats stats = player.getStats();
+        // stats.setHealth(stats.getMaxHealth());
+        // return new ActionResult(true, "Player healed");
 
-            // Current workaround: The API doesn't expose direct stat modification
-            // The panel should use console commands as fallback
-            LOGGER.info("Heal requested for player: " + playerName);
-
-            return new ActionResult(true, "Heal command sent for " + playerName);
-        } catch (Exception e) {
-            LOGGER.warning("Failed to heal player " + playerName + ": " + e.getMessage());
-            return new ActionResult(false, "Failed to heal: " + e.getMessage());
-        }
+        LOGGER.info("Heal requested for player: " + playerName + " - using console fallback");
+        return new ActionResult(false, "Not implemented - use console command");
     }
 
     /**
@@ -61,18 +54,9 @@ public class PlayersHandler {
             return new ActionResult(false, "Player not found: " + playerName);
         }
 
-        try {
-            // TODO: When Hytale API exposes respawn functionality, use it directly
-            // Example future API:
-            // player.respawn();
-
-            LOGGER.info("Respawn requested for player: " + playerName);
-
-            return new ActionResult(true, "Respawn command sent for " + playerName);
-        } catch (Exception e) {
-            LOGGER.warning("Failed to respawn player " + playerName + ": " + e.getMessage());
-            return new ActionResult(false, "Failed to respawn: " + e.getMessage());
-        }
+        // TODO: When Hytale API exposes respawn functionality, implement it here
+        LOGGER.info("Respawn requested for player: " + playerName + " - using console fallback");
+        return new ActionResult(false, "Not implemented - use console command");
     }
 
     /**
@@ -85,17 +69,9 @@ public class PlayersHandler {
             return new ActionResult(false, "Player not found: " + playerName);
         }
 
-        try {
-            // TODO: When Hytale API exposes kill functionality
-            // Example: player.damage(player.getHealth());
-
-            LOGGER.info("Kill requested for player: " + playerName);
-
-            return new ActionResult(true, "Kill command sent for " + playerName);
-        } catch (Exception e) {
-            LOGGER.warning("Failed to kill player " + playerName + ": " + e.getMessage());
-            return new ActionResult(false, "Failed to kill: " + e.getMessage());
-        }
+        // TODO: When Hytale API exposes kill functionality, implement it here
+        LOGGER.info("Kill requested for player: " + playerName + " - using console fallback");
+        return new ActionResult(false, "Not implemented - use console command");
     }
 
     /**
@@ -108,33 +84,19 @@ public class PlayersHandler {
             return new ActionResult(false, "Player not found: " + playerName);
         }
 
-        try {
-            if (targetPlayer != null && !targetPlayer.isEmpty()) {
-                // Teleport to another player
-                PlayerRef target = findPlayer(targetPlayer);
-                if (target == null) {
-                    return new ActionResult(false, "Target player not found: " + targetPlayer);
-                }
-
-                Transform targetTransform = target.getTransform();
-                if (targetTransform != null) {
-                    Vector3d targetPos = targetTransform.getPosition();
-                    // TODO: player.teleport(targetPos);
-                    LOGGER.info("Teleport " + playerName + " to " + targetPlayer);
-                    return new ActionResult(true, "Teleported " + playerName + " to " + targetPlayer);
-                }
-            } else if (x != null && y != null && z != null) {
-                // Teleport to coordinates
-                // TODO: player.teleport(new Vector3d(x, y, z));
-                LOGGER.info("Teleport " + playerName + " to " + x + ", " + y + ", " + z);
-                return new ActionResult(true, "Teleported " + playerName + " to coordinates");
+        // Validate target
+        if (targetPlayer != null && !targetPlayer.isEmpty()) {
+            PlayerRef target = findPlayer(targetPlayer);
+            if (target == null) {
+                return new ActionResult(false, "Target player not found: " + targetPlayer);
             }
-
+        } else if (x == null || y == null || z == null) {
             return new ActionResult(false, "No target specified");
-        } catch (Exception e) {
-            LOGGER.warning("Failed to teleport player " + playerName + ": " + e.getMessage());
-            return new ActionResult(false, "Failed to teleport: " + e.getMessage());
         }
+
+        // TODO: When Hytale API exposes teleport functionality, implement it here
+        LOGGER.info("Teleport requested for player: " + playerName + " - using console fallback");
+        return new ActionResult(false, "Not implemented - use console command");
     }
 
     /**
@@ -147,17 +109,9 @@ public class PlayersHandler {
             return new ActionResult(false, "Player not found: " + playerName);
         }
 
-        try {
-            // TODO: When Hytale API exposes gamemode modification
-            // Example: player.setGameMode(GameMode.valueOf(gamemode.toUpperCase()));
-
-            LOGGER.info("Gamemode " + gamemode + " requested for player: " + playerName);
-
-            return new ActionResult(true, "Gamemode set to " + gamemode + " for " + playerName);
-        } catch (Exception e) {
-            LOGGER.warning("Failed to set gamemode for " + playerName + ": " + e.getMessage());
-            return new ActionResult(false, "Failed to set gamemode: " + e.getMessage());
-        }
+        // TODO: When Hytale API exposes gamemode modification, implement it here
+        LOGGER.info("Gamemode " + gamemode + " requested for player: " + playerName + " - using console fallback");
+        return new ActionResult(false, "Not implemented - use console command");
     }
 
     /**
@@ -170,17 +124,14 @@ public class PlayersHandler {
             return new ActionResult(false, "Player not found: " + playerName);
         }
 
-        try {
-            // TODO: When Hytale API exposes inventory modification
-            // Example: player.getInventory().clear();
+        // TODO: When Hytale API exposes inventory modification, implement it here
+        // For now, return false so the panel uses console commands as fallback
+        // Example future API:
+        // player.getInventory().clear();
+        // return new ActionResult(true, "Inventory cleared");
 
-            LOGGER.info("Clear inventory requested for player: " + playerName);
-
-            return new ActionResult(true, "Inventory cleared for " + playerName);
-        } catch (Exception e) {
-            LOGGER.warning("Failed to clear inventory for " + playerName + ": " + e.getMessage());
-            return new ActionResult(false, "Failed to clear inventory: " + e.getMessage());
-        }
+        LOGGER.info("Clear inventory requested for player: " + playerName + " - using console fallback");
+        return new ActionResult(false, "Not implemented - use console command");
     }
 
     /**
