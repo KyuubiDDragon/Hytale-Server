@@ -469,7 +469,8 @@ router.post('/:name/respawn', authMiddleware, async (req: Request, res: Response
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
-  const result = await dockerService.execCommand(`/player respawn ${playerName}`);
+  // Use --player flag for console commands
+  const result = await dockerService.execCommand(`/player respawn --player ${playerName}`);
 
   if (result.success) {
     res.json({
@@ -581,7 +582,8 @@ router.post('/:name/heal', authMiddleware, async (req: Request, res: Response) =
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
-  const result = await dockerService.execCommand(`/player stats settomax ${playerName} health`);
+  // Use --player flag for console commands
+  const result = await dockerService.execCommand(`/player stats settomax --player ${playerName}`);
 
   if (result.success) {
     res.json({
@@ -621,9 +623,10 @@ router.post('/:name/effect', authMiddleware, async (req: Request, res: Response)
     return;
   }
 
+  // Use --player flag for console commands
   const command = action === 'clear'
-    ? `/player effect clear ${playerName}`
-    : `/player effect apply ${playerName} ${effect}`;
+    ? `/player effect clear --player ${playerName}`
+    : `/player effect apply --player ${playerName} ${effect}`;
   const result = await dockerService.execCommand(command);
 
   if (result.success) {
