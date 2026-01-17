@@ -146,6 +146,7 @@ function stripAnsiCodes(text: string): string {
 /**
  * Initiates the device code flow by executing /auth login device
  * Parses the server console output to extract the device code and verification URL
+ * Note: Persistence is set AFTER successful authentication (per Hytale documentation)
  */
 export async function initiateDeviceLogin(): Promise<HytaleDeviceCodeResponse> {
   try {
@@ -389,6 +390,7 @@ async function checkTokenFileExists(): Promise<boolean> {
 /**
  * Checks if the authentication has been completed by the user
  * Checks for real server auth tokens (auth.enc), not downloader credentials
+ * If authentication is successful but not persisted, automatically runs /auth persistence Encrypted
  */
 export async function checkAuthCompletion(): Promise<ActionResponse> {
   try {
@@ -396,8 +398,7 @@ export async function checkAuthCompletion(): Promise<ActionResponse> {
     const basePath = getHytaleBasePath();
 
     // Check for REAL server token files (auth.enc)
-    // These are created by /auth login device with persistence Encrypted
-    // NOT credentials.json/oauth_credentials.json (those are downloader credentials)
+    // These are created by /auth persistence Encrypted AFTER successful auth
     const serverTokenPaths = [
       path.join(basePath, 'auth', 'auth.enc'),
       path.join(config.serverPath, '.auth', 'auth.enc'),
@@ -423,7 +424,7 @@ export async function checkAuthCompletion(): Promise<ActionResponse> {
       }
     }
 
-    // If there's a pending device code, check expiration
+    // If there's a pending device code, check if authentication completed
     if (status.deviceCode) {
       if (status.expiresAt && Date.now() > status.expiresAt) {
         await saveAuthStatus({ authenticated: false });
@@ -431,6 +432,77 @@ export async function checkAuthCompletion(): Promise<ActionResponse> {
           success: false,
           error: 'Authentication code has expired. Please initiate login again.',
         };
+      }
+
+      // Check server logs for authentication success
+      const logs = await getLogs(100);
+      const cleanLogs = stripAnsiCodes(logs);
+
+      // Look for success messages: "Authentication successful" or "Successfully created game session"
+      const authSuccessPatterns = [
+        /authentication\s+successful/i,
+        /successfully\s+created\s+game\s+session/i,
+        /logged\s+in\s+successfully/i,
+      ];
+
+      const isAuthSuccessful = authSuccessPatterns.some(pattern => pattern.test(cleanLogs));
+
+      if (isAuthSuccessful) {
+        console.log('[HytaleAuth] Authentication successful detected in logs! Setting persistence...');
+
+        // Authentication successful - now set persistence to save credentials
+        const persistenceResult = await execCommand('/auth persistence Encrypted');
+
+        if (persistenceResult.success) {
+          // Wait for the persistence command to create auth.enc
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Verify auth.enc was created
+          for (const tokenPath of serverTokenPaths) {
+            try {
+              await fs.access(tokenPath);
+              console.log(`[HytaleAuth] Persistence successful - auth.enc created at: ${tokenPath}`);
+              await saveAuthStatus({
+                authenticated: true,
+                persistent: true,
+                persistenceType: 'disk',
+                lastChecked: Date.now(),
+              });
+              return {
+                success: true,
+                message: 'Server is authenticated and credentials saved to disk.',
+              };
+            } catch {
+              // Continue checking
+            }
+          }
+
+          // auth.enc not found but persistence command succeeded - auth is in memory
+          console.log('[HytaleAuth] Persistence command ran but auth.enc not found. Auth may be memory-only.');
+          await saveAuthStatus({
+            authenticated: true,
+            persistent: false,
+            persistenceType: 'memory',
+            lastChecked: Date.now(),
+          });
+          return {
+            success: true,
+            message: 'Server is authenticated (memory only - credentials may not persist after restart).',
+          };
+        } else {
+          console.warn('[HytaleAuth] Failed to set persistence:', persistenceResult.error);
+          // Auth successful but persistence failed
+          await saveAuthStatus({
+            authenticated: true,
+            persistent: false,
+            persistenceType: 'memory',
+            lastChecked: Date.now(),
+          });
+          return {
+            success: true,
+            message: 'Server is authenticated but persistence failed. Credentials will be lost on restart.',
+          };
+        }
       }
 
       return {
@@ -450,7 +522,7 @@ export async function checkAuthCompletion(): Promise<ActionResponse> {
     // Not authenticated
     return {
       success: false,
-      error: 'Server requires authentication. Run /auth persistence Encrypted then /auth login device.',
+      error: 'Server requires authentication. Click "Initiate Auth" to start device login.',
     };
   } catch (error) {
     return {
