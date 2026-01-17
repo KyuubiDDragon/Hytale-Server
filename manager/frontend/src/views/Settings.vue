@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { setLocale, getLocale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
-import { serverApi, type ConfigFile } from '@/api/server'
+import { serverApi, type ConfigFile, type PatchlineResponse } from '@/api/server'
 import { authApi, type HytaleAuthStatus, type HytaleDeviceCodeResponse } from '@/api/auth'
 
 const { t } = useI18n()
@@ -27,6 +27,12 @@ const hytaleAuthError = ref<string | null>(null)
 const hytaleAuthSuccess = ref<string | null>(null)
 const deviceCodeData = ref<HytaleDeviceCodeResponse | null>(null)
 const checkingInterval = ref<number | null>(null)
+
+// Patchline Settings
+const patchlineData = ref<PatchlineResponse | null>(null)
+const patchlineLoading = ref(false)
+const patchlineError = ref<string | null>(null)
+const patchlineSuccess = ref<string | null>(null)
 
 function changeLocale(locale: 'de' | 'en' | 'pt_br') {
   setLocale(locale)
@@ -88,6 +94,40 @@ function closeEditor() {
 }
 
 const hasChanges = () => fileContent.value !== originalContent.value
+
+// Patchline Functions
+async function loadPatchline() {
+  try {
+    patchlineLoading.value = true
+    patchlineError.value = null
+    const response = await serverApi.getPatchline()
+    patchlineData.value = response
+  } catch (e) {
+    patchlineError.value = 'Failed to load patchline setting'
+  } finally {
+    patchlineLoading.value = false
+  }
+}
+
+async function setPatchline(patchline: string) {
+  try {
+    patchlineLoading.value = true
+    patchlineError.value = null
+    patchlineSuccess.value = null
+
+    const response = await serverApi.setPatchline(patchline)
+
+    if (response.success) {
+      patchlineData.value = { ...patchlineData.value!, patchline: response.patchline }
+      patchlineSuccess.value = response.message
+      setTimeout(() => { patchlineSuccess.value = null }, 5000)
+    }
+  } catch (e) {
+    patchlineError.value = 'Failed to update patchline setting'
+  } finally {
+    patchlineLoading.value = false
+  }
+}
 
 // Hytale Auth Functions
 async function loadHytaleAuthStatus() {
@@ -216,6 +256,7 @@ onMounted(() => {
   // Load Hytale auth status if user can manage server
   if (authStore.canManageServer) {
     loadHytaleAuthStatus()
+    loadPatchline()
   }
 })
 
@@ -437,6 +478,92 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
+      </div>
+    </Card>
+
+    <!-- Patchline Settings (admins and moderators only) -->
+    <Card v-if="authStore.canManageServer" :title="t('settings.patchlineTitle')">
+      <p class="text-gray-400 text-sm mb-4">{{ t('settings.patchlineDesc') }}</p>
+
+      <!-- Error/Success Messages -->
+      <div v-if="patchlineError" class="mb-4 p-3 bg-status-error/20 border border-status-error/30 rounded-lg text-status-error text-sm">
+        {{ patchlineError }}
+      </div>
+      <div v-if="patchlineSuccess" class="mb-4 p-3 bg-status-success/20 border border-status-success/30 rounded-lg text-status-success text-sm">
+        {{ patchlineSuccess }}
+      </div>
+
+      <div class="space-y-4">
+        <!-- Current Setting -->
+        <div class="flex items-center justify-between p-4 bg-dark-300 rounded-lg">
+          <div>
+            <p class="text-sm text-gray-400">{{ t('settings.currentPatchline') }}</p>
+            <p class="text-white font-medium mt-1 font-mono">
+              {{ patchlineData?.patchline || '-' }}
+            </p>
+          </div>
+        </div>
+
+        <!-- Patchline Selection -->
+        <div v-if="!patchlineLoading" class="flex gap-4">
+          <button
+            @click="setPatchline('release')"
+            :disabled="patchlineLoading"
+            :class="[
+              'flex-1 flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 transition-all',
+              patchlineData?.patchline === 'release'
+                ? 'border-status-success bg-status-success/10'
+                : 'border-dark-50 hover:border-gray-600'
+            ]"
+          >
+            <div class="text-center">
+              <p class="font-medium text-white">Release</p>
+              <p class="text-xs text-gray-400">{{ t('settings.patchlineReleaseDesc') }}</p>
+            </div>
+            <svg
+              v-if="patchlineData?.patchline === 'release'"
+              class="w-5 h-5 text-status-success"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+
+          <button
+            @click="setPatchline('pre-release')"
+            :disabled="patchlineLoading"
+            :class="[
+              'flex-1 flex items-center justify-center gap-3 px-4 py-3 rounded-lg border-2 transition-all',
+              patchlineData?.patchline === 'pre-release'
+                ? 'border-status-warning bg-status-warning/10'
+                : 'border-dark-50 hover:border-gray-600'
+            ]"
+          >
+            <div class="text-center">
+              <p class="font-medium text-white">Pre-Release</p>
+              <p class="text-xs text-gray-400">{{ t('settings.patchlinePreReleaseDesc') }}</p>
+            </div>
+            <svg
+              v-if="patchlineData?.patchline === 'pre-release'"
+              class="w-5 h-5 text-status-warning"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </div>
+
+        <div v-else class="text-center py-4 text-gray-400">
+          {{ t('common.loading') }}...
+        </div>
+
+        <p class="text-xs text-gray-500">
+          {{ t('settings.patchlineRestartNote') }}
+        </p>
       </div>
     </Card>
 

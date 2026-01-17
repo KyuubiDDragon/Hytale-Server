@@ -64,6 +64,24 @@ ASSETS_FILE="/opt/hytale/server/Assets.zip"
 DOWNLOADER_DIR="/opt/hytale/downloader"
 CREDENTIALS_FILE="${DOWNLOADER_DIR}/.hytale-downloader-credentials.json"
 
+# Function to get patchline from panel config or env
+get_patchline() {
+    PANEL_CONFIG="/opt/hytale/data/panel-config.json"
+
+    # First try to read from panel config file
+    if [ -f "$PANEL_CONFIG" ]; then
+        # Extract patchline value from JSON using grep/sed (jq might not be available)
+        PANEL_PATCHLINE=$(cat "$PANEL_CONFIG" 2>/dev/null | grep -o '"patchline"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"patchline"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+        if [ -n "$PANEL_PATCHLINE" ]; then
+            echo "$PANEL_PATCHLINE"
+            return
+        fi
+    fi
+
+    # Fallback to environment variable or default
+    echo "${HYTALE_PATCHLINE:-release}"
+}
+
 # Function to run Hytale Downloader
 run_downloader() {
     local UPDATE_MODE="$1"
@@ -84,7 +102,8 @@ run_downloader() {
     fi
 
     cd "$DOWNLOADER_DIR"
-    PATCHLINE="${HYTALE_PATCHLINE:-release}"
+    PATCHLINE=$(get_patchline)
+    echo "[INFO] Using patchline: $PATCHLINE"
     DOWNLOAD_PATH="/opt/hytale/server/game.zip"
     VERSION_FILE="/opt/hytale/server/.hytale-version"
 
