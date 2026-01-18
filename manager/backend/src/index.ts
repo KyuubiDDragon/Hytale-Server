@@ -19,11 +19,13 @@ import playersRoutes from './routes/players.js';
 import managementRoutes from './routes/management.js';
 import schedulerRoutes from './routes/scheduler.js';
 import assetsRoutes from './routes/assets.js';
+import rolesRouter from './routes/roles.js';
 
 // Services
 import { startSchedulers } from './services/scheduler.js';
 import { initializePlayerTracking } from './services/players.js';
 import { initializePluginEvents, disconnectFromPluginWebSocket } from './services/pluginEvents.js';
+import { initializeRoles } from './services/roles.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,6 +64,7 @@ app.use('/api/players', playersRoutes);
 app.use('/api/management', managementRoutes);
 app.use('/api/scheduler', schedulerRoutes);
 app.use('/api/assets', assetsRoutes);
+app.use('/api/roles', rolesRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -91,7 +94,7 @@ app.get('*', (req, res) => {
 });
 
 // Start server
-server.listen(config.port, '0.0.0.0', () => {
+server.listen(config.port, '0.0.0.0', async () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
 ║         KyuubiSoft Panel v1.0.0                   ║
@@ -104,6 +107,9 @@ server.listen(config.port, '0.0.0.0', () => {
 
   // SECURITY: Check for insecure default credentials
   checkSecurityConfig();
+
+  // Initialize roles (load or create default roles)
+  await initializeRoles();
 
   // Initialize player tracking (load persisted data)
   initializePlayerTracking().catch(err => {

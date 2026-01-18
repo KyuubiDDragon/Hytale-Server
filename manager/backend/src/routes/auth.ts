@@ -2,7 +2,9 @@ import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { verifyCredentials, createAccessToken, createRefreshToken, verifyToken } from '../services/auth.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { getAllUsers, createUser, updateUser, deleteUser, getUser } from '../services/users.js';
+import { getUserPermissions } from '../services/roles.js';
 import { initiateDeviceLogin, checkAuthCompletion, getAuthStatus, resetAuth, setPersistence, listAuthFiles, inspectDownloaderCredentials } from '../services/hytaleAuth.js';
 import type { AuthenticatedRequest, LoginRequest } from '../types/index.js';
 
@@ -44,12 +46,14 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 
   const accessToken = createAccessToken(username);
   const refreshToken = createRefreshToken(username);
+  const permissions = await getUserPermissions(username);
 
   res.json({
     access_token: accessToken,
     refresh_token: refreshToken,
     token_type: 'bearer',
     role: result.role,
+    permissions,
   });
 });
 
@@ -88,95 +92,77 @@ router.post('/logout', authMiddleware, (_req: Request, res: Response) => {
 router.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const username = req.user!;  // authMiddleware guarantees this is set
   const user = await getUser(username);
+  const permissions = await getUserPermissions(username);
   if (!user) {
-    res.json({ username, role: 'admin' });
+    res.json({ username, role: 'admin', permissions });
     return;
   }
-  res.json({ username, role: user.role });
+  res.json({ username, role: user.roleId, permissions });
 });
 
-// ============== USER MANAGEMENT (Admin only) ==============
-
-// Middleware to check admin role
-async function adminOnly(req: AuthenticatedRequest, res: Response, next: () => void) {
-  const username = req.user!;  // authMiddleware guarantees this is set
-  const user = await getUser(username);
-  if (!user || user.role !== 'admin') {
-    res.status(403).json({ error: 'Admin access required' });
-    return;
-  }
-  next();
-}
+// ============== USER MANAGEMENT ==============
 
 // GET /api/auth/users - List all users
-router.get('/users', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  await adminOnly(req, res, async () => {
-    try {
-      const users = await getAllUsers();
-      res.json({ users });
-    } catch (error) {
-      res.status(500).json({ error: 'Failed to get users' });
-    }
-  });
+router.get('/users', authMiddleware, requirePermission('users.view'), async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const users = await getAllUsers();
+    res.json({ users });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get users' });
+  }
 });
 
 // POST /api/auth/users - Create new user
-router.post('/users', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  await adminOnly(req, res, async () => {
-    try {
-      const { username, password, role } = req.body;
+router.post('/users', authMiddleware, requirePermission('users.create'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { username, password, roleId } = req.body;
 
-      if (!username || !password) {
-        res.status(400).json({ error: 'Username and password required' });
-        return;
-      }
-
-      const user = await createUser(username, password, role || 'viewer');
-      res.json({ success: true, user });
-    } catch (error) {
-      res.status(400).json({ error: (error as Error).message });
+    if (!username || !password) {
+      res.status(400).json({ error: 'Username and password required' });
+      return;
     }
-  });
+
+    const user = await createUser(username, password, roleId || 'viewer');
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
 });
 
 // PUT /api/auth/users/:username - Update user
-router.put('/users/:username', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  await adminOnly(req, res, async () => {
-    try {
-      const { username } = req.params;
-      const { password, role } = req.body;
+router.put('/users/:username', authMiddleware, requirePermission('users.edit'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { username } = req.params;
+    const { password, roleId } = req.body;
 
-      if (!password && !role) {
-        res.status(400).json({ error: 'Nothing to update' });
-        return;
-      }
-
-      const user = await updateUser(username, { password, role });
-      res.json({ success: true, user });
-    } catch (error) {
-      res.status(400).json({ error: (error as Error).message });
+    if (!password && !roleId) {
+      res.status(400).json({ error: 'Nothing to update' });
+      return;
     }
-  });
+
+    const user = await updateUser(username, { password, roleId });
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
 });
 
 // DELETE /api/auth/users/:username - Delete user
-router.delete('/users/:username', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
-  await adminOnly(req, res, async () => {
-    try {
-      const { username } = req.params;
+router.delete('/users/:username', authMiddleware, requirePermission('users.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { username } = req.params;
 
-      // Prevent deleting yourself
-      if (username === req.user) {
-        res.status(400).json({ error: 'Cannot delete your own account' });
-        return;
-      }
-
-      await deleteUser(username);
-      res.json({ success: true });
-    } catch (error) {
-      res.status(400).json({ error: (error as Error).message });
+    // Prevent deleting yourself
+    if (username === req.user) {
+      res.status(400).json({ error: 'Cannot delete your own account' });
+      return;
     }
-  });
+
+    await deleteUser(username);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(400).json({ error: (error as Error).message });
+  }
 });
 
 // ============== HYTALE SERVER AUTHENTICATION ==============
@@ -197,16 +183,8 @@ router.get('/hytale/status', authMiddleware, async (_req: Request, res: Response
 });
 
 // POST /api/auth/hytale/initiate - Initiate Hytale device login
-router.post('/hytale/initiate', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/hytale/initiate', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    // Only admins and moderators can initiate Hytale auth
-    const username = req.user!;
-    const user = await getUser(username);
-    if (!user || !['admin', 'moderator'].includes(user.role)) {
-      res.status(403).json({ error: 'Insufficient permissions' });
-      return;
-    }
-
     const result = await initiateDeviceLogin();
 
     if (!result.success) {
@@ -237,16 +215,8 @@ router.post('/hytale/check', authMiddleware, async (_req: Request, res: Response
 });
 
 // POST /api/auth/hytale/reset - Reset Hytale authentication
-router.post('/hytale/reset', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/hytale/reset', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: AuthenticatedRequest, res: Response) => {
   try {
-    // Only admins and moderators can reset Hytale auth
-    const username = req.user!;
-    const user = await getUser(username);
-    if (!user || !['admin', 'moderator'].includes(user.role)) {
-      res.status(403).json({ error: 'Insufficient permissions' });
-      return;
-    }
-
     const result = await resetAuth();
     res.json(result);
   } catch (error) {
@@ -258,16 +228,8 @@ router.post('/hytale/reset', authMiddleware, async (req: AuthenticatedRequest, r
 });
 
 // POST /api/auth/hytale/persistence - Set authentication persistence type
-router.post('/hytale/persistence', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/hytale/persistence', authMiddleware, requirePermission('hytale_auth.manage'), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    // Only admins and moderators can change persistence settings
-    const username = req.user!;
-    const user = await getUser(username);
-    if (!user || !['admin', 'moderator'].includes(user.role)) {
-      res.status(403).json({ error: 'Insufficient permissions' });
-      return;
-    }
-
     const { type } = req.body;
     if (!type || !['Memory', 'Encrypted'].includes(type)) {
       res.status(400).json({

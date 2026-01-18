@@ -7,7 +7,7 @@ import { config } from '../config.js';
 export interface User {
   username: string;
   passwordHash: string;
-  role: 'admin' | 'moderator' | 'operator' | 'viewer';
+  roleId: string;
   createdAt: string;
   lastLogin?: string;
 }
@@ -33,13 +33,31 @@ async function ensureDataDir(): Promise<void> {
 async function readUsers(): Promise<UsersData> {
   try {
     const content = await readFile(USERS_FILE, 'utf-8');
-    return JSON.parse(content);
+    const data = JSON.parse(content) as UsersData;
+
+    // Migrate users from old role field to new roleId field
+    let needsMigration = false;
+    for (const user of data.users) {
+      const userAny = user as any;
+      if (userAny.role !== undefined && userAny.roleId === undefined) {
+        userAny.roleId = userAny.role;
+        delete userAny.role;
+        needsMigration = true;
+      }
+    }
+
+    // Save migrated data if needed
+    if (needsMigration) {
+      await writeUsers(data);
+    }
+
+    return data;
   } catch {
     // If file doesn't exist, create default admin user from env
     const defaultAdmin: User = {
       username: config.managerUsername,
       passwordHash: bcrypt.hashSync(config.managerPassword, 12),
-      role: 'admin',
+      roleId: 'admin',
       createdAt: new Date().toISOString(),
     };
     const data: UsersData = { users: [defaultAdmin] };
@@ -82,7 +100,7 @@ export async function verifyUserCredentials(username: string, password: string):
 export async function createUser(
   username: string,
   password: string,
-  role: User['role'] = 'viewer'
+  roleId: string = 'viewer'
 ): Promise<Omit<User, 'passwordHash'>> {
   const data = await readUsers();
 
@@ -104,7 +122,7 @@ export async function createUser(
   const newUser: User = {
     username,
     passwordHash: bcrypt.hashSync(password, 12),
-    role,
+    roleId,
     createdAt: new Date().toISOString(),
   };
 
@@ -118,7 +136,7 @@ export async function createUser(
 // Update user
 export async function updateUser(
   username: string,
-  updates: { password?: string; role?: User['role'] }
+  updates: { password?: string; roleId?: string }
 ): Promise<Omit<User, 'passwordHash'>> {
   const data = await readUsers();
   const userIndex = data.users.findIndex(u => u.username === username);
@@ -134,8 +152,8 @@ export async function updateUser(
     data.users[userIndex].passwordHash = bcrypt.hashSync(updates.password, 12);
   }
 
-  if (updates.role) {
-    data.users[userIndex].role = updates.role;
+  if (updates.roleId) {
+    data.users[userIndex].roleId = updates.roleId;
   }
 
   await writeUsers(data);
@@ -149,14 +167,14 @@ export async function deleteUser(username: string): Promise<void> {
   const data = await readUsers();
 
   // Prevent deleting the last admin
-  const adminCount = data.users.filter(u => u.role === 'admin').length;
+  const adminCount = data.users.filter(u => u.roleId === 'admin').length;
   const userToDelete = data.users.find(u => u.username === username);
 
   if (!userToDelete) {
     throw new Error('User not found');
   }
 
-  if (userToDelete.role === 'admin' && adminCount <= 1) {
+  if (userToDelete.roleId === 'admin' && adminCount <= 1) {
     throw new Error('Cannot delete the last admin user');
   }
 
