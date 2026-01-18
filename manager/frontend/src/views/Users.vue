@@ -173,6 +173,7 @@ onMounted(() => {
           </svg>
         </button>
         <button
+          v-if="authStore.hasPermission('users.create')"
           @click="openAddModal"
           class="px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors flex items-center gap-2"
         >
@@ -263,6 +264,7 @@ onMounted(() => {
           <!-- Actions -->
           <div class="flex items-center gap-2">
             <button
+              v-if="authStore.hasPermission('users.edit')"
               @click="openEditModal(user)"
               class="p-2 text-gray-400 hover:text-hytale-orange transition-colors"
               :title="t('common.edit')"
@@ -272,7 +274,7 @@ onMounted(() => {
               </svg>
             </button>
             <button
-              v-if="user.username !== authStore.username"
+              v-if="user.username !== authStore.username && authStore.hasPermission('users.delete')"
               @click="deleteUser(user)"
               class="p-2 text-gray-400 hover:text-status-error transition-colors"
               :title="t('common.delete')"

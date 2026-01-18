@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
 import ConfigFormEditor from '@/components/config/ConfigFormEditor.vue'
 import { serverApi, type ConfigFile, type QuickSettings } from '@/api/server'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 type EditorMode = 'form' | 'json'
 
@@ -257,7 +259,7 @@ onMounted(() => {
         </div>
 
         <!-- Save Button -->
-        <div class="flex items-center justify-between pt-4 border-t border-dark-50">
+        <div v-if="authStore.hasPermission('config.edit')" class="flex items-center justify-between pt-4 border-t border-dark-50">
           <span v-if="quickSettingsChanged" class="text-xs text-status-warning">{{ t('config.unsaved') }}</span>
           <span v-else></span>
           <button
@@ -376,6 +378,7 @@ onMounted(() => {
 
             <!-- Save Button -->
             <button
+              v-if="authStore.hasPermission('config.edit')"
               @click="saveFile"
               :disabled="saving || !hasChanges"
               :class="[

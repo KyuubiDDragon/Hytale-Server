@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import { useConsoleStore } from '@/stores/console'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { formatLogMessage } from '@/utils/formatItemPath'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const consoleStore = useConsoleStore()
 const { sendCommand, reconnect, loadAllLogs, isLoadingLogs } = useWebSocket()
 
@@ -443,7 +445,7 @@ watch(
 
     <!-- Command Input - Always visible at bottom -->
     <div class="mt-4 flex-shrink-0">
-      <form @submit.prevent="handleSubmit" class="relative">
+      <form v-if="authStore.hasPermission('console.execute')" @submit.prevent="handleSubmit" class="relative">
         <div class="flex gap-2">
           <div class="relative flex-1">
             <input
@@ -484,6 +486,9 @@ watch(
           </button>
         </div>
       </form>
+      <div v-else class="p-3 bg-dark-100 rounded-lg text-gray-500 text-sm text-center">
+        {{ t('common.noPermission') }}
+      </div>
 
       <!-- Controls -->
       <div class="flex items-center justify-between mt-3">

@@ -21,7 +21,8 @@
     "remove": "Remove",
     "clear": "Clear",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "noPermission": "You don't have permission to perform this action"
   },
   "auth": {
     "login": "Login",

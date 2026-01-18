@@ -21,7 +21,8 @@
     "remove": "Entfernen",
     "clear": "Leeren",
     "previous": "Zurück",
-    "next": "Weiter"
+    "next": "Weiter",
+    "noPermission": "Du hast keine Berechtigung für diese Aktion"
   },
   "auth": {
     "login": "Anmelden",

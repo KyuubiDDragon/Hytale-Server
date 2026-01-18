@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
 import {
   modsApi,
@@ -29,6 +30,7 @@ import {
 import { getLocale } from '@/i18n'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 // Helper to get localized string based on current locale
 function getLocalizedText(text: string | LocalizedString | undefined | null): string {
@@ -702,6 +704,7 @@ onMounted(loadData)
       </div>
       <div class="flex items-center gap-3">
         <button
+          v-if="authStore.hasAnyPermission('mods.install', 'plugins.install')"
           @click="triggerUpload"
           :disabled="uploading"
           class="px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -900,6 +903,7 @@ onMounted(loadData)
           <div class="flex items-center gap-3">
             <!-- Config Button -->
             <button
+              v-if="authStore.hasPermission(activeTab === 'mods' ? 'mods.config' : 'plugins.config')"
               @click="openConfigEditor(item)"
               class="p-2 text-gray-400 hover:text-blue-400 transition-colors"
               :title="t('mods.editConfig')"
@@ -912,6 +916,7 @@ onMounted(loadData)
 
             <!-- Delete Button -->
             <button
+              v-if="authStore.hasPermission(activeTab === 'mods' ? 'mods.delete' : 'plugins.delete')"
               @click="deleteItem(item)"
               class="p-2 text-gray-400 hover:text-status-error transition-colors"
               :title="t('common.delete')"
@@ -923,6 +928,7 @@ onMounted(loadData)
 
             <!-- Toggle Button -->
             <button
+              v-if="authStore.hasPermission(activeTab === 'mods' ? 'mods.toggle' : 'plugins.toggle')"
               @click="activeTab === 'mods' ? toggleMod(item) : togglePlugin(item)"
               :class="[
                 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
@@ -1030,7 +1036,7 @@ onMounted(loadData)
             </button>
             <!-- Install Button -->
             <button
-              v-if="!mod.installed"
+              v-if="!mod.installed && authStore.hasPermission('mods.install')"
               @click="installStoreMod(mod.id)"
               :disabled="installingMod === mod.id"
               class="px-4 py-2 bg-emerald-500 text-white font-medium rounded-lg hover:bg-emerald-400 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1045,7 +1051,7 @@ onMounted(loadData)
             </button>
             <!-- Uninstall Button -->
             <button
-              v-if="mod.installed"
+              v-if="mod.installed && authStore.hasPermission('mods.delete')"
               @click="uninstallStoreMod(mod.id)"
               :disabled="installingMod === mod.id || updatingMod === mod.id"
               class="px-4 py-2 bg-status-error/20 text-status-error font-medium rounded-lg hover:bg-status-error/30 transition-colors flex items-center gap-2 disabled:opacity-50"

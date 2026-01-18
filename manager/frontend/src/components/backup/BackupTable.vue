@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import type { BackupInfo } from '@/api/backup'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 defineProps<{
   backups: BackupInfo[]
@@ -53,6 +55,7 @@ function formatDate(isoString: string): string {
           <td>
             <div class="flex justify-end gap-2">
               <Button
+                v-if="authStore.hasPermission('backups.download')"
                 size="sm"
                 variant="secondary"
                 @click="emit('download', backup.id)"
@@ -62,6 +65,7 @@ function formatDate(isoString: string): string {
                 </svg>
               </Button>
               <Button
+                v-if="authStore.hasPermission('backups.restore')"
                 size="sm"
                 variant="primary"
                 @click="emit('restore', backup.id)"
@@ -71,6 +75,7 @@ function formatDate(isoString: string): string {
                 </svg>
               </Button>
               <Button
+                v-if="authStore.hasPermission('backups.delete')"
                 size="sm"
                 variant="danger"
                 @click="emit('delete', backup.id)"
