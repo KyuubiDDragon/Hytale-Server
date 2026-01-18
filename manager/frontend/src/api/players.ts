@@ -53,14 +53,28 @@ export interface ActionResponse {
   error?: string
 }
 
+// Death position from player file (with day info)
 export interface DeathPosition {
   id: string
-  timestamp: string
-  player: string
   world: string
-  x: number
-  y: number
-  z: number
+  day: number
+  position: {
+    x: number
+    y: number
+    z: number
+  }
+  rotation: {
+    pitch: number
+    yaw: number
+    roll: number
+  }
+}
+
+export interface DeathPositionsResponse {
+  success: boolean
+  player: string
+  positions: DeathPosition[]
+  count: number
 }
 
 export interface DeathPositionResponse {
@@ -188,13 +202,18 @@ export const playersApi = {
     return response.data
   },
 
+  async getDeathPositions(playerName: string): Promise<DeathPositionsResponse> {
+    const response = await api.get<DeathPositionsResponse>(`/players/${playerName}/deaths`)
+    return response.data
+  },
+
   async getLastDeathPosition(playerName: string): Promise<DeathPositionResponse> {
     const response = await api.get<DeathPositionResponse>(`/players/${playerName}/deaths/last`)
     return response.data
   },
 
-  async teleportToDeath(playerName: string): Promise<ActionResponse> {
-    const response = await api.post<ActionResponse>(`/players/${playerName}/teleport/death`)
+  async teleportToDeath(playerName: string, index?: number): Promise<ActionResponse> {
+    const response = await api.post<ActionResponse>(`/players/${playerName}/teleport/death`, { index })
     return response.data
   },
 
