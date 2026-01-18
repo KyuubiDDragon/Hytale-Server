@@ -131,7 +131,8 @@
     "showAll": "All",
     "showErrors": "Errors",
     "showWarnings": "Warnings",
-    "showInfo": "Info"
+    "showInfo": "Info",
+    "bypassWarning": "Warning: Console access allows executing all server commands, bypassing UI permission restrictions."
   },
   "backups": {
     "title": "Backup Management",

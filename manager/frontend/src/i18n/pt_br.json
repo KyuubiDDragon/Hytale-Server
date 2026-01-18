@@ -130,7 +130,8 @@
     "showAll": "Todos",
     "showErrors": "Erros",
     "showWarnings": "Avisos",
-    "showInfo": "Informações"
+    "showInfo": "Informações",
+    "bypassWarning": "Aviso: O acesso ao console permite executar todos os comandos do servidor, ignorando as restrições de permissão da UI."
   },
   "backups": {
     "title": "Gerenciamento de Backups",

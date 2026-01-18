@@ -131,7 +131,8 @@
     "showAll": "Alle",
     "showErrors": "Fehler",
     "showWarnings": "Warnungen",
-    "showInfo": "Info"
+    "showInfo": "Info",
+    "bypassWarning": "Warnung: Konsolenzugriff ermöglicht das Ausführen aller Server-Befehle und umgeht UI-Berechtigungseinschränkungen."
   },
   "backups": {
     "title": "Backup Verwaltung",
