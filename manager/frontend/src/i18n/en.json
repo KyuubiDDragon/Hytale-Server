@@ -21,7 +21,8 @@
     "remove": "Remove",
     "clear": "Clear",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "noPermission": "You don't have permission to perform this action"
   },
   "auth": {
     "login": "Login",
@@ -53,7 +54,8 @@
     "scheduler": "Scheduler",
     "statistics": "Statistics",
     "assets": "Asset Explorer",
-    "chat": "Chat Log"
+    "chat": "Chat Log",
+    "roles": "Roles"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -129,7 +131,8 @@
     "showAll": "All",
     "showErrors": "Errors",
     "showWarnings": "Warnings",
-    "showInfo": "Info"
+    "showInfo": "Info",
+    "bypassWarning": "Warning: Console access allows executing all server commands, bypassing UI permission restrictions."
   },
   "backups": {
     "title": "Backup Management",
@@ -711,6 +714,156 @@
     "notInstalled": "EasyWebMap Not Installed",
     "notInstalledDesc": "The EasyWebMap mod is not installed. Install it from the Mod Store to enable the live web map feature.",
     "goToModStore": "Go to Mod Store"
+  },
+  "roles": {
+    "title": "Role Management",
+    "subtitle": "Manage user roles and permissions",
+    "create": "Create Role",
+    "createRole": "Create Role",
+    "edit": "Edit Role",
+    "editRole": "Edit Role",
+    "delete": "Delete Role",
+    "name": "Role Name",
+    "namePlaceholder": "Enter role name",
+    "nameRequired": "Role name is required",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter role description",
+    "noDescription": "No description",
+    "color": "Color",
+    "permissions": "Permissions",
+    "permissionCount": "{count} permissions",
+    "permissionsSelected": "permissions selected",
+    "noPermissionsAvailable": "No permissions available",
+    "system": "System",
+    "systemRole": "System Role",
+    "systemRoleNote": "System roles cannot be renamed or deleted. Only permissions can be modified.",
+    "customRole": "Custom Role",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "confirmDelete": "Are you sure you want to delete the role \"{name}\"?",
+    "cannotDeleteSystem": "System roles cannot be deleted",
+    "noRoles": "No roles found"
+  },
+  "permissionCategories": {
+    "dashboard": "Dashboard",
+    "server": "Server",
+    "console": "Console",
+    "performance": "Performance",
+    "players": "Players",
+    "chat": "Chat",
+    "backups": "Backups",
+    "scheduler": "Scheduler",
+    "worlds": "Worlds",
+    "mods": "Mods",
+    "plugins": "Plugins",
+    "config": "Configuration",
+    "assets": "Assets",
+    "users": "Users",
+    "roles": "Roles",
+    "activity": "Activity",
+    "hytale_auth": "Hytale Auth",
+    "settings": "Settings"
+  },
+  "permissionDescriptions": {
+    "dashboard": {
+      "view": "View dashboard",
+      "stats": "View dashboard statistics"
+    },
+    "server": {
+      "view_status": "View server status",
+      "start": "Start server",
+      "stop": "Stop server",
+      "restart": "Restart server",
+      "quick_settings": "Edit quick settings"
+    },
+    "console": {
+      "view": "View console",
+      "execute": "Execute console commands"
+    },
+    "performance": {
+      "view": "View performance metrics"
+    },
+    "players": {
+      "view": "View player list",
+      "edit": "Edit player data",
+      "kick": "Kick players",
+      "ban": "Ban players",
+      "unban": "Unban players",
+      "whitelist": "Manage whitelist",
+      "op": "Manage operator status",
+      "permissions": "Manage player permissions",
+      "teleport": "Teleport players",
+      "kill": "Kill players",
+      "respawn": "Respawn players",
+      "gamemode": "Change game mode",
+      "give": "Give items",
+      "heal": "Heal players",
+      "effects": "Manage effects",
+      "clear_inventory": "Clear inventory",
+      "message": "Send messages"
+    },
+    "chat": {
+      "view": "View chat",
+      "send": "Send chat messages"
+    },
+    "backups": {
+      "view": "View backups",
+      "create": "Create backups",
+      "restore": "Restore backups",
+      "delete": "Delete backups",
+      "download": "Download backups"
+    },
+    "scheduler": {
+      "view": "View scheduler",
+      "edit": "Edit scheduler"
+    },
+    "worlds": {
+      "view": "View worlds",
+      "manage": "Manage worlds"
+    },
+    "mods": {
+      "view": "View mods",
+      "install": "Install mods",
+      "delete": "Delete mods",
+      "config": "Edit mod configuration",
+      "toggle": "Enable/disable mods"
+    },
+    "plugins": {
+      "view": "View plugins",
+      "install": "Install plugins",
+      "delete": "Delete plugins",
+      "config": "Edit plugin configuration",
+      "toggle": "Enable/disable plugins"
+    },
+    "config": {
+      "view": "View configuration",
+      "edit": "Edit configuration"
+    },
+    "assets": {
+      "view": "View assets",
+      "manage": "Manage assets"
+    },
+    "users": {
+      "view": "View users",
+      "create": "Create users",
+      "edit": "Edit users",
+      "delete": "Delete users"
+    },
+    "roles": {
+      "view": "View roles",
+      "manage": "Manage roles"
+    },
+    "activity": {
+      "view": "View activity log",
+      "clear": "Clear activity log"
+    },
+    "hytale_auth": {
+      "manage": "Manage Hytale authentication"
+    },
+    "settings": {
+      "view": "View settings",
+      "edit": "Edit settings"
+    }
   },
   "assets": {
     "title": "Asset Explorer",

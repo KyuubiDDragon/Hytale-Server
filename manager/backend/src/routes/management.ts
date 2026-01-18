@@ -3,6 +3,7 @@ import { readFile, writeFile, readdir, stat, unlink, realpath } from 'fs/promise
 import path from 'path';
 import multer from 'multer';
 import { authMiddleware } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permissions.js';
 import { config } from '../config.js';
 import { logActivity, getActivityLog, clearActivityLog, type ActivityLogEntry } from '../services/activityLog.js';
 import type { AuthenticatedRequest } from '../types/index.js';
@@ -114,7 +115,7 @@ async function writeWhitelist(data: WhitelistData): Promise<void> {
 }
 
 // GET /api/management/whitelist
-router.get('/whitelist', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/whitelist', authMiddleware, requirePermission('players.whitelist'), async (_req: Request, res: Response) => {
   try {
     const data = await readWhitelist();
     res.json(data);
@@ -124,7 +125,7 @@ router.get('/whitelist', authMiddleware, async (_req: Request, res: Response) =>
 });
 
 // PUT /api/management/whitelist/enabled
-router.put('/whitelist/enabled', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/whitelist/enabled', authMiddleware, requirePermission('players.whitelist'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { enabled } = req.body;
     const username = req.user || 'system';
@@ -143,7 +144,7 @@ router.put('/whitelist/enabled', authMiddleware, async (req: AuthenticatedReques
 });
 
 // POST /api/management/whitelist/add
-router.post('/whitelist/add', authMiddleware, async (req: Request, res: Response) => {
+router.post('/whitelist/add', authMiddleware, requirePermission('players.whitelist'), async (req: Request, res: Response) => {
   try {
     const { player } = req.body;
     if (!player || typeof player !== 'string') {
@@ -162,7 +163,7 @@ router.post('/whitelist/add', authMiddleware, async (req: Request, res: Response
 });
 
 // DELETE /api/management/whitelist/:player
-router.delete('/whitelist/:player', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/whitelist/:player', authMiddleware, requirePermission('players.whitelist'), async (req: Request, res: Response) => {
   try {
     const { player } = req.params;
     const data = await readWhitelist();
@@ -248,7 +249,7 @@ async function readBans(): Promise<BanEntry[]> {
 }
 
 // GET /api/management/bans
-router.get('/bans', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/bans', authMiddleware, requirePermission('players.ban'), async (_req: Request, res: Response) => {
   try {
     const bans = await readBans();
     res.json({ bans });
@@ -258,7 +259,7 @@ router.get('/bans', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // POST /api/management/bans/add - Stores name mapping, server command handles actual ban
-router.post('/bans/add', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/bans/add', authMiddleware, requirePermission('players.ban'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { player, reason } = req.body;
     if (!player || typeof player !== 'string') {
@@ -321,7 +322,7 @@ router.post('/bans/add', authMiddleware, async (req: AuthenticatedRequest, res: 
 });
 
 // DELETE /api/management/bans/:player - Execute unban command (works online and offline)
-router.delete('/bans/:player', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/bans/:player', authMiddleware, requirePermission('players.unban'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { player } = req.params;
 
@@ -520,7 +521,7 @@ async function readPermissionsDisplay(): Promise<PermissionsDisplayData> {
 }
 
 // GET /api/management/permissions
-router.get('/permissions', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/permissions', authMiddleware, requirePermission('players.permissions'), async (_req: Request, res: Response) => {
   try {
     const data = await readPermissionsDisplay();
     res.json(data);
@@ -530,7 +531,7 @@ router.get('/permissions', authMiddleware, async (_req: Request, res: Response) 
 });
 
 // POST /api/management/permissions/users
-router.post('/permissions/users', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/permissions/users', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, uuid, groups } = req.body;
     const username = req.user || 'system';
@@ -575,7 +576,7 @@ router.post('/permissions/users', authMiddleware, async (req: AuthenticatedReque
 });
 
 // DELETE /api/management/permissions/users/:identifier (can be UUID or name)
-router.delete('/permissions/users/:identifier', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/permissions/users/:identifier', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { identifier } = req.params;
     const username = req.user || 'system';
@@ -610,7 +611,7 @@ router.delete('/permissions/users/:identifier', authMiddleware, async (req: Auth
 });
 
 // POST /api/management/permissions/groups
-router.post('/permissions/groups', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/permissions/groups', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, permissions } = req.body;
     const username = req.user || 'system';
@@ -635,7 +636,7 @@ router.post('/permissions/groups', authMiddleware, async (req: AuthenticatedRequ
 });
 
 // DELETE /api/management/permissions/groups/:name
-router.delete('/permissions/groups/:name', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/permissions/groups/:name', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name } = req.params;
     const username = req.user || 'system';
@@ -793,7 +794,7 @@ async function scanWorldsInPath(worldsPath: string, seenRealPaths: Set<string>):
 }
 
 // GET /api/management/worlds
-router.get('/worlds', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/worlds', authMiddleware, requirePermission('worlds.view'), async (_req: Request, res: Response) => {
   try {
     let worlds: WorldInfo[] = [];
     const checkedPaths: string[] = [];
@@ -858,7 +859,7 @@ async function scanDirectory(dirPath: string, type: 'mod' | 'plugin'): Promise<M
 }
 
 // GET /api/management/mods
-router.get('/mods', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/mods', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const mods = await scanDirectory(config.modsPath, 'mod');
     res.json({ mods, path: config.modsPath });
@@ -868,7 +869,7 @@ router.get('/mods', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // GET /api/management/plugins
-router.get('/plugins', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/plugins', authMiddleware, requirePermission('plugins.view'), async (_req: Request, res: Response) => {
   try {
     const plugins = await scanDirectory(config.pluginsPath, 'plugin');
     res.json({ plugins, path: config.pluginsPath });
@@ -878,7 +879,7 @@ router.get('/plugins', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // PUT /api/management/mods/:filename/toggle
-router.put('/mods/:filename/toggle', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/mods/:filename/toggle', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { filename } = req.params;
     const username = req.user || 'system';
@@ -905,7 +906,7 @@ router.put('/mods/:filename/toggle', authMiddleware, async (req: AuthenticatedRe
 });
 
 // PUT /api/management/plugins/:filename/toggle
-router.put('/plugins/:filename/toggle', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/plugins/:filename/toggle', authMiddleware, requirePermission('plugins.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { filename } = req.params;
     const username = req.user || 'system';
@@ -956,14 +957,14 @@ export function addStatsEntry(entry: Omit<StatsEntry, 'timestamp'>): void {
 }
 
 // GET /api/management/stats/history
-router.get('/stats/history', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/stats/history', authMiddleware, requirePermission('performance.view'), async (_req: Request, res: Response) => {
   res.json({ history: statsHistory });
 });
 
 // ============== FILE UPLOAD FOR MODS & PLUGINS ==============
 
 // POST /api/management/mods/upload
-router.post('/mods/upload', authMiddleware, uploadMod.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/mods/upload', authMiddleware, requirePermission('mods.install'), uploadMod.single('file'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
@@ -990,7 +991,7 @@ router.post('/mods/upload', authMiddleware, uploadMod.single('file'), async (req
 });
 
 // POST /api/management/plugins/upload
-router.post('/plugins/upload', authMiddleware, uploadPlugin.single('file'), async (req: AuthenticatedRequest, res: Response) => {
+router.post('/plugins/upload', authMiddleware, requirePermission('plugins.install'), uploadPlugin.single('file'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: 'No file uploaded' });
@@ -1017,7 +1018,7 @@ router.post('/plugins/upload', authMiddleware, uploadPlugin.single('file'), asyn
 });
 
 // DELETE /api/management/mods/:filename
-router.delete('/mods/:filename', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/mods/:filename', authMiddleware, requirePermission('mods.delete'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { filename } = req.params;
     const filePath = path.join(config.modsPath, filename);
@@ -1039,7 +1040,7 @@ router.delete('/mods/:filename', authMiddleware, async (req: AuthenticatedReques
 });
 
 // DELETE /api/management/plugins/:filename
-router.delete('/plugins/:filename', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/plugins/:filename', authMiddleware, requirePermission('plugins.delete'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { filename } = req.params;
     const filePath = path.join(config.pluginsPath, filename);
@@ -1110,7 +1111,7 @@ async function findConfigDirs(baseDir: string, modName: string): Promise<string[
 }
 
 // GET /api/management/mods/:filename/configs
-router.get('/mods/:filename/configs', authMiddleware, async (req: Request, res: Response) => {
+router.get('/mods/:filename/configs', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const { filename } = req.params;
     const modName = filename.replace(/\.(jar|zip|disabled)$/i, '');
@@ -1178,7 +1179,7 @@ router.get('/mods/:filename/configs', authMiddleware, async (req: Request, res: 
 });
 
 // GET /api/management/plugins/:filename/configs
-router.get('/plugins/:filename/configs', authMiddleware, async (req: Request, res: Response) => {
+router.get('/plugins/:filename/configs', authMiddleware, requirePermission('plugins.view'), async (req: Request, res: Response) => {
   try {
     const { filename } = req.params;
     const pluginName = filename.replace(/\.(jar|zip|disabled)$/i, '');
@@ -1245,7 +1246,7 @@ router.get('/plugins/:filename/configs', authMiddleware, async (req: Request, re
 });
 
 // GET /api/management/config/read
-router.get('/config/read', authMiddleware, async (req: Request, res: Response) => {
+router.get('/config/read', authMiddleware, requirePermission('config.view'), async (req: Request, res: Response) => {
   try {
     const configPath = req.query.path as string;
     if (!configPath) {
@@ -1271,7 +1272,7 @@ router.get('/config/read', authMiddleware, async (req: Request, res: Response) =
 });
 
 // PUT /api/management/config/write
-router.put('/config/write', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/config/write', authMiddleware, requirePermission('config.edit'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { path: configPath, content } = req.body;
     if (!configPath || content === undefined) {
@@ -1309,7 +1310,7 @@ router.put('/config/write', authMiddleware, async (req: AuthenticatedRequest, re
 // ============== ACTIVITY LOG ==============
 
 // GET /api/management/activity
-router.get('/activity', authMiddleware, async (req: Request, res: Response) => {
+router.get('/activity', authMiddleware, requirePermission('activity.view'), async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
@@ -1324,7 +1325,7 @@ router.get('/activity', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // DELETE /api/management/activity
-router.delete('/activity', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/activity', authMiddleware, requirePermission('activity.clear'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     await clearActivityLog();
 
@@ -1346,7 +1347,7 @@ router.delete('/activity', authMiddleware, async (req: AuthenticatedRequest, res
 // ============== MOD STORE ==============
 
 // GET /api/management/modstore
-router.get('/modstore', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modstore', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const mods = await getAvailableMods();
     res.json({ mods });
@@ -1356,7 +1357,7 @@ router.get('/modstore', authMiddleware, async (_req: Request, res: Response) => 
 });
 
 // GET /api/management/modstore/:modId/release
-router.get('/modstore/:modId/release', authMiddleware, async (req: Request, res: Response) => {
+router.get('/modstore/:modId/release', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const { modId } = req.params;
     const mods = await getAvailableMods();
@@ -1402,7 +1403,7 @@ router.get('/modstore/:modId/release', authMiddleware, async (req: Request, res:
 });
 
 // POST /api/management/modstore/:modId/install
-router.post('/modstore/:modId/install', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/modstore/:modId/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { modId } = req.params;
     const result = await installMod(modId);
@@ -1425,7 +1426,7 @@ router.post('/modstore/:modId/install', authMiddleware, async (req: Authenticate
 });
 
 // DELETE /api/management/modstore/:modId/uninstall
-router.delete('/modstore/:modId/uninstall', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/modstore/:modId/uninstall', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { modId } = req.params;
     const result = await uninstallMod(modId);
@@ -1448,7 +1449,7 @@ router.delete('/modstore/:modId/uninstall', authMiddleware, async (req: Authenti
 });
 
 // POST /api/management/modstore/:modId/update
-router.post('/modstore/:modId/update', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/modstore/:modId/update', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { modId } = req.params;
     const result = await updateMod(modId);
@@ -1471,7 +1472,7 @@ router.post('/modstore/:modId/update', authMiddleware, async (req: Authenticated
 });
 
 // POST /api/management/modstore/refresh - Refresh the external mod registry
-router.post('/modstore/refresh', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/modstore/refresh', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
   try {
     refreshRegistry();
     const mods = await getAvailableMods();
@@ -1482,7 +1483,7 @@ router.post('/modstore/refresh', authMiddleware, async (_req: Request, res: Resp
 });
 
 // GET /api/management/modstore/info - Get registry info
-router.get('/modstore/info', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modstore/info', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     res.json(getRegistryInfo());
   } catch (error) {
@@ -1527,7 +1528,7 @@ interface WorldConfig {
 // Note: /worlds route is defined earlier in this file with improved world scanning
 
 // GET /api/management/worlds/:worldName/config - Get world config
-router.get('/worlds/:worldName/config', authMiddleware, async (req: Request, res: Response) => {
+router.get('/worlds/:worldName/config', authMiddleware, requirePermission('worlds.view'), async (req: Request, res: Response) => {
   try {
     const { worldName } = req.params;
 
@@ -1601,7 +1602,7 @@ router.get('/worlds/:worldName/config', authMiddleware, async (req: Request, res
 });
 
 // PUT /api/management/worlds/:worldName/config - Update world config
-router.put('/worlds/:worldName/config', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/worlds/:worldName/config', authMiddleware, requirePermission('worlds.manage'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { worldName } = req.params;
     const updates = req.body;
@@ -1710,7 +1711,7 @@ router.put('/worlds/:worldName/config', authMiddleware, async (req: Authenticate
 });
 
 // GET /api/management/worlds/:worldName/files/:filePath - Read any JSON file in a world
-router.get('/worlds/:worldName/files/*', authMiddleware, async (req: Request, res: Response) => {
+router.get('/worlds/:worldName/files/*', authMiddleware, requirePermission('worlds.view'), async (req: Request, res: Response) => {
   try {
     const { worldName } = req.params;
     const filePath = req.params[0]; // The wildcard part (e.g., "resources/Time.json")
@@ -1773,7 +1774,7 @@ router.get('/worlds/:worldName/files/*', authMiddleware, async (req: Request, re
 });
 
 // PUT /api/management/worlds/:worldName/files/:filePath - Update any JSON file in a world
-router.put('/worlds/:worldName/files/*', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.put('/worlds/:worldName/files/*', authMiddleware, requirePermission('worlds.manage'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { worldName } = req.params;
     const filePath = req.params[0];
@@ -1861,7 +1862,7 @@ router.put('/worlds/:worldName/files/*', authMiddleware, async (req: Authenticat
 // ============== MODTALE INTEGRATION ==============
 
 // GET /api/management/modtale/status - Check Modtale API status
-router.get('/modtale/status', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modtale/status', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const status = await checkModtaleStatus();
     res.json(status);
@@ -1871,7 +1872,7 @@ router.get('/modtale/status', authMiddleware, async (_req: Request, res: Respons
 });
 
 // GET /api/management/modtale/search - Search mods on Modtale
-router.get('/modtale/search', authMiddleware, async (req: Request, res: Response) => {
+router.get('/modtale/search', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const {
       search,
@@ -1907,7 +1908,7 @@ router.get('/modtale/search', authMiddleware, async (req: Request, res: Response
 });
 
 // GET /api/management/modtale/projects/:projectId - Get project details
-router.get('/modtale/projects/:projectId', authMiddleware, async (req: Request, res: Response) => {
+router.get('/modtale/projects/:projectId', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
 
@@ -1931,7 +1932,7 @@ router.get('/modtale/projects/:projectId', authMiddleware, async (req: Request, 
 });
 
 // POST /api/management/modtale/install - Install mod from Modtale
-router.post('/modtale/install', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/modtale/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { projectId, versionId } = req.body;
 
@@ -1972,7 +1973,7 @@ router.post('/modtale/install', authMiddleware, async (req: AuthenticatedRequest
 });
 
 // GET /api/management/modtale/featured - Get featured/popular mods
-router.get('/modtale/featured', authMiddleware, async (req: Request, res: Response) => {
+router.get('/modtale/featured', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
     const mods = await getFeaturedMods(limit);
@@ -1983,7 +1984,7 @@ router.get('/modtale/featured', authMiddleware, async (req: Request, res: Respon
 });
 
 // GET /api/management/modtale/recent - Get recently updated mods
-router.get('/modtale/recent', authMiddleware, async (req: Request, res: Response) => {
+router.get('/modtale/recent', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
     const mods = await getRecentMods(limit);
@@ -1994,7 +1995,7 @@ router.get('/modtale/recent', authMiddleware, async (req: Request, res: Response
 });
 
 // GET /api/management/modtale/tags - Get available tags
-router.get('/modtale/tags', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modtale/tags', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const tags = await modtaleGetTags();
     res.json({ tags });
@@ -2004,7 +2005,7 @@ router.get('/modtale/tags', authMiddleware, async (_req: Request, res: Response)
 });
 
 // GET /api/management/modtale/classifications - Get available classifications
-router.get('/modtale/classifications', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modtale/classifications', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const classifications = await modtaleGetClassifications();
     res.json({ classifications });
@@ -2014,7 +2015,7 @@ router.get('/modtale/classifications', authMiddleware, async (_req: Request, res
 });
 
 // GET /api/management/modtale/game-versions - Get supported game versions
-router.get('/modtale/game-versions', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modtale/game-versions', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const gameVersions = await modtaleGetGameVersions();
     res.json({ gameVersions });
@@ -2024,7 +2025,7 @@ router.get('/modtale/game-versions', authMiddleware, async (_req: Request, res: 
 });
 
 // POST /api/management/modtale/refresh - Clear Modtale cache
-router.post('/modtale/refresh', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/modtale/refresh', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
   try {
     clearModtaleCache();
     res.json({ success: true, message: 'Modtale cache cleared' });
@@ -2034,7 +2035,7 @@ router.post('/modtale/refresh', authMiddleware, async (_req: Request, res: Respo
 });
 
 // GET /api/management/modtale/installed - Get installed Modtale mods
-router.get('/modtale/installed', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/modtale/installed', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const installed = await getInstalledModtaleInfo();
     res.json({ installed });
@@ -2044,7 +2045,7 @@ router.get('/modtale/installed', authMiddleware, async (_req: Request, res: Resp
 });
 
 // DELETE /api/management/modtale/uninstall/:projectId - Uninstall a Modtale mod
-router.delete('/modtale/uninstall/:projectId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/modtale/uninstall/:projectId', authMiddleware, requirePermission('mods.delete'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { projectId } = req.params;
 
@@ -2076,7 +2077,7 @@ router.delete('/modtale/uninstall/:projectId', authMiddleware, async (req: Authe
 // ============== STACKMART INTEGRATION ==============
 
 // GET /api/management/stackmart/status - Check StackMart API status
-router.get('/stackmart/status', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/stackmart/status', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const status = await checkStackMartStatus();
     res.json(status);
@@ -2086,7 +2087,7 @@ router.get('/stackmart/status', authMiddleware, async (_req: Request, res: Respo
 });
 
 // GET /api/management/stackmart/search - Search resources on StackMart
-router.get('/stackmart/search', authMiddleware, async (req: Request, res: Response) => {
+router.get('/stackmart/search', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const {
       search,
@@ -2118,7 +2119,7 @@ router.get('/stackmart/search', authMiddleware, async (req: Request, res: Respon
 });
 
 // GET /api/management/stackmart/resources/:resourceId - Get resource details
-router.get('/stackmart/resources/:resourceId', authMiddleware, async (req: Request, res: Response) => {
+router.get('/stackmart/resources/:resourceId', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const { resourceId } = req.params;
 
@@ -2140,7 +2141,7 @@ router.get('/stackmart/resources/:resourceId', authMiddleware, async (req: Reque
 });
 
 // POST /api/management/stackmart/install - Install resource from StackMart
-router.post('/stackmart/install', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/stackmart/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { resourceId } = req.body;
 
@@ -2170,7 +2171,7 @@ router.post('/stackmart/install', authMiddleware, async (req: AuthenticatedReque
 });
 
 // GET /api/management/stackmart/popular - Get popular resources
-router.get('/stackmart/popular', authMiddleware, async (req: Request, res: Response) => {
+router.get('/stackmart/popular', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
     const resources = await getPopularResources(limit);
@@ -2181,7 +2182,7 @@ router.get('/stackmart/popular', authMiddleware, async (req: Request, res: Respo
 });
 
 // GET /api/management/stackmart/recent - Get recent resources
-router.get('/stackmart/recent', authMiddleware, async (req: Request, res: Response) => {
+router.get('/stackmart/recent', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
     const resources = await getRecentResources(limit);
@@ -2192,7 +2193,7 @@ router.get('/stackmart/recent', authMiddleware, async (req: Request, res: Respon
 });
 
 // GET /api/management/stackmart/categories - Get available categories
-router.get('/stackmart/categories', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/stackmart/categories', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const categories = await stackmartGetCategories();
     res.json({ categories });
@@ -2202,7 +2203,7 @@ router.get('/stackmart/categories', authMiddleware, async (_req: Request, res: R
 });
 
 // POST /api/management/stackmart/refresh - Clear StackMart cache
-router.post('/stackmart/refresh', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/stackmart/refresh', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
   try {
     clearStackMartCache();
     res.json({ success: true, message: 'StackMart cache cleared' });
@@ -2212,7 +2213,7 @@ router.post('/stackmart/refresh', authMiddleware, async (_req: Request, res: Res
 });
 
 // GET /api/management/stackmart/installed - Get installed StackMart resources
-router.get('/stackmart/installed', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/stackmart/installed', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
   try {
     const installed = await getInstalledStackMartInfo();
     res.json({ installed });
@@ -2222,7 +2223,7 @@ router.get('/stackmart/installed', authMiddleware, async (_req: Request, res: Re
 });
 
 // DELETE /api/management/stackmart/uninstall/:resourceId - Uninstall a StackMart resource
-router.delete('/stackmart/uninstall/:resourceId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/stackmart/uninstall/:resourceId', authMiddleware, requirePermission('mods.delete'), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { resourceId } = req.params;
 

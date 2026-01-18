@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
 import {
   modsApi,
@@ -29,6 +30,7 @@ import {
 import { getLocale } from '@/i18n'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 // Helper to get localized string based on current locale
 function getLocalizedText(text: string | LocalizedString | undefined | null): string {
@@ -128,20 +130,34 @@ const stackmartInstalled = ref<Record<string, StackMartInstalledInfo>>({})
 async function loadData() {
   loading.value = true
   error.value = ''
-  try {
-    const [modsData, pluginsData] = await Promise.all([
-      modsApi.get(),
-      pluginsApi.get(),
-    ])
-    mods.value = modsData.mods
-    modsPath.value = modsData.path
-    plugins.value = pluginsData.plugins
-    pluginsPath.value = pluginsData.path
-  } catch (e) {
-    error.value = t('errors.connectionFailed')
-  } finally {
-    loading.value = false
+
+  // Load mods and plugins separately to handle permission errors gracefully
+  const results = await Promise.allSettled([
+    authStore.hasPermission('mods.view') ? modsApi.get() : Promise.reject('no-permission'),
+    authStore.hasPermission('plugins.view') ? pluginsApi.get() : Promise.reject('no-permission'),
+  ])
+
+  // Handle mods result
+  if (results[0].status === 'fulfilled') {
+    mods.value = results[0].value.mods
+    modsPath.value = results[0].value.path
   }
+
+  // Handle plugins result
+  if (results[1].status === 'fulfilled') {
+    plugins.value = results[1].value.plugins
+    pluginsPath.value = results[1].value.path
+  }
+
+  // Only show error if both failed (and not due to missing permissions)
+  const modsFailedWithError = results[0].status === 'rejected' && results[0].reason !== 'no-permission'
+  const pluginsFailedWithError = results[1].status === 'rejected' && results[1].reason !== 'no-permission'
+
+  if (modsFailedWithError && pluginsFailedWithError) {
+    error.value = t('errors.connectionFailed')
+  }
+
+  loading.value = false
 }
 
 async function loadStoreData() {
@@ -702,6 +718,7 @@ onMounted(loadData)
       </div>
       <div class="flex items-center gap-3">
         <button
+          v-if="authStore.hasAnyPermission('mods.install', 'plugins.install')"
           @click="triggerUpload"
           :disabled="uploading"
           class="px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -900,6 +917,7 @@ onMounted(loadData)
           <div class="flex items-center gap-3">
             <!-- Config Button -->
             <button
+              v-if="authStore.hasPermission(activeTab === 'mods' ? 'mods.config' : 'plugins.config')"
               @click="openConfigEditor(item)"
               class="p-2 text-gray-400 hover:text-blue-400 transition-colors"
               :title="t('mods.editConfig')"
@@ -912,6 +930,7 @@ onMounted(loadData)
 
             <!-- Delete Button -->
             <button
+              v-if="authStore.hasPermission(activeTab === 'mods' ? 'mods.delete' : 'plugins.delete')"
               @click="deleteItem(item)"
               class="p-2 text-gray-400 hover:text-status-error transition-colors"
               :title="t('common.delete')"
@@ -923,6 +942,7 @@ onMounted(loadData)
 
             <!-- Toggle Button -->
             <button
+              v-if="authStore.hasPermission(activeTab === 'mods' ? 'mods.toggle' : 'plugins.toggle')"
               @click="activeTab === 'mods' ? toggleMod(item) : togglePlugin(item)"
               :class="[
                 'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
@@ -1015,7 +1035,7 @@ onMounted(loadData)
           <div class="flex items-center gap-2">
             <!-- Update Button (only if installed and has update) -->
             <button
-              v-if="mod.installed && mod.hasUpdate"
+              v-if="mod.installed && mod.hasUpdate && authStore.hasPermission('mods.install')"
               @click="updateStoreMod(mod.id)"
               :disabled="updatingMod === mod.id"
               class="px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1030,7 +1050,7 @@ onMounted(loadData)
             </button>
             <!-- Install Button -->
             <button
-              v-if="!mod.installed"
+              v-if="!mod.installed && authStore.hasPermission('mods.install')"
               @click="installStoreMod(mod.id)"
               :disabled="installingMod === mod.id"
               class="px-4 py-2 bg-emerald-500 text-white font-medium rounded-lg hover:bg-emerald-400 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1045,7 +1065,7 @@ onMounted(loadData)
             </button>
             <!-- Uninstall Button -->
             <button
-              v-if="mod.installed"
+              v-if="mod.installed && authStore.hasPermission('mods.delete')"
               @click="uninstallStoreMod(mod.id)"
               :disabled="installingMod === mod.id || updatingMod === mod.id"
               class="px-4 py-2 bg-status-error/20 text-status-error font-medium rounded-lg hover:bg-status-error/30 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1249,7 +1269,7 @@ onMounted(loadData)
             <div class="flex items-center gap-2 shrink-0 ml-4">
               <!-- Uninstall Button (if installed) -->
               <button
-                v-if="isModtaleInstalled(mod.id)"
+                v-if="isModtaleInstalled(mod.id) && authStore.hasPermission('mods.delete')"
                 @click.stop="uninstallFromModtale(mod)"
                 :disabled="modtaleUninstallingId === mod.id"
                 class="px-4 py-2 bg-status-error/20 text-status-error font-medium rounded-lg hover:bg-status-error/30 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1264,7 +1284,7 @@ onMounted(loadData)
               </button>
               <!-- Reinstall Button (if installed) -->
               <button
-                v-if="isModtaleInstalled(mod.id)"
+                v-if="isModtaleInstalled(mod.id) && authStore.hasPermission('mods.install')"
                 @click.stop="installFromModtale(mod)"
                 :disabled="modtaleInstallingId === mod.id"
                 class="px-4 py-2 bg-hytale-orange/20 text-hytale-orange font-medium rounded-lg hover:bg-hytale-orange/30 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1279,7 +1299,7 @@ onMounted(loadData)
               </button>
               <!-- Install Button (if not installed) -->
               <button
-                v-if="!isModtaleInstalled(mod.id)"
+                v-if="!isModtaleInstalled(mod.id) && authStore.hasPermission('mods.install')"
                 @click.stop="installFromModtale(mod)"
                 :disabled="modtaleInstallingId === mod.id"
                 class="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1469,6 +1489,7 @@ onMounted(loadData)
                     </span>
                   </div>
                   <button
+                    v-if="authStore.hasPermission('mods.install')"
                     @click="modtaleApi.install(modtaleDetailProject!.id, version.versionNumber).then(() => { loadData(); showModtaleDetail = false; })"
                     class="px-3 py-1 bg-cyan-500 text-white rounded hover:bg-cyan-400 transition-colors text-sm"
                   >
@@ -1664,7 +1685,7 @@ onMounted(loadData)
             <div class="flex items-center gap-2 shrink-0 ml-4">
               <!-- Uninstall Button (if installed) -->
               <button
-                v-if="isStackMartInstalled(resource.id)"
+                v-if="isStackMartInstalled(resource.id) && authStore.hasPermission('mods.delete')"
                 @click.stop="uninstallFromStackMart(resource)"
                 :disabled="stackmartUninstallingId === resource.id"
                 class="px-4 py-2 bg-status-error/20 text-status-error font-medium rounded-lg hover:bg-status-error/30 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1679,7 +1700,7 @@ onMounted(loadData)
               </button>
               <!-- Reinstall Button (if installed) -->
               <button
-                v-if="isStackMartInstalled(resource.id)"
+                v-if="isStackMartInstalled(resource.id) && authStore.hasPermission('mods.install')"
                 @click.stop="installFromStackMart(resource)"
                 :disabled="stackmartInstallingId === resource.id"
                 class="px-4 py-2 bg-amber-500/20 text-amber-400 font-medium rounded-lg hover:bg-amber-500/30 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1694,7 +1715,7 @@ onMounted(loadData)
               </button>
               <!-- Install Button (if not installed) -->
               <button
-                v-if="!isStackMartInstalled(resource.id)"
+                v-if="!isStackMartInstalled(resource.id) && authStore.hasPermission('mods.install')"
                 @click.stop="installFromStackMart(resource)"
                 :disabled="stackmartInstallingId === resource.id"
                 class="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-400 hover:to-orange-400 transition-colors flex items-center gap-2 disabled:opacity-50"
@@ -1884,7 +1905,7 @@ onMounted(loadData)
             </div>
 
             <!-- Install Button -->
-            <div class="flex justify-end">
+            <div v-if="authStore.hasPermission('mods.install')" class="flex justify-end">
               <button
                 @click="installFromStackMart(stackmartDetailResource); showStackMartDetail = false;"
                 class="px-6 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-400 hover:to-orange-400 transition-colors flex items-center gap-2"

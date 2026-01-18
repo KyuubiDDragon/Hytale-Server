@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { usersApi, type User } from '@/api/users'
+import { rolesApi, type Role } from '@/api/roles'
 import Card from '@/components/ui/Card.vue'
 
 const { t } = useI18n()
 const authStore = useAuthStore()
 
 const users = ref<User[]>([])
+const roles = ref<Role[]>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -18,8 +20,42 @@ const showEditModal = ref(false)
 const editingUser = ref<User | null>(null)
 const formUsername = ref('')
 const formPassword = ref('')
-const formRole = ref<User['role']>('viewer')
+const formRoleId = ref<string>('')
 const formError = ref('')
+
+// Helper to get default role ID (viewer role or first role)
+const defaultRoleId = computed(() => {
+  const viewerRole = roles.value.find(r => r.name.toLowerCase() === 'viewer')
+  return viewerRole?.id || roles.value[0]?.id || ''
+})
+
+// Helper to get role by ID
+function getRoleById(roleId: string): Role | undefined {
+  return roles.value.find(r => r.id === roleId)
+}
+
+// Helper to get role name for display
+function getRoleName(roleId: string): string {
+  const role = getRoleById(roleId)
+  return role?.name || roleId
+}
+
+// Helper to get role color for badge styling
+function getRoleBadgeStyle(roleId: string): { bg: string; text: string } {
+  const role = getRoleById(roleId)
+  if (role?.color) {
+    return {
+      bg: `${role.color}33`, // 20% opacity
+      text: role.color
+    }
+  }
+  // Default fallback colors based on role name
+  const name = role?.name?.toLowerCase() || ''
+  if (name === 'admin') return { bg: 'rgba(239, 68, 68, 0.2)', text: '#ef4444' }
+  if (name === 'moderator') return { bg: 'rgba(251, 146, 60, 0.2)', text: '#fb923c' }
+  if (name === 'operator') return { bg: 'rgba(59, 130, 246, 0.2)', text: '#3b82f6' }
+  return { bg: 'rgba(107, 114, 128, 0.2)', text: '#6b7280' }
+}
 
 async function loadUsers() {
   loading.value = true
@@ -34,10 +70,19 @@ async function loadUsers() {
   }
 }
 
+async function loadRoles() {
+  try {
+    const response = await rolesApi.getAll()
+    roles.value = response.roles
+  } catch (error) {
+    console.error('Failed to load roles:', error)
+  }
+}
+
 function openAddModal() {
   formUsername.value = ''
   formPassword.value = ''
-  formRole.value = 'viewer'
+  formRoleId.value = defaultRoleId.value
   formError.value = ''
   showAddModal.value = true
 }
@@ -45,7 +90,7 @@ function openAddModal() {
 function openEditModal(user: User) {
   editingUser.value = user
   formPassword.value = ''
-  formRole.value = user.role
+  formRoleId.value = (user as any).roleId || ''
   formError.value = ''
   showEditModal.value = true
 }
@@ -57,7 +102,7 @@ async function addUser() {
     return
   }
   try {
-    await usersApi.create(formUsername.value.trim(), formPassword.value, formRole.value)
+    await usersApi.create(formUsername.value.trim(), formPassword.value, formRoleId.value)
     showAddModal.value = false
     await loadUsers()
   } catch (e: any) {
@@ -69,12 +114,13 @@ async function updateUser() {
   formError.value = ''
   if (!editingUser.value) return
   try {
-    const updates: { password?: string; role?: User['role'] } = {}
+    const updates: { password?: string; roleId?: string } = {}
     if (formPassword.value) {
       updates.password = formPassword.value
     }
-    if (formRole.value !== editingUser.value.role) {
-      updates.role = formRole.value
+    const currentRoleId = (editingUser.value as any).roleId
+    if (formRoleId.value !== currentRoleId) {
+      updates.roleId = formRoleId.value
     }
     if (Object.keys(updates).length === 0) {
       showEditModal.value = false
@@ -102,20 +148,10 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString()
 }
 
-function getRoleBadgeClass(role: User['role']): string {
-  switch (role) {
-    case 'admin':
-      return 'bg-status-error/20 text-status-error'
-    case 'moderator':
-      return 'bg-hytale-orange/20 text-hytale-orange'
-    case 'operator':
-      return 'bg-blue-500/20 text-blue-400'
-    default:
-      return 'bg-gray-500/20 text-gray-400'
-  }
-}
-
-onMounted(loadUsers)
+onMounted(() => {
+  loadUsers()
+  loadRoles()
+})
 </script>
 
 <template>
@@ -137,6 +173,7 @@ onMounted(loadUsers)
           </svg>
         </button>
         <button
+          v-if="authStore.hasPermission('users.create')"
           @click="openAddModal"
           class="px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors flex items-center gap-2"
         >
@@ -164,10 +201,11 @@ onMounted(loadUsers)
         <div class="flex-1">
           <h3 class="font-semibold text-white">{{ t('users.rolesInfo') }}</h3>
           <div class="text-sm text-gray-400 mt-2 space-y-1">
-            <p><span class="text-status-error font-medium">Admin:</span> {{ t('users.adminDesc') }}</p>
-            <p><span class="text-hytale-orange font-medium">Moderator:</span> {{ t('users.moderatorDesc') }}</p>
-            <p><span class="text-blue-400 font-medium">Operator:</span> {{ t('users.operatorDesc') }}</p>
-            <p><span class="text-gray-400 font-medium">Viewer:</span> {{ t('users.viewerDesc') }}</p>
+            <p v-for="role in roles" :key="role.id">
+              <span class="font-medium" :style="{ color: role.color || '#6b7280' }">{{ role.name }}:</span>
+              {{ role.description }}
+            </p>
+            <p v-if="roles.length === 0" class="text-gray-500 italic">{{ t('common.loading') }}</p>
           </div>
         </div>
       </div>
@@ -191,8 +229,12 @@ onMounted(loadUsers)
         >
           <div class="flex items-center gap-4">
             <!-- Avatar -->
-            <div class="w-10 h-10 rounded-full flex items-center justify-center"
-              :class="getRoleBadgeClass(user.role).replace('/20', '/30')"
+            <div
+              class="w-10 h-10 rounded-full flex items-center justify-center"
+              :style="{
+                backgroundColor: getRoleBadgeStyle((user as any).roleId).bg,
+                color: getRoleBadgeStyle((user as any).roleId).text
+              }"
             >
               <span class="font-bold text-lg">{{ user.username[0]?.toUpperCase() }}</span>
             </div>
@@ -202,9 +244,13 @@ onMounted(loadUsers)
               <div class="flex items-center gap-2">
                 <p class="font-medium text-white">{{ user.username }}</p>
                 <span
-                  :class="['px-2 py-0.5 rounded text-xs font-medium', getRoleBadgeClass(user.role)]"
+                  class="px-2 py-0.5 rounded text-xs font-medium"
+                  :style="{
+                    backgroundColor: getRoleBadgeStyle((user as any).roleId).bg,
+                    color: getRoleBadgeStyle((user as any).roleId).text
+                  }"
                 >
-                  {{ t(`users.roles.${user.role}`) }}
+                  {{ getRoleName((user as any).roleId) }}
                 </span>
                 <span v-if="user.username === authStore.username" class="text-xs text-gray-500">({{ t('users.you') }})</span>
               </div>
@@ -218,6 +264,7 @@ onMounted(loadUsers)
           <!-- Actions -->
           <div class="flex items-center gap-2">
             <button
+              v-if="authStore.hasPermission('users.edit')"
               @click="openEditModal(user)"
               class="p-2 text-gray-400 hover:text-hytale-orange transition-colors"
               :title="t('common.edit')"
@@ -227,7 +274,7 @@ onMounted(loadUsers)
               </svg>
             </button>
             <button
-              v-if="user.username !== authStore.username"
+              v-if="user.username !== authStore.username && authStore.hasPermission('users.delete')"
               @click="deleteUser(user)"
               class="p-2 text-gray-400 hover:text-status-error transition-colors"
               :title="t('common.delete')"
@@ -274,13 +321,12 @@ onMounted(loadUsers)
           <div>
             <label class="block text-sm text-gray-400 mb-1">{{ t('users.role') }}</label>
             <select
-              v-model="formRole"
+              v-model="formRoleId"
               class="w-full px-4 py-2 bg-dark-100 border border-dark-50 rounded-lg text-white focus:outline-none focus:border-hytale-orange"
             >
-              <option value="viewer">{{ t('users.roles.viewer') }}</option>
-              <option value="operator">{{ t('users.roles.operator') }}</option>
-              <option value="moderator">{{ t('users.roles.moderator') }}</option>
-              <option value="admin">{{ t('users.roles.admin') }}</option>
+              <option v-for="role in roles" :key="role.id" :value="role.id">
+                {{ role.name }} - {{ role.description }}
+              </option>
             </select>
           </div>
 
@@ -293,6 +339,7 @@ onMounted(loadUsers)
               {{ t('common.cancel') }}
             </button>
             <button
+              v-if="authStore.hasPermission('users.create')"
               type="submit"
               class="flex-1 px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors"
             >
@@ -327,13 +374,12 @@ onMounted(loadUsers)
           <div>
             <label class="block text-sm text-gray-400 mb-1">{{ t('users.role') }}</label>
             <select
-              v-model="formRole"
+              v-model="formRoleId"
               class="w-full px-4 py-2 bg-dark-100 border border-dark-50 rounded-lg text-white focus:outline-none focus:border-hytale-orange"
             >
-              <option value="viewer">{{ t('users.roles.viewer') }}</option>
-              <option value="operator">{{ t('users.roles.operator') }}</option>
-              <option value="moderator">{{ t('users.roles.moderator') }}</option>
-              <option value="admin">{{ t('users.roles.admin') }}</option>
+              <option v-for="role in roles" :key="role.id" :value="role.id">
+                {{ role.name }} - {{ role.description }}
+              </option>
             </select>
           </div>
 
@@ -346,6 +392,7 @@ onMounted(loadUsers)
               {{ t('common.cancel') }}
             </button>
             <button
+              v-if="authStore.hasPermission('users.edit')"
               type="submit"
               class="flex-1 px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors"
             >

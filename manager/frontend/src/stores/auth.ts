@@ -30,21 +30,30 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(getStorageItem('refreshToken'))
   const username = ref<string | null>(getStorageItem('username'))
   const role = ref<UserRole | null>((getStorageItem('role') as UserRole) || null)
+  const permissions = ref<string[]>(JSON.parse(getStorageItem('permissions') || '[]'))
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
   const isAdmin = computed(() => role.value === 'admin')
-  const canManageServer = computed(() => role.value === 'admin' || role.value === 'moderator')
 
-  // Operator permissions: can view dashboard, console, performance + restart server
-  const canRestartServer = computed(() => ['admin', 'moderator', 'operator'].includes(role.value || ''))
-  const canViewConsole = computed(() => ['admin', 'moderator', 'operator'].includes(role.value || ''))
-  const canViewPerformance = computed(() => ['admin', 'moderator', 'operator'].includes(role.value || ''))
+  // Permission checking functions
+  function hasPermission(permission: string): boolean {
+    if (permissions.value.includes('*')) return true
+    return permissions.value.includes(permission)
+  }
 
-  // Only admin/moderator can manage players, backups, mods, etc.
-  const canManagePlayers = computed(() => ['admin', 'moderator'].includes(role.value || ''))
-  const canManageBackups = computed(() => ['admin', 'moderator'].includes(role.value || ''))
-  const canManageConfig = computed(() => ['admin', 'moderator'].includes(role.value || ''))
+  function hasAnyPermission(...perms: string[]): boolean {
+    return perms.some(p => hasPermission(p))
+  }
+
+  // Permission-based computed properties
+  const canManageServer = computed(() => hasAnyPermission('server.start', 'server.stop'))
+  const canRestartServer = computed(() => hasPermission('server.restart'))
+  const canViewConsole = computed(() => hasPermission('console.view'))
+  const canViewPerformance = computed(() => hasPermission('performance.view'))
+  const canManagePlayers = computed(() => hasAnyPermission('players.view', 'players.kick', 'players.ban'))
+  const canManageBackups = computed(() => hasPermission('backups.view'))
+  const canManageConfig = computed(() => hasPermission('config.view'))
 
   // Actions
   function setTokens(access: string, refresh: string) {
@@ -54,19 +63,23 @@ export const useAuthStore = defineStore('auth', () => {
     setStorageItem('refreshToken', refresh)
   }
 
-  function setUser(name: string, userRole?: UserRole) {
+  function setUser(name: string, userRole?: UserRole, userPermissions?: string[]) {
     username.value = name
     setStorageItem('username', name)
     if (userRole) {
       role.value = userRole
       setStorageItem('role', userRole)
     }
+    if (userPermissions) {
+      permissions.value = userPermissions
+      setStorageItem('permissions', JSON.stringify(userPermissions))
+    }
   }
 
   async function login(credentials: { username: string; password: string }) {
     const response = await authApi.login(credentials)
     setTokens(response.access_token, response.refresh_token)
-    setUser(credentials.username, response.role as UserRole)
+    setUser(credentials.username, response.role as UserRole, response.permissions)
     return response
   }
 
@@ -84,10 +97,12 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken.value = null
     username.value = null
     role.value = null
+    permissions.value = []
     removeStorageItem('accessToken')
     removeStorageItem('refreshToken')
     removeStorageItem('username')
     removeStorageItem('role')
+    removeStorageItem('permissions')
   }
 
   return {
@@ -96,6 +111,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     username,
     role,
+    permissions,
     // Getters
     isAuthenticated,
     isAdmin,
@@ -112,5 +128,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     refresh,
     logout,
+    hasPermission,
+    hasAnyPermission,
   }
 })

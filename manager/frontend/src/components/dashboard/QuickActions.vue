@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import { serverApi } from '@/api/server'
 import { backupApi } from '@/api/backup'
 import Button from '@/components/ui/Button.vue'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const loading = ref({
   start: false,
@@ -75,6 +77,7 @@ async function handleBackup() {
     <div class="card-body">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Button
+          v-if="authStore.hasPermission('server.start')"
           variant="success"
           :loading="loading.start"
           @click="handleStart"
@@ -88,6 +91,7 @@ async function handleBackup() {
         </Button>
 
         <Button
+          v-if="authStore.hasPermission('server.stop')"
           variant="danger"
           :loading="loading.stop"
           @click="handleStop"
@@ -101,6 +105,7 @@ async function handleBackup() {
         </Button>
 
         <Button
+          v-if="authStore.hasPermission('server.restart')"
           variant="secondary"
           :loading="loading.restart"
           @click="handleRestart"
@@ -113,6 +118,7 @@ async function handleBackup() {
         </Button>
 
         <Button
+          v-if="authStore.hasPermission('backups.create')"
           variant="primary"
           :loading="loading.backup"
           @click="handleBackup"

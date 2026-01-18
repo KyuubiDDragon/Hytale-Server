@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import { playersApi, type UnifiedPlayerEntry, type DeathPosition } from '@/api/players'
 import { serverApi, type PluginPlayer } from '@/api/server'
 import Card from '@/components/ui/Card.vue'
@@ -11,6 +12,7 @@ import PlayerDetailModal from '@/components/players/PlayerDetailModal.vue'
 import { formatItemPath } from '@/utils/formatItemPath'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 // Tab state
 const activeTab = ref<'online' | 'offline'>('online')
@@ -542,6 +544,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-2">
             <!-- Heal -->
             <button
+              v-if="authStore.hasPermission('players.heal')"
               @click.stop="handleHeal(player.name)"
               class="p-2 text-gray-400 hover:text-green-400 transition-colors"
               :title="t('players.heal')"
@@ -553,6 +556,7 @@ onUnmounted(() => {
 
             <!-- Teleport -->
             <button
+              v-if="authStore.hasPermission('players.teleport')"
               @click.stop="openTeleportModal(player.name)"
               class="p-2 text-gray-400 hover:text-blue-400 transition-colors"
               :title="t('players.teleport')"
@@ -565,6 +569,7 @@ onUnmounted(() => {
 
             <!-- Kick -->
             <button
+              v-if="authStore.hasPermission('players.kick')"
               @click.stop="openKickModal(player.name)"
               class="p-2 text-gray-400 hover:text-yellow-400 transition-colors"
               :title="t('players.kick')"
@@ -576,6 +581,7 @@ onUnmounted(() => {
 
             <!-- Ban -->
             <button
+              v-if="authStore.hasPermission('players.ban')"
               @click.stop="openBanModal(player.name)"
               class="p-2 text-gray-400 hover:text-red-400 transition-colors"
               :title="t('players.ban')"
@@ -603,60 +609,60 @@ onUnmounted(() => {
                 class="absolute right-0 top-full mt-1 w-48 bg-dark-200 border border-dark-50 rounded-lg shadow-xl z-50 py-1"
                 @click.stop
               >
-                <button @click="handleOp(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <button v-if="authStore.hasPermission('players.op')" @click="handleOp(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   {{ t('players.op') }}
                 </button>
-                <button @click="handleDeop(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <button v-if="authStore.hasPermission('players.op')" @click="handleDeop(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.618 5.984A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   {{ t('players.deop') }}
                 </button>
-                <div class="border-t border-dark-50 my-1"></div>
-                <button @click="openGamemodeModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <div v-if="authStore.hasPermission('players.op')" class="border-t border-dark-50 my-1"></div>
+                <button v-if="authStore.hasPermission('players.gamemode')" @click="openGamemodeModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   {{ t('players.gamemode') }}
                 </button>
-                <button @click="openGiveModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <button v-if="authStore.hasPermission('players.give')" @click="openGiveModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                   </svg>
                   {{ t('players.give') }}
                 </button>
-                <div class="border-t border-dark-50 my-1"></div>
-                <button @click="handleRespawn(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <div v-if="authStore.hasAnyPermission('players.gamemode', 'players.give')" class="border-t border-dark-50 my-1"></div>
+                <button v-if="authStore.hasPermission('players.respawn')" @click="handleRespawn(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   {{ t('players.respawn') }}
                 </button>
-                <button @click="handleClearEffects(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <button v-if="authStore.hasPermission('players.effects')" @click="handleClearEffects(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                   </svg>
                   {{ t('players.clearEffects') }}
                 </button>
-                <div class="border-t border-dark-50 my-1"></div>
-                <button @click="handleWhitelist(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
+                <div v-if="authStore.hasAnyPermission('players.respawn', 'players.effects')" class="border-t border-dark-50 my-1"></div>
+                <button v-if="authStore.hasPermission('players.whitelist')" @click="handleWhitelist(player.name)" class="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   {{ t('players.addToWhitelist') }}
                 </button>
-                <div class="border-t border-dark-50 my-1"></div>
-                <button @click="openKillModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-dark-100 flex items-center gap-2">
+                <div v-if="authStore.hasPermission('players.whitelist')" class="border-t border-dark-50 my-1"></div>
+                <button v-if="authStore.hasPermission('players.kill')" @click="openKillModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   {{ t('players.kill') }}
                 </button>
-                <button @click="openClearInventoryModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-dark-100 flex items-center gap-2">
+                <button v-if="authStore.hasPermission('players.clear_inventory')" @click="openClearInventoryModal(player.name)" class="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-dark-100 flex items-center gap-2">
                   <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
@@ -724,6 +730,7 @@ onUnmounted(() => {
           <div class="flex items-center gap-2">
             <!-- Whitelist -->
             <button
+              v-if="authStore.hasPermission('players.whitelist')"
               @click.stop="handleWhitelist(player.name)"
               class="p-2 text-gray-400 hover:text-green-400 transition-colors"
               :title="t('players.addToWhitelist')"
@@ -735,6 +742,7 @@ onUnmounted(() => {
 
             <!-- Ban -->
             <button
+              v-if="authStore.hasPermission('players.ban')"
               @click.stop="openBanModal(player.name, player.uuid)"
               class="p-2 text-gray-400 hover:text-red-400 transition-colors"
               :title="t('players.ban')"

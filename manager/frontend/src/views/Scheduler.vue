@@ -2,9 +2,11 @@
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/ui/Card.vue'
+import { useAuthStore } from '@/stores/auth'
 import { schedulerApi, type ScheduleConfig, type QuickCommand, type SchedulerStatus } from '@/api/scheduler'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -242,6 +244,13 @@ async function executeCommand(id: string) {
   }
 }
 
+// Handler for quick command click - checks permission before executing
+function handleCommandClick(id: string) {
+  if (authStore.hasPermission('scheduler.edit')) {
+    executeCommand(id)
+  }
+}
+
 const commandsByCategory = computed(() => {
   const grouped: Record<string, QuickCommand[]> = {}
   for (const cmd of config.quickCommands) {
@@ -340,7 +349,7 @@ onMounted(() => {
           </div>
 
           <!-- Save -->
-          <div class="pt-4 border-t border-dark-50 flex justify-end">
+          <div v-if="authStore.hasPermission('scheduler.edit')" class="pt-4 border-t border-dark-50 flex justify-end">
             <button
               @click="saveBackupConfig"
               :disabled="saving"
@@ -382,6 +391,7 @@ onMounted(() => {
                   </svg>
                   <span class="text-white font-mono">{{ time }}</span>
                   <button
+                    v-if="authStore.hasPermission('scheduler.edit')"
                     @click="removeRestartTime(time)"
                     class="text-gray-400 hover:text-red-400 transition-colors"
                   >
@@ -394,7 +404,7 @@ onMounted(() => {
               <p v-else class="text-sm text-gray-500 mb-3">{{ t('scheduler.noRestartTimes') }}</p>
 
               <!-- Add Time -->
-              <div class="flex gap-3">
+              <div v-if="authStore.hasPermission('scheduler.edit')" class="flex gap-3">
                 <input
                   v-model="newRestartTime"
                   type="time"
@@ -474,6 +484,7 @@ onMounted(() => {
                   <p class="text-gray-400 text-xs">{{ new Date(status.scheduledRestarts.pendingRestart.scheduledAt).toLocaleString() }}</p>
                 </div>
                 <button
+                  v-if="authStore.hasPermission('scheduler.edit')"
                   @click="cancelPendingRestart"
                   :disabled="cancellingRestart"
                   class="px-3 py-1.5 bg-status-error text-white rounded-lg text-sm font-medium hover:bg-status-error/80 transition-colors disabled:opacity-50"
@@ -485,7 +496,7 @@ onMounted(() => {
           </div>
 
           <!-- Save -->
-          <div class="pt-4 border-t border-dark-50 flex justify-end">
+          <div v-if="authStore.hasPermission('scheduler.edit')" class="pt-4 border-t border-dark-50 flex justify-end">
             <button
               @click="saveRestartsConfig"
               :disabled="saving"
@@ -498,7 +509,7 @@ onMounted(() => {
       </Card>
 
       <!-- Broadcast -->
-      <Card :title="t('scheduler.broadcast')">
+      <Card v-if="authStore.hasPermission('scheduler.edit')" :title="t('scheduler.broadcast')">
         <div class="space-y-4">
           <p class="text-sm text-gray-400">{{ t('scheduler.broadcastDesc') }}</p>
           <div class="flex gap-3">
@@ -563,6 +574,7 @@ onMounted(() => {
                 <p class="text-xs text-gray-500">{{ t('scheduler.every') }} {{ ann.intervalMinutes }} {{ t('scheduler.minutes') }}</p>
               </div>
               <button
+                v-if="authStore.hasPermission('scheduler.edit')"
                 @click="removeAnnouncement(ann.id)"
                 class="p-1 text-gray-400 hover:text-red-400 transition-colors"
               >
@@ -574,7 +586,7 @@ onMounted(() => {
           </div>
 
           <!-- Add Announcement -->
-          <div v-if="config.announcements.enabled" class="flex gap-3 pt-4 border-t border-dark-50">
+          <div v-if="config.announcements.enabled && authStore.hasPermission('scheduler.edit')" class="flex gap-3 pt-4 border-t border-dark-50">
             <input
               v-model="newAnnouncement.message"
               type="text"
@@ -596,7 +608,7 @@ onMounted(() => {
           </div>
 
           <!-- Save -->
-          <div class="pt-4 border-t border-dark-50 flex justify-end">
+          <div v-if="authStore.hasPermission('scheduler.edit')" class="pt-4 border-t border-dark-50 flex justify-end">
             <button
               @click="saveAnnouncementsConfig"
               :disabled="saving"
@@ -610,7 +622,7 @@ onMounted(() => {
 
       <!-- Quick Commands -->
       <Card :title="t('scheduler.quickCommands')">
-        <template #actions>
+        <template v-if="authStore.hasPermission('scheduler.edit')" #actions>
           <button
             @click="openCommandForm()"
             class="flex items-center gap-2 px-3 py-1.5 bg-hytale-orange text-dark rounded-lg text-sm font-medium hover:bg-hytale-yellow transition-colors"
@@ -631,8 +643,9 @@ onMounted(() => {
               <div
                 v-for="cmd in commands"
                 :key="cmd.id"
-                class="group relative flex items-center gap-3 p-3 bg-dark-400 rounded-lg hover:bg-dark-50 transition-colors cursor-pointer"
-                @click="executeCommand(cmd.id)"
+                class="group relative flex items-center gap-3 p-3 bg-dark-400 rounded-lg hover:bg-dark-50 transition-colors"
+                :class="{ 'cursor-pointer': authStore.hasPermission('scheduler.edit') }"
+                @click="handleCommandClick(cmd.id)"
               >
                 <div class="w-8 h-8 bg-dark-100 rounded-lg flex items-center justify-center">
                   <svg class="w-4 h-4 text-hytale-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -643,7 +656,7 @@ onMounted(() => {
                   <p class="text-sm font-medium text-white truncate">{{ cmd.name }}</p>
                   <p class="text-xs text-gray-500 font-mono truncate">{{ cmd.command }}</p>
                 </div>
-                <div class="absolute top-1 right-1 hidden group-hover:flex gap-1">
+                <div v-if="authStore.hasPermission('scheduler.edit')" class="absolute top-1 right-1 hidden group-hover:flex gap-1">
                   <button
                     @click.stop="openCommandForm(cmd)"
                     class="p-1 text-gray-400 hover:text-white bg-dark-100 rounded"

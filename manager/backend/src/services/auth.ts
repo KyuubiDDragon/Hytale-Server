@@ -1,25 +1,26 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { config } from '../config.js';
 import type { JwtPayload } from '../types/index.js';
-import { verifyUserCredentials, updateLastLogin, type User } from './users.js';
+import { verifyUserCredentials, updateLastLogin, getTokenVersion, type User } from './users.js';
 
 // Verify credentials using users service
 export async function verifyCredentials(
   username: string,
   password: string
-): Promise<{ valid: boolean; user?: Omit<User, 'passwordHash'>; role?: User['role'] }> {
+): Promise<{ valid: boolean; user?: Omit<User, 'passwordHash'>; role?: string }> {
   const user = await verifyUserCredentials(username, password);
   if (!user) {
     return { valid: false };
   }
   await updateLastLogin(username);
   const { passwordHash, ...userWithoutPassword } = user;
-  return { valid: true, user: userWithoutPassword, role: user.role };
+  return { valid: true, user: userWithoutPassword, role: user.roleId };
 }
 
-export function createAccessToken(subject: string): string {
+export async function createAccessToken(subject: string): Promise<string> {
+  const tokenVersion = await getTokenVersion(subject);
   return jwt.sign(
-    { sub: subject, type: 'access' },
+    { sub: subject, type: 'access', tokenVersion },
     config.jwtSecret,
     { expiresIn: config.jwtExpiresIn } as SignOptions
   );
@@ -33,13 +34,13 @@ export function createRefreshToken(subject: string): string {
   );
 }
 
-export function verifyToken(token: string, type: 'access' | 'refresh' = 'access'): string | null {
+export function verifyToken(token: string, type: 'access' | 'refresh' = 'access'): { username: string; tokenVersion?: number } | null {
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as JwtPayload;
+    const payload = jwt.verify(token, config.jwtSecret) as JwtPayload & { tokenVersion?: number };
     if (payload.type !== type) {
       return null;
     }
-    return payload.sub;
+    return { username: payload.sub, tokenVersion: payload.tokenVersion };
   } catch {
     return null;
   }

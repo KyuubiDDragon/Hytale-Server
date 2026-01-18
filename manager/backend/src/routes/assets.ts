@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authMiddleware } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permissions.js';
 import * as assetService from '../services/assets.js';
 
 const router = Router();
@@ -23,13 +24,13 @@ function setCachedIconPath(itemId: string, path: string | null): void {
 }
 
 // GET /api/assets/status - Get extraction status
-router.get('/status', authMiddleware, (_req: Request, res: Response) => {
+router.get('/status', authMiddleware, requirePermission('assets.view'), (_req: Request, res: Response) => {
   const status = assetService.getAssetStatus();
   res.json(status);
 });
 
 // POST /api/assets/extract - Extract assets from archive
-router.post('/extract', authMiddleware, (_req: Request, res: Response) => {
+router.post('/extract', authMiddleware, requirePermission('assets.manage'), (_req: Request, res: Response) => {
   const result = assetService.extractAssets();
 
   // Clear icon path cache when re-extracting
@@ -47,7 +48,7 @@ router.post('/extract', authMiddleware, (_req: Request, res: Response) => {
 });
 
 // DELETE /api/assets/cache - Clear extracted assets
-router.delete('/cache', authMiddleware, (_req: Request, res: Response) => {
+router.delete('/cache', authMiddleware, requirePermission('assets.manage'), (_req: Request, res: Response) => {
   const result = assetService.clearAssets();
 
   // Clear icon path cache as well
@@ -65,7 +66,7 @@ router.delete('/cache', authMiddleware, (_req: Request, res: Response) => {
 });
 
 // GET /api/assets/browse - List directory contents
-router.get('/browse', authMiddleware, (req: Request, res: Response) => {
+router.get('/browse', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const relativePath = (req.query.path as string) || '';
 
   const items = assetService.listAssetDirectory(relativePath);
@@ -82,7 +83,7 @@ router.get('/browse', authMiddleware, (req: Request, res: Response) => {
 });
 
 // GET /api/assets/tree - Get directory tree
-router.get('/tree', authMiddleware, (req: Request, res: Response) => {
+router.get('/tree', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const relativePath = (req.query.path as string) || '';
   const maxDepth = Math.min(parseInt(req.query.depth as string) || 3, 5);
 
@@ -97,7 +98,7 @@ router.get('/tree', authMiddleware, (req: Request, res: Response) => {
 });
 
 // GET /api/assets/file - Read file content
-router.get('/file', authMiddleware, (req: Request, res: Response) => {
+router.get('/file', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const relativePath = req.query.path as string;
 
   if (!relativePath) {
@@ -123,7 +124,7 @@ router.get('/file', authMiddleware, (req: Request, res: Response) => {
 
 // GET /api/assets/search - Search for files
 // Supports: plain text, glob patterns (*.json, sign*.json), regex (/pattern/flags)
-router.get('/search', authMiddleware, (req: Request, res: Response) => {
+router.get('/search', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const query = req.query.q as string;
 
   if (!query || query.length < 2) {
@@ -154,7 +155,7 @@ router.get('/search', authMiddleware, (req: Request, res: Response) => {
 });
 
 // GET /api/assets/download/:path(*) - Download raw file
-router.get('/download/*', authMiddleware, (req: Request, res: Response) => {
+router.get('/download/*', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const relativePath = req.params[0];
 
   if (!relativePath) {
@@ -390,7 +391,7 @@ router.get('/player-avatar', (req: Request, res: Response) => {
 });
 
 // GET /api/assets/player-avatar-search - Debug: Search for player-related textures
-router.get('/player-avatar-search', authMiddleware, (req: Request, res: Response) => {
+router.get('/player-avatar-search', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const searchTerms = ['character', 'player', 'face', 'head', 'avatar', 'portrait', 'human', 'npc'];
   const allResults: { term: string; paths: string[] }[] = [];
 
@@ -413,7 +414,7 @@ router.get('/player-avatar-search', authMiddleware, (req: Request, res: Response
 
 // GET /api/assets/item-icon-search/:itemId - Search for item icon path
 // Returns the path if found, useful for debugging/checking if icon exists
-router.get('/item-icon-search/:itemId', authMiddleware, (req: Request, res: Response) => {
+router.get('/item-icon-search/:itemId', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const { itemId } = req.params;
 
   if (!itemId) {
@@ -437,7 +438,7 @@ router.get('/item-icon-search/:itemId', authMiddleware, (req: Request, res: Resp
 
 // GET /api/assets/items - Get list of all available items
 // Returns items with their IDs, display names, and icon paths
-router.get('/items', authMiddleware, (req: Request, res: Response) => {
+router.get('/items', authMiddleware, requirePermission('assets.view'), (req: Request, res: Response) => {
   const query = (req.query.q as string) || '';
   const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
 
@@ -462,7 +463,7 @@ router.get('/items', authMiddleware, (req: Request, res: Response) => {
 
 // GET /api/assets/debug/structure - Get top-level structure of extracted assets
 // Useful for debugging and finding where icons are located
-router.get('/debug/structure', authMiddleware, (_req: Request, res: Response) => {
+router.get('/debug/structure', authMiddleware, requirePermission('assets.view'), (_req: Request, res: Response) => {
   const tree = assetService.getAssetTree('', 2);
 
   if (tree === null) {
@@ -477,7 +478,7 @@ router.get('/debug/structure', authMiddleware, (_req: Request, res: Response) =>
 });
 
 // GET /api/assets/debug/find-icons - Search for all icon/texture directories
-router.get('/debug/find-icons', authMiddleware, (_req: Request, res: Response) => {
+router.get('/debug/find-icons', authMiddleware, requirePermission('assets.view'), (_req: Request, res: Response) => {
   const iconPaths = assetService.searchAssets('icon', {
     extensions: [],
     maxResults: 50,

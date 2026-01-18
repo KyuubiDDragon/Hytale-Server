@@ -21,7 +21,8 @@
     "remove": "Entfernen",
     "clear": "Leeren",
     "previous": "Zurück",
-    "next": "Weiter"
+    "next": "Weiter",
+    "noPermission": "Du hast keine Berechtigung für diese Aktion"
   },
   "auth": {
     "login": "Anmelden",
@@ -53,7 +54,8 @@
     "scheduler": "Planer",
     "statistics": "Statistiken",
     "assets": "Asset Explorer",
-    "chat": "Chat-Protokoll"
+    "chat": "Chat-Protokoll",
+    "roles": "Rollen"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -129,7 +131,8 @@
     "showAll": "Alle",
     "showErrors": "Fehler",
     "showWarnings": "Warnungen",
-    "showInfo": "Info"
+    "showInfo": "Info",
+    "bypassWarning": "Warnung: Konsolenzugriff ermöglicht das Ausführen aller Server-Befehle und umgeht UI-Berechtigungseinschränkungen."
   },
   "backups": {
     "title": "Backup Verwaltung",
@@ -541,6 +544,55 @@
     "confirmDelete": "Benutzer \"{username}\" wirklich löschen?",
     "requiredFields": "Benutzername und Passwort erforderlich"
   },
+  "roles": {
+    "title": "Rollenverwaltung",
+    "subtitle": "Benutzerrollen und Berechtigungen verwalten",
+    "create": "Rolle erstellen",
+    "createRole": "Rolle erstellen",
+    "edit": "Rolle bearbeiten",
+    "editRole": "Rolle bearbeiten",
+    "delete": "Rolle löschen",
+    "name": "Rollenname",
+    "namePlaceholder": "Rollenname eingeben",
+    "nameRequired": "Rollenname ist erforderlich",
+    "description": "Beschreibung",
+    "descriptionPlaceholder": "Beschreibung eingeben",
+    "noDescription": "Keine Beschreibung",
+    "color": "Farbe",
+    "permissions": "Berechtigungen",
+    "permissionCount": "{count} Berechtigungen",
+    "permissionsSelected": "Berechtigungen ausgewählt",
+    "noPermissionsAvailable": "Keine Berechtigungen verfügbar",
+    "system": "System",
+    "systemRole": "Systemrolle",
+    "systemRoleNote": "Systemrollen können nicht umbenannt oder gelöscht werden. Nur Berechtigungen können geändert werden.",
+    "customRole": "Benutzerdefinierte Rolle",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Alle abwählen",
+    "confirmDelete": "Sind Sie sicher, dass Sie die Rolle \"{name}\" löschen möchten?",
+    "cannotDeleteSystem": "Systemrollen können nicht gelöscht werden",
+    "noRoles": "Keine Rollen gefunden"
+  },
+  "permissionCategories": {
+    "dashboard": "Dashboard",
+    "server": "Server",
+    "console": "Konsole",
+    "performance": "Leistung",
+    "players": "Spieler",
+    "chat": "Chat",
+    "backups": "Backups",
+    "scheduler": "Zeitplaner",
+    "worlds": "Welten",
+    "mods": "Mods",
+    "plugins": "Plugins",
+    "config": "Konfiguration",
+    "assets": "Assets",
+    "users": "Benutzer",
+    "roles": "Rollen",
+    "activity": "Aktivität",
+    "hytale_auth": "Hytale Auth",
+    "settings": "Einstellungen"
+  },
   "activity": {
     "title": "Aktivitätslog",
     "subtitle": "Alle Aktionen auf dem Server verfolgen",
@@ -711,6 +763,107 @@
     "notInstalled": "EasyWebMap nicht installiert",
     "notInstalledDesc": "Das EasyWebMap-Mod ist nicht installiert. Installiere es über den Mod Store, um die Live-Webkarte zu aktivieren.",
     "goToModStore": "Zum Mod Store"
+  },
+  "permissionDescriptions": {
+    "dashboard": {
+      "view": "Dashboard anzeigen",
+      "stats": "Dashboard-Statistiken anzeigen"
+    },
+    "server": {
+      "view_status": "Serverstatus anzeigen",
+      "start": "Server starten",
+      "stop": "Server stoppen",
+      "restart": "Server neustarten",
+      "quick_settings": "Schnelleinstellungen bearbeiten"
+    },
+    "console": {
+      "view": "Konsole anzeigen",
+      "execute": "Konsolenbefehle ausführen"
+    },
+    "performance": {
+      "view": "Performance-Metriken anzeigen"
+    },
+    "players": {
+      "view": "Spielerliste anzeigen",
+      "edit": "Spielerdaten bearbeiten",
+      "kick": "Spieler kicken",
+      "ban": "Spieler bannen",
+      "unban": "Spieler entbannen",
+      "whitelist": "Whitelist verwalten",
+      "op": "Operator-Status verwalten",
+      "permissions": "Spielerberechtigungen verwalten",
+      "teleport": "Spieler teleportieren",
+      "kill": "Spieler töten",
+      "respawn": "Spieler respawnen",
+      "gamemode": "Spielmodus ändern",
+      "give": "Items geben",
+      "heal": "Spieler heilen",
+      "effects": "Effekte verwalten",
+      "clear_inventory": "Inventar leeren",
+      "message": "Nachrichten senden"
+    },
+    "chat": {
+      "view": "Chat anzeigen",
+      "send": "Chatnachrichten senden"
+    },
+    "backups": {
+      "view": "Backups anzeigen",
+      "create": "Backups erstellen",
+      "restore": "Backups wiederherstellen",
+      "delete": "Backups löschen",
+      "download": "Backups herunterladen"
+    },
+    "scheduler": {
+      "view": "Zeitplaner anzeigen",
+      "edit": "Zeitplaner bearbeiten"
+    },
+    "worlds": {
+      "view": "Welten anzeigen",
+      "manage": "Welten verwalten"
+    },
+    "mods": {
+      "view": "Mods anzeigen",
+      "install": "Mods installieren",
+      "delete": "Mods löschen",
+      "config": "Mod-Konfiguration bearbeiten",
+      "toggle": "Mods aktivieren/deaktivieren"
+    },
+    "plugins": {
+      "view": "Plugins anzeigen",
+      "install": "Plugins installieren",
+      "delete": "Plugins löschen",
+      "config": "Plugin-Konfiguration bearbeiten",
+      "toggle": "Plugins aktivieren/deaktivieren"
+    },
+    "config": {
+      "view": "Konfiguration anzeigen",
+      "edit": "Konfiguration bearbeiten"
+    },
+    "assets": {
+      "view": "Assets anzeigen",
+      "manage": "Assets verwalten"
+    },
+    "users": {
+      "view": "Benutzer anzeigen",
+      "create": "Benutzer erstellen",
+      "edit": "Benutzer bearbeiten",
+      "delete": "Benutzer löschen"
+    },
+    "roles": {
+      "view": "Rollen anzeigen",
+      "manage": "Rollen verwalten"
+    },
+    "activity": {
+      "view": "Aktivitätslog anzeigen",
+      "clear": "Aktivitätslog löschen"
+    },
+    "hytale_auth": {
+      "manage": "Hytale-Authentifizierung verwalten"
+    },
+    "settings": {
+      "view": "Einstellungen anzeigen",
+      "edit": "Einstellungen bearbeiten"
+    }
   },
   "assets": {
     "title": "Asset Explorer",

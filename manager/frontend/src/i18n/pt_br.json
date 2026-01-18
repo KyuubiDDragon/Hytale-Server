@@ -21,7 +21,8 @@
     "remove": "Remover",
     "clear": "Limpar",
     "previous": "Anterior",
-    "next": "Próximo"
+    "next": "Próximo",
+    "noPermission": "Você não tem permissão para realizar esta ação"
   },
   "auth": {
     "login": "Entrar",
@@ -53,7 +54,8 @@
     "scheduler": "Agendador",
     "statistics": "Estatísticas",
     "assets": "Explorador de Assets",
-    "chat": "Log de Chat"
+    "chat": "Log de Chat",
+    "roles": "Funções"
   },
   "dashboard": {
     "title": "Painel",
@@ -129,7 +131,8 @@
     "showAll": "Todos",
     "showErrors": "Erros",
     "showWarnings": "Avisos",
-    "showInfo": "Informações"
+    "showInfo": "Informações",
+    "bypassWarning": "Aviso: O acesso ao console permite executar todos os comandos do servidor, ignorando as restrições de permissão da UI."
   },
   "backups": {
     "title": "Gerenciamento de Backups",
@@ -645,6 +648,156 @@
     "notInstalled": "EasyWebMap Não Instalado",
     "notInstalledDesc": "O mod EasyWebMap não está instalado. Instale-o na Loja de Mods para ativar o recurso de mapa web ao vivo.",
     "goToModStore": "Ir para Loja de Mods"
+  },
+  "roles": {
+    "title": "Gerenciamento de Funções",
+    "subtitle": "Gerenciar funções de usuário e permissões",
+    "create": "Criar Função",
+    "createRole": "Criar Função",
+    "edit": "Editar Função",
+    "editRole": "Editar Função",
+    "delete": "Excluir Função",
+    "name": "Nome da Função",
+    "namePlaceholder": "Digite o nome da função",
+    "nameRequired": "Nome da função é obrigatório",
+    "description": "Descrição",
+    "descriptionPlaceholder": "Digite a descrição da função",
+    "noDescription": "Sem descrição",
+    "color": "Cor",
+    "permissions": "Permissões",
+    "permissionCount": "{count} permissões",
+    "permissionsSelected": "permissões selecionadas",
+    "noPermissionsAvailable": "Nenhuma permissão disponível",
+    "system": "Sistema",
+    "systemRole": "Função do Sistema",
+    "systemRoleNote": "Funções do sistema não podem ser renomeadas ou excluídas. Apenas as permissões podem ser modificadas.",
+    "customRole": "Função Personalizada",
+    "selectAll": "Selecionar Tudo",
+    "deselectAll": "Desselecionar Tudo",
+    "confirmDelete": "Tem certeza de que deseja excluir a função \"{name}\"?",
+    "cannotDeleteSystem": "Funções do sistema não podem ser excluídas",
+    "noRoles": "Nenhuma função encontrada"
+  },
+  "permissionCategories": {
+    "dashboard": "Painel",
+    "server": "Servidor",
+    "console": "Console",
+    "performance": "Desempenho",
+    "players": "Jogadores",
+    "chat": "Chat",
+    "backups": "Backups",
+    "scheduler": "Agendador",
+    "worlds": "Mundos",
+    "mods": "Mods",
+    "plugins": "Plugins",
+    "config": "Configuração",
+    "assets": "Assets",
+    "users": "Usuários",
+    "roles": "Funções",
+    "activity": "Atividade",
+    "hytale_auth": "Auth Hytale",
+    "settings": "Configurações"
+  },
+  "permissionDescriptions": {
+    "dashboard": {
+      "view": "Ver painel",
+      "stats": "Ver estatísticas do painel"
+    },
+    "server": {
+      "view_status": "Ver status do servidor",
+      "start": "Iniciar servidor",
+      "stop": "Parar servidor",
+      "restart": "Reiniciar servidor",
+      "quick_settings": "Editar configurações rápidas"
+    },
+    "console": {
+      "view": "Ver console",
+      "execute": "Executar comandos do console"
+    },
+    "performance": {
+      "view": "Ver métricas de desempenho"
+    },
+    "players": {
+      "view": "Ver lista de jogadores",
+      "edit": "Editar dados de jogadores",
+      "kick": "Expulsar jogadores",
+      "ban": "Banir jogadores",
+      "unban": "Desbanir jogadores",
+      "whitelist": "Gerenciar lista de permissões",
+      "op": "Gerenciar status de operador",
+      "permissions": "Gerenciar permissões de jogadores",
+      "teleport": "Teleportar jogadores",
+      "kill": "Matar jogadores",
+      "respawn": "Reviver jogadores",
+      "gamemode": "Alterar modo de jogo",
+      "give": "Dar itens",
+      "heal": "Curar jogadores",
+      "effects": "Gerenciar efeitos",
+      "clear_inventory": "Limpar inventário",
+      "message": "Enviar mensagens"
+    },
+    "chat": {
+      "view": "Ver chat",
+      "send": "Enviar mensagens no chat"
+    },
+    "backups": {
+      "view": "Ver backups",
+      "create": "Criar backups",
+      "restore": "Restaurar backups",
+      "delete": "Excluir backups",
+      "download": "Baixar backups"
+    },
+    "scheduler": {
+      "view": "Ver agendador",
+      "edit": "Editar agendador"
+    },
+    "worlds": {
+      "view": "Ver mundos",
+      "manage": "Gerenciar mundos"
+    },
+    "mods": {
+      "view": "Ver mods",
+      "install": "Instalar mods",
+      "delete": "Excluir mods",
+      "config": "Editar configuração de mods",
+      "toggle": "Ativar/desativar mods"
+    },
+    "plugins": {
+      "view": "Ver plugins",
+      "install": "Instalar plugins",
+      "delete": "Excluir plugins",
+      "config": "Editar configuração de plugins",
+      "toggle": "Ativar/desativar plugins"
+    },
+    "config": {
+      "view": "Ver configuração",
+      "edit": "Editar configuração"
+    },
+    "assets": {
+      "view": "Ver assets",
+      "manage": "Gerenciar assets"
+    },
+    "users": {
+      "view": "Ver usuários",
+      "create": "Criar usuários",
+      "edit": "Editar usuários",
+      "delete": "Excluir usuários"
+    },
+    "roles": {
+      "view": "Ver funções",
+      "manage": "Gerenciar funções"
+    },
+    "activity": {
+      "view": "Ver registro de atividades",
+      "clear": "Limpar registro de atividades"
+    },
+    "hytale_auth": {
+      "manage": "Gerenciar autenticação Hytale"
+    },
+    "settings": {
+      "view": "Ver configurações",
+      "edit": "Editar configurações"
+    }
   },
   "assets": {
     "title": "Explorador de Assets",

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { readFile, writeFile } from 'fs/promises';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permissions.js';
 import * as playersService from '../services/players.js';
 import * as dockerService from '../services/docker.js';
 import * as kyuubiApi from '../services/kyuubiApi.js';
@@ -72,7 +73,7 @@ async function writeBansMapping(mapping: BanNameMapping): Promise<void> {
 }
 
 // GET /api/players
-router.get('/', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/', authMiddleware, requirePermission('players.view'), async (_req: Request, res: Response) => {
   // Check if server is running - if not, clear stale players and return empty list
   const status = await dockerService.getStatus();
   if (!status.running) {
@@ -93,7 +94,7 @@ router.get('/', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // GET /api/players/count
-router.get('/count', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/count', authMiddleware, requirePermission('players.view'), async (_req: Request, res: Response) => {
   // Check if server is running - if not, return 0
   const status = await dockerService.getStatus();
   if (!status.running) {
@@ -106,19 +107,19 @@ router.get('/count', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // GET /api/players/history - All players who have ever joined
-router.get('/history', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/history', authMiddleware, requirePermission('players.view'), async (_req: Request, res: Response) => {
   const history = await playersService.getPlayerHistory();
   res.json({ players: history, count: history.length });
 });
 
 // GET /api/players/offline - Players in history who are currently offline
-router.get('/offline', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/offline', authMiddleware, requirePermission('players.view'), async (_req: Request, res: Response) => {
   const offline = await playersService.getOfflinePlayers();
   res.json({ players: offline, count: offline.length });
 });
 
 // GET /api/players/all - All players from JSON files with online status
-router.get('/all', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/all', authMiddleware, requirePermission('players.view'), async (_req: Request, res: Response) => {
   // Update online status based on server status
   const status = await dockerService.getStatus();
   if (!status.running) {
@@ -131,7 +132,7 @@ router.get('/all', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // POST /api/players/:name/kick
-router.post('/:name/kick', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/kick', authMiddleware, requirePermission('players.kick'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { reason } = req.body;
   const username = req.user || 'system';
@@ -167,7 +168,7 @@ router.post('/:name/kick', authMiddleware, async (req: AuthenticatedRequest, res
 });
 
 // POST /api/players/:name/ban
-router.post('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/ban', authMiddleware, requirePermission('players.ban'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { reason } = req.body;
   const username = req.user || 'system';
@@ -225,7 +226,7 @@ router.post('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, res:
 });
 
 // DELETE /api/players/:name/ban
-router.delete('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:name/ban', authMiddleware, requirePermission('players.unban'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -254,7 +255,7 @@ router.delete('/:name/ban', authMiddleware, async (req: AuthenticatedRequest, re
 });
 
 // POST /api/players/:name/whitelist
-router.post('/:name/whitelist', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/whitelist', authMiddleware, requirePermission('players.whitelist'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -293,7 +294,7 @@ router.post('/:name/whitelist', authMiddleware, async (req: AuthenticatedRequest
 });
 
 // DELETE /api/players/:name/whitelist
-router.delete('/:name/whitelist', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:name/whitelist', authMiddleware, requirePermission('players.whitelist'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -330,7 +331,7 @@ router.delete('/:name/whitelist', authMiddleware, async (req: AuthenticatedReque
 });
 
 // POST /api/players/:name/op
-router.post('/:name/op', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/op', authMiddleware, requirePermission('players.op'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -355,7 +356,7 @@ router.post('/:name/op', authMiddleware, async (req: AuthenticatedRequest, res: 
 });
 
 // DELETE /api/players/:name/op
-router.delete('/:name/op', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:name/op', authMiddleware, requirePermission('players.op'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -380,7 +381,7 @@ router.delete('/:name/op', authMiddleware, async (req: AuthenticatedRequest, res
 });
 
 // POST /api/players/:name/message
-router.post('/:name/message', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/message', authMiddleware, requirePermission('players.message'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
   const { message } = req.body;
 
@@ -414,7 +415,7 @@ router.post('/:name/message', authMiddleware, async (req: Request, res: Response
 });
 
 // POST /api/players/:name/teleport
-router.post('/:name/teleport', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/teleport', authMiddleware, requirePermission('players.teleport'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { target, x, y, z } = req.body;
   const username = req.user || 'system';
@@ -468,7 +469,7 @@ router.post('/:name/teleport', authMiddleware, async (req: AuthenticatedRequest,
 });
 
 // POST /api/players/:name/kill
-router.post('/:name/kill', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/kill', authMiddleware, requirePermission('players.kill'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -493,7 +494,7 @@ router.post('/:name/kill', authMiddleware, async (req: AuthenticatedRequest, res
 });
 
 // POST /api/players/:name/respawn
-router.post('/:name/respawn', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/respawn', authMiddleware, requirePermission('players.respawn'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
   // SECURITY: Validate player name
@@ -516,7 +517,7 @@ router.post('/:name/respawn', authMiddleware, async (req: Request, res: Response
 });
 
 // POST /api/players/:name/gamemode
-router.post('/:name/gamemode', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/gamemode', authMiddleware, requirePermission('players.gamemode'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { gamemode } = req.body;
   const username = req.user || 'system';
@@ -559,7 +560,7 @@ router.post('/:name/gamemode', authMiddleware, async (req: AuthenticatedRequest,
 });
 
 // POST /api/players/:name/give
-router.post('/:name/give', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/give', authMiddleware, requirePermission('players.give'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { item, amount } = req.body;
   const username = req.user || 'system';
@@ -620,7 +621,7 @@ router.post('/:name/give', authMiddleware, async (req: AuthenticatedRequest, res
 });
 
 // POST /api/players/:name/heal
-router.post('/:name/heal', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/heal', authMiddleware, requirePermission('players.heal'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
   // SECURITY: Validate player name
@@ -657,7 +658,7 @@ router.post('/:name/heal', authMiddleware, async (req: Request, res: Response) =
 });
 
 // POST /api/players/:name/effect
-router.post('/:name/effect', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/effect', authMiddleware, requirePermission('players.effects'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { effect, action } = req.body;
   const username = req.user || 'system';
@@ -705,7 +706,7 @@ router.post('/:name/effect', authMiddleware, async (req: AuthenticatedRequest, r
 });
 
 // POST /api/players/:name/inventory/clear
-router.post('/:name/inventory/clear', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:name/inventory/clear', authMiddleware, requirePermission('players.clear_inventory'), async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const username = req.user || 'system';
 
@@ -746,13 +747,13 @@ router.post('/:name/inventory/clear', authMiddleware, async (req: AuthenticatedR
 });
 
 // GET /api/players/statistics - Get player statistics
-router.get('/statistics', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/statistics', authMiddleware, requirePermission('players.view'), async (_req: Request, res: Response) => {
   const stats = await playersService.getPlayerStatistics();
   res.json(stats);
 });
 
 // GET /api/players/activity - Get daily activity for charts
-router.get('/activity', authMiddleware, async (req: Request, res: Response) => {
+router.get('/activity', authMiddleware, requirePermission('players.view'), async (req: Request, res: Response) => {
   const days = parseInt(req.query.days as string) || 7;
   const activity = await playersService.getDailyActivity(days);
   res.json(activity);
@@ -761,7 +762,7 @@ router.get('/activity', authMiddleware, async (req: Request, res: Response) => {
 // ============== CHAT LOG ENDPOINTS ==============
 
 // GET /api/players/chat - Get global chat log
-router.get('/chat', authMiddleware, async (req: Request, res: Response) => {
+router.get('/chat', authMiddleware, requirePermission('chat.view'), async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 100;
   const offset = parseInt(req.query.offset as string) || 0;
   const days = parseInt(req.query.days as string) || 7; // Default 7 days, 0 = all
@@ -771,7 +772,7 @@ router.get('/chat', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // GET /api/players/:name/chat - Get chat log for specific player
-router.get('/:name/chat', authMiddleware, async (req: Request, res: Response) => {
+router.get('/:name/chat', authMiddleware, requirePermission('chat.view'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
   // SECURITY: Validate player name
@@ -788,7 +789,7 @@ router.get('/:name/chat', authMiddleware, async (req: Request, res: Response) =>
 // ============== DEATH POSITION ENDPOINTS ==============
 
 // GET /api/players/:name/deaths - Get death positions from player file
-router.get('/:name/deaths', authMiddleware, async (req: Request, res: Response) => {
+router.get('/:name/deaths', authMiddleware, requirePermission('players.view'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
   // SECURITY: Validate player name
@@ -806,7 +807,7 @@ router.get('/:name/deaths', authMiddleware, async (req: Request, res: Response) 
 });
 
 // GET /api/players/:name/deaths/last - Get last death position for a player
-router.get('/:name/deaths/last', authMiddleware, async (req: Request, res: Response) => {
+router.get('/:name/deaths/last', authMiddleware, requirePermission('players.view'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
   // SECURITY: Validate player name
@@ -833,7 +834,7 @@ router.get('/:name/deaths/last', authMiddleware, async (req: Request, res: Respo
 
 // POST /api/players/:name/teleport/death - Teleport player to a death position
 // Body: { index?: number } - index of death position (default: last/most recent)
-router.post('/:name/teleport/death', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/teleport/death', authMiddleware, requirePermission('players.teleport'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
   const { index } = req.body;
 
@@ -874,7 +875,7 @@ router.post('/:name/teleport/death', authMiddleware, async (req: Request, res: R
 });
 
 // POST /api/players/:name/deaths - Manually record a death position (for testing/admin)
-router.post('/:name/deaths', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/deaths', authMiddleware, requirePermission('players.edit'), async (req: Request, res: Response) => {
   const playerName = req.params.name;
 
   // SECURITY: Validate player name
