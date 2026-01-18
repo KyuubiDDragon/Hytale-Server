@@ -74,7 +74,7 @@ function isActive(path: string): boolean {
     <!-- Navigation -->
     <nav class="flex-1 py-4 px-3 space-y-6 overflow-y-auto">
       <!-- Main Section -->
-      <div>
+      <div v-if="mainItems.length > 0">
         <p class="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ t('nav.server') }}</p>
         <div class="space-y-1">
           <router-link
@@ -112,7 +112,7 @@ function isActive(path: string): boolean {
       </div>
 
       <!-- Management Section -->
-      <div>
+      <div v-if="managementItems.length > 0">
         <p class="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ t('nav.management') }}</p>
         <div class="space-y-1">
           <router-link
@@ -165,7 +165,7 @@ function isActive(path: string): boolean {
       </div>
 
       <!-- Data Section -->
-      <div>
+      <div v-if="dataItems.length > 0">
         <p class="px-3 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{{ t('nav.data') }}</p>
         <div class="space-y-1">
           <router-link
