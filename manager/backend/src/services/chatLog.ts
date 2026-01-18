@@ -1,11 +1,11 @@
 /**
  * Chat Logging Service
  *
- * Stores chat messages globally and per-player.
+ * Stores chat messages globally and per-player with daily file rotation.
  * Also tracks player death positions for teleportation.
  */
 
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, readdir } from 'fs/promises';
 import path from 'path';
 
 // Chat message entry
@@ -13,6 +13,7 @@ export interface ChatMessage {
   id: string;
   timestamp: string;
   player: string;
+  uuid?: string;
   message: string;
 }
 
@@ -27,26 +28,34 @@ export interface DeathPosition {
   z: number;
 }
 
-// In-memory storage
-const globalChatLog: ChatMessage[] = [];
-const playerChatLogs: Map<string, ChatMessage[]> = new Map();
+// In-memory cache for today's messages
+let todaysChatLog: ChatMessage[] = [];
+let currentDateKey: string = '';
 const playerDeathPositions: Map<string, DeathPosition[]> = new Map();
 
 // Limits
-const MAX_GLOBAL_MESSAGES = 1000;
-const MAX_PLAYER_MESSAGES = 200;
 const MAX_DEATH_POSITIONS = 10; // Keep last 10 death positions per player
 
 // Data directory paths
 const DATA_DIR = process.env.DATA_PATH || '/app/data';
 const CHAT_DIR = path.join(DATA_DIR, 'chat');
-const GLOBAL_CHAT_FILE = path.join(CHAT_DIR, 'global.json');
+const GLOBAL_CHAT_DIR = path.join(CHAT_DIR, 'global');
 const PLAYER_CHAT_DIR = path.join(CHAT_DIR, 'players');
 const DEATHS_DIR = path.join(DATA_DIR, 'deaths');
 
 // Generate unique ID
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Get date key for file naming (YYYY-MM-DD)
+function getDateKey(date: Date = new Date()): string {
+  return date.toISOString().split('T')[0];
+}
+
+// Parse date key back to Date
+function parseDateKey(dateKey: string): Date {
+  return new Date(dateKey + 'T00:00:00.000Z');
 }
 
 // Normalize player name for file storage (lowercase)
@@ -57,7 +66,7 @@ function normalizePlayerName(name: string): string {
 // Ensure directories exist
 async function ensureDirectories(): Promise<void> {
   try {
-    await mkdir(CHAT_DIR, { recursive: true });
+    await mkdir(GLOBAL_CHAT_DIR, { recursive: true });
     await mkdir(PLAYER_CHAT_DIR, { recursive: true });
     await mkdir(DEATHS_DIR, { recursive: true });
   } catch {
@@ -65,64 +74,62 @@ async function ensureDirectories(): Promise<void> {
   }
 }
 
-// Load global chat log
-export async function loadGlobalChatLog(): Promise<void> {
-  try {
-    const content = await readFile(GLOBAL_CHAT_FILE, 'utf-8');
-    const data = JSON.parse(content);
-    if (Array.isArray(data)) {
-      globalChatLog.push(...data.slice(-MAX_GLOBAL_MESSAGES));
-    }
-  } catch {
-    // File doesn't exist, start empty
-  }
+// Get file path for global chat on a specific date
+function getGlobalChatFilePath(dateKey: string): string {
+  return path.join(GLOBAL_CHAT_DIR, `${dateKey}.json`);
 }
 
-// Save global chat log
-async function saveGlobalChatLog(): Promise<void> {
-  await ensureDirectories();
-  await writeFile(
-    GLOBAL_CHAT_FILE,
-    JSON.stringify(globalChatLog.slice(-MAX_GLOBAL_MESSAGES), null, 2),
-    'utf-8'
-  );
-}
-
-// Load player chat log
-async function loadPlayerChatLog(playerName: string): Promise<ChatMessage[]> {
+// Get file path for player chat on a specific date
+function getPlayerChatFilePath(playerName: string, dateKey: string): string {
   const normalized = normalizePlayerName(playerName);
-  const cached = playerChatLogs.get(normalized);
-  if (cached) return cached;
+  const playerDir = path.join(PLAYER_CHAT_DIR, normalized);
+  return path.join(playerDir, `${dateKey}.json`);
+}
 
+// Load messages from a specific date file
+async function loadMessagesFromFile(filePath: string): Promise<ChatMessage[]> {
   try {
-    const filePath = path.join(PLAYER_CHAT_DIR, `${normalized}.json`);
     const content = await readFile(filePath, 'utf-8');
     const data = JSON.parse(content);
-    if (Array.isArray(data)) {
-      const messages = data.slice(-MAX_PLAYER_MESSAGES);
-      playerChatLogs.set(normalized, messages);
-      return messages;
-    }
+    return Array.isArray(data) ? data : [];
   } catch {
-    // File doesn't exist
+    return [];
   }
-
-  const empty: ChatMessage[] = [];
-  playerChatLogs.set(normalized, empty);
-  return empty;
 }
 
-// Save player chat log
-async function savePlayerChatLog(playerName: string): Promise<void> {
+// Save messages to a file
+async function saveMessagesToFile(filePath: string, messages: ChatMessage[]): Promise<void> {
   await ensureDirectories();
-  const normalized = normalizePlayerName(playerName);
-  const messages = playerChatLogs.get(normalized) || [];
-  const filePath = path.join(PLAYER_CHAT_DIR, `${normalized}.json`);
-  await writeFile(
-    filePath,
-    JSON.stringify(messages.slice(-MAX_PLAYER_MESSAGES), null, 2),
-    'utf-8'
-  );
+  // Ensure parent directory exists
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, JSON.stringify(messages, null, 2), 'utf-8');
+}
+
+// Get list of available date files in a directory
+async function getAvailableDates(directory: string): Promise<string[]> {
+  try {
+    const files = await readdir(directory);
+    return files
+      .filter(f => f.endsWith('.json'))
+      .map(f => f.replace('.json', ''))
+      .sort()
+      .reverse(); // Most recent first
+  } catch {
+    return [];
+  }
+}
+
+// Load today's global chat log
+async function loadTodaysChatLog(): Promise<void> {
+  const today = getDateKey();
+  if (currentDateKey !== today) {
+    // Day changed, save previous and load new
+    if (currentDateKey && todaysChatLog.length > 0) {
+      await saveMessagesToFile(getGlobalChatFilePath(currentDateKey), todaysChatLog);
+    }
+    currentDateKey = today;
+    todaysChatLog = await loadMessagesFromFile(getGlobalChatFilePath(today));
+  }
 }
 
 // Load player death positions
@@ -165,76 +172,146 @@ async function savePlayerDeathPositions(playerName: string): Promise<void> {
 /**
  * Add a chat message (stores globally and per-player)
  */
-export async function addChatMessage(player: string, message: string): Promise<ChatMessage> {
+export async function addChatMessage(player: string, message: string, uuid?: string): Promise<ChatMessage> {
+  const today = getDateKey();
+  await loadTodaysChatLog();
+
   const entry: ChatMessage = {
     id: generateId(),
     timestamp: new Date().toISOString(),
     player,
+    uuid,
     message,
   };
 
-  // Add to global log
-  globalChatLog.push(entry);
-  while (globalChatLog.length > MAX_GLOBAL_MESSAGES) {
-    globalChatLog.shift();
-  }
+  // Add to today's global log
+  todaysChatLog.push(entry);
 
-  // Add to player log
-  const playerLog = await loadPlayerChatLog(player);
-  playerLog.push(entry);
-  while (playerLog.length > MAX_PLAYER_MESSAGES) {
-    playerLog.shift();
-  }
+  // Save global log
+  saveMessagesToFile(getGlobalChatFilePath(today), todaysChatLog).catch(console.error);
 
-  // Save asynchronously
-  saveGlobalChatLog().catch(console.error);
-  savePlayerChatLog(player).catch(console.error);
+  // Save to player's daily log
+  const playerFilePath = getPlayerChatFilePath(player, today);
+  loadMessagesFromFile(playerFilePath).then(async playerMessages => {
+    playerMessages.push(entry);
+    await saveMessagesToFile(playerFilePath, playerMessages);
+  }).catch(console.error);
 
   return entry;
 }
 
 /**
- * Get global chat log
+ * Get global chat log with date range filter
  */
-export function getGlobalChatLog(options?: {
+export async function getGlobalChatLog(options?: {
+  days?: number; // Number of days to include (default: 7, 0 = all)
   limit?: number;
   offset?: number;
-}): { messages: ChatMessage[]; total: number } {
-  let messages = [...globalChatLog].reverse(); // Most recent first
-  const total = messages.length;
+}): Promise<{ messages: ChatMessage[]; total: number; availableDays: number }> {
+  await loadTodaysChatLog();
+
+  const days = options?.days ?? 7;
+  const allMessages: ChatMessage[] = [];
+
+  // Get available dates
+  const availableDates = await getAvailableDates(GLOBAL_CHAT_DIR);
+  const availableDays = availableDates.length;
+
+  // Determine which dates to load
+  let datesToLoad: string[];
+  if (days === 0) {
+    // Load all available dates
+    datesToLoad = availableDates;
+  } else {
+    // Load only dates within the range
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    datesToLoad = availableDates.filter(dateKey => {
+      const date = parseDateKey(dateKey);
+      return date >= cutoffDate;
+    });
+  }
+
+  // Load messages from each date
+  for (const dateKey of datesToLoad) {
+    if (dateKey === currentDateKey) {
+      // Use cached today's messages
+      allMessages.push(...todaysChatLog);
+    } else {
+      const messages = await loadMessagesFromFile(getGlobalChatFilePath(dateKey));
+      allMessages.push(...messages);
+    }
+  }
+
+  // Sort by timestamp descending (most recent first)
+  allMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const total = allMessages.length;
+  let result = allMessages;
 
   if (options?.offset) {
-    messages = messages.slice(options.offset);
+    result = result.slice(options.offset);
   }
   if (options?.limit) {
-    messages = messages.slice(0, options.limit);
+    result = result.slice(0, options.limit);
   }
 
-  return { messages, total };
+  return { messages: result, total, availableDays };
 }
 
 /**
- * Get player chat log
+ * Get player chat log with date range filter
  */
 export async function getPlayerChatLog(
   playerName: string,
   options?: {
+    days?: number; // Number of days to include (default: 7, 0 = all)
     limit?: number;
     offset?: number;
   }
-): Promise<{ messages: ChatMessage[]; total: number }> {
-  const playerLog = await loadPlayerChatLog(playerName);
-  let messages = [...playerLog].reverse(); // Most recent first
-  const total = messages.length;
+): Promise<{ messages: ChatMessage[]; total: number; availableDays: number }> {
+  const normalized = normalizePlayerName(playerName);
+  const playerDir = path.join(PLAYER_CHAT_DIR, normalized);
+  const days = options?.days ?? 7;
+  const allMessages: ChatMessage[] = [];
+
+  // Get available dates for this player
+  const availableDates = await getAvailableDates(playerDir);
+  const availableDays = availableDates.length;
+
+  // Determine which dates to load
+  let datesToLoad: string[];
+  if (days === 0) {
+    datesToLoad = availableDates;
+  } else {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+    datesToLoad = availableDates.filter(dateKey => {
+      const date = parseDateKey(dateKey);
+      return date >= cutoffDate;
+    });
+  }
+
+  // Load messages from each date
+  for (const dateKey of datesToLoad) {
+    const messages = await loadMessagesFromFile(getPlayerChatFilePath(playerName, dateKey));
+    allMessages.push(...messages);
+  }
+
+  // Sort by timestamp descending
+  allMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const total = allMessages.length;
+  let result = allMessages;
 
   if (options?.offset) {
-    messages = messages.slice(options.offset);
+    result = result.slice(options.offset);
   }
   if (options?.limit) {
-    messages = messages.slice(0, options.limit);
+    result = result.slice(0, options.limit);
   }
 
-  return { messages, total };
+  return { messages: result, total, availableDays };
 }
 
 /**
@@ -297,4 +374,4 @@ export async function getPlayerDeathPositions(
 }
 
 // Initialize on module load
-loadGlobalChatLog().catch(console.error);
+loadTodaysChatLog().catch(console.error);

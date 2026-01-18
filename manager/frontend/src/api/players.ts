@@ -88,12 +88,14 @@ export interface ChatMessage {
   id: string
   timestamp: string
   player: string
+  uuid?: string
   message: string
 }
 
 export interface ChatLogResponse {
   messages: ChatMessage[]
   total: number
+  availableDays?: number
 }
 
 export const playersApi = {
@@ -217,34 +219,20 @@ export const playersApi = {
     return response.data
   },
 
-  async getGlobalChatLog(options?: { limit?: number; offset?: number }): Promise<ChatLogResponse> {
+  async getGlobalChatLog(options?: { limit?: number; offset?: number; days?: number }): Promise<ChatLogResponse> {
     const params = new URLSearchParams()
     if (options?.limit) params.set('limit', options.limit.toString())
     if (options?.offset) params.set('offset', options.offset.toString())
+    if (options?.days !== undefined) params.set('days', options.days.toString())
     const response = await api.get<ChatLogResponse>(`/players/chat?${params.toString()}`)
     return response.data
   },
 
-  async getPlayerChatLog(playerName: string, options?: { limit?: number; offset?: number }): Promise<ChatLogResponse> {
+  async getPlayerChatLog(playerName: string, options?: { limit?: number; offset?: number; days?: number }): Promise<ChatLogResponse> {
     const params = new URLSearchParams()
     if (options?.limit) params.set('limit', options.limit.toString())
     if (options?.offset) params.set('offset', options.offset.toString())
-    const response = await api.get<ChatLogResponse>(`/players/${playerName}/chat?${params.toString()}`)
-    return response.data
-  },
-
-  async getGlobalChatLog(options?: { limit?: number; offset?: number }): Promise<ChatLogResponse> {
-    const params = new URLSearchParams()
-    if (options?.limit) params.set('limit', options.limit.toString())
-    if (options?.offset) params.set('offset', options.offset.toString())
-    const response = await api.get<ChatLogResponse>(`/players/chat?${params.toString()}`)
-    return response.data
-  },
-
-  async getPlayerChatLog(playerName: string, options?: { limit?: number; offset?: number }): Promise<ChatLogResponse> {
-    const params = new URLSearchParams()
-    if (options?.limit) params.set('limit', options.limit.toString())
-    if (options?.offset) params.set('offset', options.offset.toString())
+    if (options?.days !== undefined) params.set('days', options.days.toString())
     const response = await api.get<ChatLogResponse>(`/players/${playerName}/chat?${params.toString()}`)
     return response.data
   },
