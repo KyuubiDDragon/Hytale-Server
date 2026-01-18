@@ -459,8 +459,8 @@ onMounted(loadRoles)
                         </svg>
                       </div>
                       <div class="flex-1 min-w-0">
-                        <span class="text-sm text-white font-mono">{{ perm.key }}</span>
-                        <p class="text-xs text-gray-500 truncate">{{ t('permissionDescriptions.' + perm.key) }}</p>
+                        <span class="text-sm text-white">{{ t('permissionDescriptions.' + perm.key) }}</span>
+                        <p class="text-xs text-gray-500 font-mono truncate">{{ perm.key }}</p>
                       </div>
                     </label>
                   </div>
