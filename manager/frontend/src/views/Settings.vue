@@ -410,7 +410,7 @@ onUnmounted(() => {
 
           <div class="flex gap-2">
             <button
-              v-if="!hytaleAuthStatus.authenticated && !deviceCodeData"
+              v-if="!hytaleAuthStatus.authenticated && !deviceCodeData && authStore.hasPermission('hytale_auth.manage')"
               @click="initiateHytaleAuth"
               :disabled="hytaleAuthLoading"
               class="btn btn-primary"
@@ -423,7 +423,7 @@ onUnmounted(() => {
             </button>
 
             <button
-              v-if="hytaleAuthStatus.authenticated"
+              v-if="hytaleAuthStatus.authenticated && authStore.hasPermission('hytale_auth.manage')"
               @click="resetHytaleAuth"
               :disabled="hytaleAuthLoading"
               class="btn btn-secondary"
@@ -485,6 +485,7 @@ onUnmounted(() => {
                 </button>
 
                 <button
+                  v-if="authStore.hasPermission('hytale_auth.manage')"
                   @click="resetHytaleAuth"
                   class="btn btn-secondary"
                 >
