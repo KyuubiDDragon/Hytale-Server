@@ -92,31 +92,50 @@ public class KyuubiSoftAPI extends JavaPlugin {
             eventBroadcaster.broadcastPlayerLeave(playerName, uuid);
         });
 
-        // Player chat event (async event with String key - using empty string for global listener)
-        eventRegistry.register(PlayerChatEvent.class, "", event -> {
-            try {
-                LOGGER.info("[KyuubiSoft Chat Handler] Processing chat event...");
-
-                String playerName = "Unknown";
-                String message = "";
-
-                // Try to extract using reflection on the event object itself
-                // The log shows message= and username= as parameters
+        // Player chat event - keyed event, requires a channel key
+        // Try different channel keys: empty string, "global", "server", "default"
+        String[] chatChannels = {"", "global", "server", "default", "chat"};
+        for (String channel : chatChannels) {
+            final String channelKey = channel;
+            LOGGER.info("[KyuubiSoft] Registering chat event handler for channel: '" + channelKey + "'");
+            eventRegistry.register(PlayerChatEvent.class, channel, event -> {
                 try {
-                    // Try getMessage() method
-                    var msgMethod = event.getClass().getMethod("getMessage");
-                    Object msgObj = msgMethod.invoke(event);
-                    message = extractStringFromParamValue(msgObj);
-                } catch (NoSuchMethodException e1) {
-                    // Try getContent() fallback
-                    try {
-                        var contentMethod = event.getClass().getMethod("getContent");
-                        Object contentObj = contentMethod.invoke(event);
-                        message = extractStringFromParamValue(contentObj);
-                    } catch (Exception e2) {
-                        LOGGER.warning("[Chat] No getMessage or getContent method found");
+                    LOGGER.info("[KyuubiSoft Chat Handler] Chat event received on channel: '" + channelKey + "'");
+                    LOGGER.info("[KyuubiSoft Chat Handler] Event class: " + event.getClass().getName());
+
+                    String playerName = "Unknown";
+                    String message = "";
+
+                    // Log all available methods for debugging (only on first event)
+                    LOGGER.info("[Debug] PlayerChatEvent methods:");
+                    for (var m : event.getClass().getMethods()) {
+                        if (m.getParameterCount() == 0 && !m.getName().startsWith("wait") && !m.getName().equals("getClass") && !m.getName().equals("hashCode") && !m.getName().equals("toString") && !m.getName().equals("notify") && !m.getName().equals("notifyAll")) {
+                            try {
+                                Object result = m.invoke(event);
+                                LOGGER.info("  - " + m.getName() + "() = " + (result != null ? result.getClass().getSimpleName() + ": " + result : "null"));
+                            } catch (Exception e) {
+                                LOGGER.info("  - " + m.getName() + "() [error: " + e.getMessage() + "]");
+                            }
+                        }
                     }
-                }
+
+                    // Try to extract using reflection on the event object itself
+                    // The log shows message= and username= as parameters
+                    try {
+                        // Try getMessage() method
+                        var msgMethod = event.getClass().getMethod("getMessage");
+                        Object msgObj = msgMethod.invoke(event);
+                        message = extractStringFromParamValue(msgObj);
+                    } catch (NoSuchMethodException e1) {
+                        // Try getContent() fallback
+                        try {
+                            var contentMethod = event.getClass().getMethod("getContent");
+                            Object contentObj = contentMethod.invoke(event);
+                            message = extractStringFromParamValue(contentObj);
+                        } catch (Exception e2) {
+                            LOGGER.warning("[Chat] No getMessage or getContent method found");
+                        }
+                    }
 
                 // Try to get username
                 try {
@@ -144,6 +163,7 @@ public class KyuubiSoftAPI extends JavaPlugin {
                 e.printStackTrace();
             }
         });
+        }
     }
 
     /**
