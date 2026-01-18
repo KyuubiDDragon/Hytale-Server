@@ -834,7 +834,7 @@ const ITEM_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 /**
  * Get list of all available items from the extracted assets
- * Scans common item icon directories and builds a list
+ * Uses searchAssets to find all PNG files in icon/item directories
  */
 export function getItemList(forceRefresh: boolean = false): ItemInfo[] {
   // Return cached list if available and not expired
@@ -852,62 +852,40 @@ export function getItemList(forceRefresh: boolean = false): ItemInfo[] {
     return items;
   }
 
-  // First, try to find actual item directories by scanning the assets
-  const possibleRoots = ['hytale', 'textures', 'icons', ''];
-  const foundDirs: string[] = [];
+  // Use searchAssets to find all PNG files that could be item icons
+  // Search for common patterns
+  const searchPatterns = ['icon', 'item', 'block'];
 
-  // Scan for directories containing item icons
-  function scanForItemDirs(basePath: string, currentPath: string = '', depth: number = 0): void {
-    if (depth > 5) return; // Limit depth
+  for (const pattern of searchPatterns) {
+    const results = searchAssets(pattern, {
+      extensions: ['.png'],
+      maxResults: 2000,
+      useGlob: false,
+    });
 
-    const fullPath = path.join(basePath, currentPath);
-    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isDirectory()) return;
-
-    const entries = fs.readdirSync(fullPath);
-
-    // Check if this directory contains PNG files (potential item icons)
-    const hasPngs = entries.some(e => e.endsWith('.png'));
-    if (hasPngs && (currentPath.includes('item') || currentPath.includes('icon') || currentPath.includes('block'))) {
-      foundDirs.push(currentPath);
-    }
-
-    // Recurse into subdirectories
-    for (const entry of entries) {
-      const entryPath = path.join(fullPath, entry);
-      if (fs.statSync(entryPath).isDirectory()) {
-        scanForItemDirs(basePath, currentPath ? `${currentPath}/${entry}` : entry, depth + 1);
+    for (const result of results) {
+      // Only include files from directories that look like item/icon directories
+      const pathLower = result.path.toLowerCase();
+      if (!pathLower.includes('icon') && !pathLower.includes('item') && !pathLower.includes('block')) {
+        continue;
       }
-    }
-  }
 
-  // Scan the assets directory
-  scanForItemDirs(config.assetsPath);
-
-  if (foundDirs.length === 0) {
-    console.log('[Items] No item directories found in assets. Scanned:', config.assetsPath);
-    // List top-level directories for debugging
-    try {
-      const topLevel = fs.readdirSync(config.assetsPath);
-      console.log('[Items] Top-level dirs:', topLevel.slice(0, 20));
-    } catch (e) {
-      console.log('[Items] Could not list top-level dirs');
-    }
-    return items;
-  }
-
-  console.log('[Items] Found item directories:', foundDirs.length);
-
-  // Collect items from found directories
-  for (const dir of foundDirs) {
-    const files = listAssetDirectory(dir);
-    if (!files) continue;
-
-    for (const file of files) {
-      if (file.type !== 'file') continue;
-      if (!file.name.endsWith('.png')) continue;
+      // Skip textures that are clearly not item icons (too deep in texture paths, animations, etc.)
+      if (pathLower.includes('animation') || pathLower.includes('particle') ||
+          pathLower.includes('effect') || pathLower.includes('background') ||
+          pathLower.includes('button') || pathLower.includes('frame') ||
+          pathLower.includes('slot') || pathLower.includes('cursor')) {
+        continue;
+      }
 
       // Extract item ID from filename
-      const itemName = file.name.replace('.png', '');
+      const itemName = result.name.replace('.png', '');
+
+      // Skip very short names or numeric-only names (likely not items)
+      if (itemName.length < 2 || /^\d+$/.test(itemName)) {
+        continue;
+      }
+
       const itemId = `hytale:${itemName}`;
 
       // Skip duplicates
@@ -922,17 +900,17 @@ export function getItemList(forceRefresh: boolean = false): ItemInfo[] {
 
       // Determine category from path
       let category = 'items';
-      if (dir.includes('weapon')) category = 'weapons';
-      else if (dir.includes('armor')) category = 'armor';
-      else if (dir.includes('tool')) category = 'tools';
-      else if (dir.includes('block')) category = 'blocks';
-      else if (dir.includes('consumable')) category = 'consumables';
-      else if (dir.includes('material')) category = 'materials';
+      if (pathLower.includes('weapon')) category = 'weapons';
+      else if (pathLower.includes('armor')) category = 'armor';
+      else if (pathLower.includes('tool')) category = 'tools';
+      else if (pathLower.includes('block')) category = 'blocks';
+      else if (pathLower.includes('consumable')) category = 'consumables';
+      else if (pathLower.includes('material')) category = 'materials';
 
       items.push({
         id: itemId,
         name: displayName,
-        path: file.path,
+        path: result.path,
         category,
       });
     }
