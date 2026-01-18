@@ -21,7 +21,8 @@
     "remove": "Remove",
     "clear": "Clear",
     "previous": "Previous",
-    "next": "Next"
+    "next": "Next",
+    "noPermission": "You don't have permission to perform this action"
   },
   "auth": {
     "login": "Login",
@@ -53,7 +54,8 @@
     "scheduler": "Scheduler",
     "statistics": "Statistics",
     "assets": "Asset Explorer",
-    "chat": "Chat Log"
+    "chat": "Chat Log",
+    "roles": "Roles"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -129,7 +131,8 @@
     "showAll": "All",
     "showErrors": "Errors",
     "showWarnings": "Warnings",
-    "showInfo": "Info"
+    "showInfo": "Info",
+    "bypassWarning": "Warning: Console access allows executing all server commands, bypassing UI permission restrictions."
   },
   "backups": {
     "title": "Backup Management",
@@ -711,6 +714,55 @@
     "notInstalled": "EasyWebMap Not Installed",
     "notInstalledDesc": "The EasyWebMap mod is not installed. Install it from the Mod Store to enable the live web map feature.",
     "goToModStore": "Go to Mod Store"
+  },
+  "roles": {
+    "title": "Role Management",
+    "subtitle": "Manage user roles and permissions",
+    "create": "Create Role",
+    "createRole": "Create Role",
+    "edit": "Edit Role",
+    "editRole": "Edit Role",
+    "delete": "Delete Role",
+    "name": "Role Name",
+    "namePlaceholder": "Enter role name",
+    "nameRequired": "Role name is required",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter role description",
+    "noDescription": "No description",
+    "color": "Color",
+    "permissions": "Permissions",
+    "permissionCount": "{count} permissions",
+    "permissionsSelected": "permissions selected",
+    "noPermissionsAvailable": "No permissions available",
+    "system": "System",
+    "systemRole": "System Role",
+    "systemRoleNote": "System roles cannot be renamed or deleted. Only permissions can be modified.",
+    "customRole": "Custom Role",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "confirmDelete": "Are you sure you want to delete the role \"{name}\"?",
+    "cannotDeleteSystem": "System roles cannot be deleted",
+    "noRoles": "No roles found"
+  },
+  "permissionCategories": {
+    "dashboard": "Dashboard",
+    "server": "Server",
+    "console": "Console",
+    "performance": "Performance",
+    "players": "Players",
+    "chat": "Chat",
+    "backups": "Backups",
+    "scheduler": "Scheduler",
+    "worlds": "Worlds",
+    "mods": "Mods",
+    "plugins": "Plugins",
+    "config": "Configuration",
+    "assets": "Assets",
+    "users": "Users",
+    "roles": "Roles",
+    "activity": "Activity",
+    "hytale_auth": "Hytale Auth",
+    "settings": "Settings"
   },
   "assets": {
     "title": "Asset Explorer",

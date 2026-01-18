@@ -410,7 +410,7 @@ onUnmounted(() => {
 
           <div class="flex gap-2">
             <button
-              v-if="!hytaleAuthStatus.authenticated && !deviceCodeData"
+              v-if="!hytaleAuthStatus.authenticated && !deviceCodeData && authStore.hasPermission('hytale_auth.manage')"
               @click="initiateHytaleAuth"
               :disabled="hytaleAuthLoading"
               class="btn btn-primary"
@@ -423,7 +423,7 @@ onUnmounted(() => {
             </button>
 
             <button
-              v-if="hytaleAuthStatus.authenticated"
+              v-if="hytaleAuthStatus.authenticated && authStore.hasPermission('hytale_auth.manage')"
               @click="resetHytaleAuth"
               :disabled="hytaleAuthLoading"
               class="btn btn-secondary"
@@ -485,6 +485,7 @@ onUnmounted(() => {
                 </button>
 
                 <button
+                  v-if="authStore.hasPermission('hytale_auth.manage')"
                   @click="resetHytaleAuth"
                   class="btn btn-secondary"
                 >
@@ -523,7 +524,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Patchline Selection -->
-        <div v-if="!patchlineLoading" class="flex gap-4">
+        <div v-if="!patchlineLoading && authStore.hasPermission('settings.edit')" class="flex gap-4">
           <button
             @click="setPatchline('release')"
             :disabled="patchlineLoading"
@@ -587,6 +588,7 @@ onUnmounted(() => {
               <p class="text-sm text-gray-400 mt-1">{{ t('settings.patchlineRestartRequiredDesc') }}</p>
             </div>
             <button
+              v-if="authStore.hasPermission('server.restart')"
               @click="restartForPatchline"
               :disabled="patchlineLoading"
               class="px-4 py-2 bg-status-warning text-dark-400 font-medium rounded-lg hover:bg-status-warning/90 transition-colors disabled:opacity-50"
@@ -669,6 +671,7 @@ onUnmounted(() => {
               <span v-if="hasChanges()" class="text-status-warning text-xs">({{ t('settings.unsavedChanges') }})</span>
             </div>
             <button
+              v-if="authStore.hasPermission('settings.edit')"
               @click="saveFile"
               :disabled="saving || !hasChanges()"
               :class="[

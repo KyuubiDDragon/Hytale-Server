@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import { backupApi, type BackupInfo, type StorageInfo } from '@/api/backup'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
@@ -8,6 +9,7 @@ import Modal from '@/components/ui/Modal.vue'
 import BackupTable from '@/components/backup/BackupTable.vue'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 const backups = ref<BackupInfo[]>([])
 const storage = ref<StorageInfo | null>(null)
@@ -113,7 +115,7 @@ onMounted(fetchBackups)
     <!-- Page Header -->
     <div class="flex items-center justify-between">
       <h1 class="text-2xl font-bold text-white">{{ t('backups.title') }}</h1>
-      <Button :loading="creating" @click="createBackup">
+      <Button v-if="authStore.hasPermission('backups.create')" :loading="creating" @click="createBackup">
         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>

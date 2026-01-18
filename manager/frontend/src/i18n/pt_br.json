@@ -21,7 +21,8 @@
     "remove": "Remover",
     "clear": "Limpar",
     "previous": "Anterior",
-    "next": "Próximo"
+    "next": "Próximo",
+    "noPermission": "Você não tem permissão para realizar esta ação"
   },
   "auth": {
     "login": "Entrar",
@@ -129,7 +130,8 @@
     "showAll": "Todos",
     "showErrors": "Erros",
     "showWarnings": "Avisos",
-    "showInfo": "Informações"
+    "showInfo": "Informações",
+    "bypassWarning": "Aviso: O acesso ao console permite executar todos os comandos do servidor, ignorando as restrições de permissão da UI."
   },
   "backups": {
     "title": "Gerenciamento de Backups",

@@ -7,9 +7,17 @@ import { config } from '../config.js';
 export interface User {
   username: string;
   passwordHash: string;
-  role: 'admin' | 'moderator' | 'operator' | 'viewer';
+  roleId: string;
   createdAt: string;
   lastLogin?: string;
+  tokenVersion: number;
+}
+
+// Track deleted users for session-based invalidation
+const invalidatedUsers = new Set<string>();
+
+export function isUserInvalidated(username: string): boolean {
+  return invalidatedUsers.has(username);
 }
 
 interface UsersData {
@@ -33,14 +41,38 @@ async function ensureDataDir(): Promise<void> {
 async function readUsers(): Promise<UsersData> {
   try {
     const content = await readFile(USERS_FILE, 'utf-8');
-    return JSON.parse(content);
+    const data = JSON.parse(content) as UsersData;
+
+    // Migrate users from old role field to new roleId field
+    let needsMigration = false;
+    for (const user of data.users) {
+      const userAny = user as any;
+      if (userAny.role !== undefined && userAny.roleId === undefined) {
+        userAny.roleId = userAny.role;
+        delete userAny.role;
+        needsMigration = true;
+      }
+      // Migrate users without tokenVersion
+      if (user.tokenVersion === undefined) {
+        user.tokenVersion = 1;
+        needsMigration = true;
+      }
+    }
+
+    // Save migrated data if needed
+    if (needsMigration) {
+      await writeUsers(data);
+    }
+
+    return data;
   } catch {
     // If file doesn't exist, create default admin user from env
     const defaultAdmin: User = {
       username: config.managerUsername,
       passwordHash: bcrypt.hashSync(config.managerPassword, 12),
-      role: 'admin',
+      roleId: 'admin',
       createdAt: new Date().toISOString(),
+      tokenVersion: 1,
     };
     const data: UsersData = { users: [defaultAdmin] };
     await writeUsers(data);
@@ -82,7 +114,7 @@ export async function verifyUserCredentials(username: string, password: string):
 export async function createUser(
   username: string,
   password: string,
-  role: User['role'] = 'viewer'
+  roleId: string = 'viewer'
 ): Promise<Omit<User, 'passwordHash'>> {
   const data = await readUsers();
 
@@ -104,8 +136,9 @@ export async function createUser(
   const newUser: User = {
     username,
     passwordHash: bcrypt.hashSync(password, 12),
-    role,
+    roleId,
     createdAt: new Date().toISOString(),
+    tokenVersion: 1,
   };
 
   data.users.push(newUser);
@@ -118,7 +151,7 @@ export async function createUser(
 // Update user
 export async function updateUser(
   username: string,
-  updates: { password?: string; role?: User['role'] }
+  updates: { password?: string; roleId?: string }
 ): Promise<Omit<User, 'passwordHash'>> {
   const data = await readUsers();
   const userIndex = data.users.findIndex(u => u.username === username);
@@ -127,18 +160,27 @@ export async function updateUser(
     throw new Error('User not found');
   }
 
+  let shouldInvalidateTokens = false;
+
   if (updates.password) {
     if (updates.password.length < 6) {
       throw new Error('Password must be at least 6 characters');
     }
     data.users[userIndex].passwordHash = bcrypt.hashSync(updates.password, 12);
+    shouldInvalidateTokens = true;
   }
 
-  if (updates.role) {
-    data.users[userIndex].role = updates.role;
+  if (updates.roleId) {
+    data.users[userIndex].roleId = updates.roleId;
+    shouldInvalidateTokens = true;
   }
 
   await writeUsers(data);
+
+  // Invalidate tokens after password or role changes
+  if (shouldInvalidateTokens) {
+    await invalidateUserTokens(username);
+  }
 
   const { passwordHash, ...userWithoutPassword } = data.users[userIndex];
   return userWithoutPassword;
@@ -149,16 +191,19 @@ export async function deleteUser(username: string): Promise<void> {
   const data = await readUsers();
 
   // Prevent deleting the last admin
-  const adminCount = data.users.filter(u => u.role === 'admin').length;
+  const adminCount = data.users.filter(u => u.roleId === 'admin').length;
   const userToDelete = data.users.find(u => u.username === username);
 
   if (!userToDelete) {
     throw new Error('User not found');
   }
 
-  if (userToDelete.role === 'admin' && adminCount <= 1) {
+  if (userToDelete.roleId === 'admin' && adminCount <= 1) {
     throw new Error('Cannot delete the last admin user');
   }
+
+  // Add to invalidation list before deleting
+  invalidatedUsers.add(username);
 
   data.users = data.users.filter(u => u.username !== username);
   await writeUsers(data);
@@ -173,6 +218,23 @@ export async function updateLastLogin(username: string): Promise<void> {
     data.users[userIndex].lastLogin = new Date().toISOString();
     await writeUsers(data);
   }
+}
+
+// Invalidate all tokens for a user by incrementing tokenVersion
+export async function invalidateUserTokens(username: string): Promise<void> {
+  const data = await readUsers();
+  const userIndex = data.users.findIndex(u => u.username === username);
+
+  if (userIndex !== -1) {
+    data.users[userIndex].tokenVersion = (data.users[userIndex].tokenVersion || 0) + 1;
+    await writeUsers(data);
+  }
+}
+
+// Get current token version for a user
+export async function getTokenVersion(username: string): Promise<number> {
+  const user = await getUser(username);
+  return user?.tokenVersion ?? 1;
 }
 
 // Initialize users on startup

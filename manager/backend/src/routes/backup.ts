@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import { authMiddleware } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permissions.js';
 import * as backupService from '../services/backup.js';
 
 const router = Router();
 
 // GET /api/backups
-router.get('/', authMiddleware, (_req: Request, res: Response) => {
+router.get('/', authMiddleware, requirePermission('backups.view'), (_req: Request, res: Response) => {
   const backups = backupService.listBackups();
   const storage = backupService.getStorageInfo();
 
@@ -14,7 +15,7 @@ router.get('/', authMiddleware, (_req: Request, res: Response) => {
 });
 
 // GET /api/backups/:id
-router.get('/:id', authMiddleware, (req: Request, res: Response) => {
+router.get('/:id', authMiddleware, requirePermission('backups.view'), (req: Request, res: Response) => {
   const backup = backupService.getBackup(req.params.id);
 
   if (!backup) {
@@ -26,7 +27,7 @@ router.get('/:id', authMiddleware, (req: Request, res: Response) => {
 });
 
 // POST /api/backups
-router.post('/', authMiddleware, (req: Request, res: Response) => {
+router.post('/', authMiddleware, requirePermission('backups.create'), (req: Request, res: Response) => {
   const { name } = req.body || {};
   const result = backupService.createBackup(name);
 
@@ -43,7 +44,7 @@ router.post('/', authMiddleware, (req: Request, res: Response) => {
 });
 
 // DELETE /api/backups/:id
-router.delete('/:id', authMiddleware, (req: Request, res: Response) => {
+router.delete('/:id', authMiddleware, requirePermission('backups.delete'), (req: Request, res: Response) => {
   const result = backupService.deleteBackup(req.params.id);
 
   if (!result.success) {
@@ -55,7 +56,7 @@ router.delete('/:id', authMiddleware, (req: Request, res: Response) => {
 });
 
 // POST /api/backups/:id/restore
-router.post('/:id/restore', authMiddleware, (req: Request, res: Response) => {
+router.post('/:id/restore', authMiddleware, requirePermission('backups.restore'), (req: Request, res: Response) => {
   const result = backupService.restoreBackup(req.params.id);
 
   if (!result.success) {
@@ -67,7 +68,7 @@ router.post('/:id/restore', authMiddleware, (req: Request, res: Response) => {
 });
 
 // GET /api/backups/:id/download
-router.get('/:id/download', authMiddleware, (req: Request, res: Response) => {
+router.get('/:id/download', authMiddleware, requirePermission('backups.download'), (req: Request, res: Response) => {
   const filePath = backupService.getBackupPath(req.params.id);
 
   if (!filePath) {

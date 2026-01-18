@@ -2,9 +2,11 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { whitelistApi, bansApi, type BanEntry } from '@/api/management'
+import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 // Whitelist state
 const whitelistEnabled = ref(false)
@@ -174,6 +176,7 @@ onMounted(loadData)
             <p class="text-sm text-gray-400">{{ t('whitelist.enabledDescription') }}</p>
           </div>
           <button
+            v-if="authStore.hasPermission('players.whitelist')"
             @click="toggleWhitelist"
             :class="[
               'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
@@ -187,11 +190,14 @@ onMounted(loadData)
               ]"
             />
           </button>
+          <span v-else :class="['text-sm', whitelistEnabled ? 'text-hytale-orange' : 'text-gray-500']">
+            {{ whitelistEnabled ? 'Enabled' : 'Disabled' }}
+          </span>
         </div>
       </Card>
 
       <!-- Add Player -->
-      <Card>
+      <Card v-if="authStore.hasPermission('players.whitelist')">
         <h3 class="font-semibold text-white mb-4">{{ t('whitelist.addPlayer') }}</h3>
         <form @submit.prevent="addToWhitelist" class="flex gap-3">
           <input
@@ -241,6 +247,7 @@ onMounted(loadData)
               <span class="text-white">{{ player }}</span>
             </div>
             <button
+              v-if="authStore.hasPermission('players.whitelist')"
               @click="removeFromWhitelist(player)"
               class="p-2 text-gray-400 hover:text-status-error transition-colors"
             >
@@ -256,7 +263,7 @@ onMounted(loadData)
     <!-- Bans Tab -->
     <div v-if="activeTab === 'bans'" class="space-y-6">
       <!-- Add Ban -->
-      <Card>
+      <Card v-if="authStore.hasPermission('players.ban')">
         <h3 class="font-semibold text-white mb-4">{{ t('whitelist.banPlayer') }}</h3>
         <form @submit.prevent="addBan" class="space-y-3">
           <div class="flex gap-3">
@@ -322,6 +329,7 @@ onMounted(loadData)
               </div>
             </div>
             <button
+              v-if="authStore.hasPermission('players.unban')"
               @click="removeBan(ban.player)"
               class="px-3 py-1.5 bg-dark-50 text-gray-300 text-sm rounded-lg hover:bg-hytale-orange hover:text-dark transition-colors"
             >

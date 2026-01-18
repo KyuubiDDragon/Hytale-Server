@@ -8,7 +8,7 @@ const { t } = useI18n()
 const route = useRoute()
 const authStore = useAuthStore()
 
-type Permission = 'all' | 'console' | 'performance' | 'managePlayers' | 'manageBackups' | 'manageConfig' | 'admin'
+type Permission = string | 'all'
 
 interface NavItem {
   name: string
@@ -22,35 +22,28 @@ interface NavItem {
 // Check if user has permission for a nav item
 function hasPermission(permission?: Permission): boolean {
   if (!permission || permission === 'all') return true
-  switch (permission) {
-    case 'console': return authStore.canViewConsole
-    case 'performance': return authStore.canViewPerformance
-    case 'managePlayers': return authStore.canManagePlayers
-    case 'manageBackups': return authStore.canManageBackups
-    case 'manageConfig': return authStore.canManageConfig
-    case 'admin': return authStore.isAdmin
-    default: return true
-  }
+  return authStore.hasPermission(permission)
 }
 
 const navItems = computed<NavItem[]>(() => [
-  { name: 'dashboard', path: '/', icon: 'dashboard', label: t('nav.dashboard'), group: 'main', permission: 'all' },
-  { name: 'console', path: '/console', icon: 'console', label: t('nav.console'), group: 'main', permission: 'console' },
-  { name: 'performance', path: '/performance', icon: 'performance', label: t('nav.performance'), group: 'main', permission: 'performance' },
-  { name: 'statistics', path: '/statistics', icon: 'statistics', label: t('nav.statistics'), group: 'main', permission: 'all' },
-  { name: 'players', path: '/players', icon: 'players', label: t('nav.players'), group: 'management', permission: 'managePlayers' },
-  { name: 'chat', path: '/chat', icon: 'chat', label: t('nav.chat'), group: 'management', permission: 'managePlayers' },
-  { name: 'whitelist', path: '/whitelist', icon: 'whitelist', label: t('nav.whitelist'), group: 'management', permission: 'managePlayers' },
-  { name: 'permissions', path: '/permissions', icon: 'permissions', label: t('nav.permissions'), group: 'management', permission: 'managePlayers' },
-  { name: 'worlds', path: '/worlds', icon: 'worlds', label: t('nav.worlds'), group: 'management', permission: 'managePlayers' },
-  { name: 'mods', path: '/mods', icon: 'mods', label: t('nav.mods'), group: 'management', permission: 'managePlayers' },
-  { name: 'assets', path: '/assets', icon: 'assets', label: t('nav.assets'), group: 'management', permission: 'managePlayers' },
-  { name: 'backups', path: '/backups', icon: 'backup', label: t('nav.backups'), group: 'data', permission: 'manageBackups' },
-  { name: 'scheduler', path: '/scheduler', icon: 'scheduler', label: t('nav.scheduler'), group: 'data', permission: 'manageBackups' },
-  { name: 'configuration', path: '/configuration', icon: 'configuration', label: t('nav.configuration'), group: 'data', permission: 'manageConfig' },
-  { name: 'settings', path: '/settings', icon: 'settings', label: t('nav.settings'), group: 'data', permission: 'all' },
-  { name: 'users', path: '/users', icon: 'users', label: t('nav.users'), group: 'admin', permission: 'admin' },
-  { name: 'activity', path: '/activity', icon: 'activity', label: t('nav.activityLog'), group: 'admin', permission: 'admin' },
+  { name: 'dashboard', path: '/', icon: 'dashboard', label: t('nav.dashboard'), group: 'main', permission: 'dashboard.view' },
+  { name: 'console', path: '/console', icon: 'console', label: t('nav.console'), group: 'main', permission: 'console.view' },
+  { name: 'performance', path: '/performance', icon: 'performance', label: t('nav.performance'), group: 'main', permission: 'performance.view' },
+  { name: 'statistics', path: '/statistics', icon: 'statistics', label: t('nav.statistics'), group: 'main', permission: 'dashboard.stats' },
+  { name: 'players', path: '/players', icon: 'players', label: t('nav.players'), group: 'management', permission: 'players.view' },
+  { name: 'chat', path: '/chat', icon: 'chat', label: t('nav.chat'), group: 'management', permission: 'chat.view' },
+  { name: 'whitelist', path: '/whitelist', icon: 'whitelist', label: t('nav.whitelist'), group: 'management', permission: 'players.whitelist' },
+  { name: 'permissions', path: '/permissions', icon: 'permissions', label: t('nav.permissions'), group: 'management', permission: 'players.permissions' },
+  { name: 'worlds', path: '/worlds', icon: 'worlds', label: t('nav.worlds'), group: 'management', permission: 'worlds.view' },
+  { name: 'mods', path: '/mods', icon: 'mods', label: t('nav.mods'), group: 'management', permission: 'mods.view' },
+  { name: 'assets', path: '/assets', icon: 'assets', label: t('nav.assets'), group: 'management', permission: 'assets.view' },
+  { name: 'backups', path: '/backups', icon: 'backup', label: t('nav.backups'), group: 'data', permission: 'backups.view' },
+  { name: 'scheduler', path: '/scheduler', icon: 'scheduler', label: t('nav.scheduler'), group: 'data', permission: 'scheduler.view' },
+  { name: 'configuration', path: '/configuration', icon: 'configuration', label: t('nav.configuration'), group: 'data', permission: 'config.view' },
+  { name: 'settings', path: '/settings', icon: 'settings', label: t('nav.settings'), group: 'data', permission: 'settings.view' },
+  { name: 'users', path: '/users', icon: 'users', label: t('nav.users'), group: 'admin', permission: 'users.view' },
+  { name: 'roles', path: '/roles', icon: 'roles', label: t('nav.roles'), group: 'admin', permission: 'roles.view' },
+  { name: 'activity', path: '/activity', icon: 'activity', label: t('nav.activityLog'), group: 'admin', permission: 'activity.view' },
 ])
 
 const mainItems = computed(() => navItems.value.filter(i => i.group === 'main' && hasPermission(i.permission)))
@@ -226,6 +219,11 @@ function isActive(path: string): boolean {
             <!-- Users Icon -->
             <svg v-if="item.icon === 'users'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+
+            <!-- Roles Icon -->
+            <svg v-else-if="item.icon === 'roles'" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
 
             <!-- Activity Log Icon -->

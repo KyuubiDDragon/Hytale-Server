@@ -4,9 +4,12 @@ import { verifyToken } from './services/auth.js';
 import { getDockerInstance, getContainerName, execCommand, getLogs } from './services/docker.js';
 import { parseLogLine } from './services/logs.js';
 import { processLogLine } from './services/players.js';
+import { hasPermission } from './services/roles.js';
 import type { WsMessage } from './types/index.js';
 
 const clients = new Set<WebSocket>();
+// Map to store username for each WebSocket connection (for permission checks)
+const clientUsernames = new Map<WebSocket, string>();
 let logStream: NodeJS.ReadableStream | null = null;
 let streamRestartTimeout: NodeJS.Timeout | null = null;
 
@@ -33,7 +36,7 @@ async function sendExistingLogs(ws: WebSocket): Promise<void> {
 }
 
 export function setupWebSocket(wss: WebSocketServer): void {
-  wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     // Extract token from query string
     const url = new URL(req.url || '', `http://${req.headers.host}`);
     const token = url.searchParams.get('token');
@@ -43,17 +46,27 @@ export function setupWebSocket(wss: WebSocketServer): void {
       return;
     }
 
-    const username = verifyToken(token, 'access');
-    if (!username) {
+    const tokenResult = verifyToken(token, 'access');
+    if (!tokenResult) {
       ws.close(4001, 'Invalid token');
+      return;
+    }
+
+    const username = tokenResult.username;
+
+    // Check if user has permission to view console logs
+    const canViewLogs = await hasPermission(username, 'console.view');
+    if (!canViewLogs) {
+      ws.close(4003, 'Permission denied: console.view required');
       return;
     }
 
     console.log(`WebSocket client connected: ${username}`);
     clients.add(ws);
+    clientUsernames.set(ws, username);
 
-    // Send existing logs to new client
-    sendExistingLogs(ws);
+    // Send existing logs to new client (user already verified to have console.view)
+    await sendExistingLogs(ws);
 
     // Start streaming if first client
     if (clients.size === 1) {
@@ -68,6 +81,18 @@ export function setupWebSocket(wss: WebSocketServer): void {
         switch (message.type) {
           case 'command':
             if (message.payload) {
+              // Check if user has permission to execute commands
+              const wsUsername = clientUsernames.get(ws);
+              if (!wsUsername || !(await hasPermission(wsUsername, 'console.execute'))) {
+                ws.send(JSON.stringify({
+                  type: 'command_response',
+                  command: message.payload,
+                  success: false,
+                  error: 'Permission denied: console.execute required',
+                }));
+                break;
+              }
+
               const result = await execCommand(message.payload);
               ws.send(JSON.stringify({
                 type: 'command_response',
@@ -90,6 +115,7 @@ export function setupWebSocket(wss: WebSocketServer): void {
 
     ws.on('close', () => {
       clients.delete(ws);
+      clientUsernames.delete(ws);
       console.log('WebSocket client disconnected');
 
       // Stop streaming if no clients
@@ -101,6 +127,7 @@ export function setupWebSocket(wss: WebSocketServer): void {
     ws.on('error', (error) => {
       console.error('WebSocket error:', error);
       clients.delete(ws);
+      clientUsernames.delete(ws);
     });
   });
 }

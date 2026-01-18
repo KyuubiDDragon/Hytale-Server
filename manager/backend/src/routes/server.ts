@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { readdir, readFile, writeFile, stat } from 'fs/promises';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permissions.js';
 import * as dockerService from '../services/docker.js';
 import * as kyuubiApiService from '../services/kyuubiApi.js';
 import { getPlayerInventoryFromFile, getPlayerDetailsFromFile } from '../services/players.js';
@@ -23,19 +24,19 @@ interface QuickSettings {
 }
 
 // GET /api/server/status
-router.get('/status', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/status', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   const status = await dockerService.getStatus();
   res.json(status);
 });
 
 // GET /api/server/stats
-router.get('/stats', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/stats', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   const stats = await dockerService.getStats();
   res.json(stats);
 });
 
 // GET /api/server/memory - Get detailed memory stats from server command
-router.get('/memory', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/memory', authMiddleware, requirePermission('performance.view'), async (_req: Request, res: Response) => {
   try {
     const result = await dockerService.execCommand('/server stats memory');
 
@@ -97,7 +98,7 @@ router.get('/memory', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // GET /api/server/quick-settings - Get quick settings from config.json
-router.get('/quick-settings', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/quick-settings', authMiddleware, requirePermission('config.view'), async (_req: Request, res: Response) => {
   try {
     const configPath = path.join(config.serverPath, 'config.json');
     const content = await readFile(configPath, 'utf-8');
@@ -122,7 +123,7 @@ router.get('/quick-settings', authMiddleware, async (_req: Request, res: Respons
 });
 
 // PUT /api/server/quick-settings - Save quick settings to config.json
-router.put('/quick-settings', authMiddleware, async (req: Request, res: Response) => {
+router.put('/quick-settings', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
   try {
     const { serverName, motd, password, maxPlayers, maxViewRadius, defaultGameMode } = req.body;
 
@@ -152,7 +153,7 @@ router.put('/quick-settings', authMiddleware, async (req: Request, res: Response
 });
 
 // POST /api/server/start
-router.post('/start', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/start', authMiddleware, requirePermission('server.start'), async (_req: Request, res: Response) => {
   const result = await dockerService.startContainer();
   if (!result.success) {
     res.status(500).json(result);
@@ -162,7 +163,7 @@ router.post('/start', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // POST /api/server/stop
-router.post('/stop', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/stop', authMiddleware, requirePermission('server.stop'), async (_req: Request, res: Response) => {
   const result = await dockerService.stopContainer();
   if (!result.success) {
     res.status(500).json(result);
@@ -172,7 +173,7 @@ router.post('/stop', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // POST /api/server/restart
-router.post('/restart', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/restart', authMiddleware, requirePermission('server.restart'), async (_req: Request, res: Response) => {
   const result = await dockerService.restartContainer();
   if (!result.success) {
     res.status(500).json(result);
@@ -201,7 +202,7 @@ async function writePanelConfig(config: { patchline: string }): Promise<void> {
 }
 
 // GET /api/server/patchline - Get current patchline setting
-router.get('/patchline', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/patchline', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     const panelConfig = await readPanelConfig();
     res.json({
@@ -217,7 +218,7 @@ router.get('/patchline', authMiddleware, async (_req: Request, res: Response) =>
 });
 
 // PUT /api/server/patchline - Set patchline setting
-router.put('/patchline', authMiddleware, async (req: Request, res: Response) => {
+router.put('/patchline', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
   try {
     const { patchline } = req.body;
 
@@ -280,7 +281,7 @@ async function getLatestVersion(patchline: string): Promise<string> {
 }
 
 // GET /api/server/check-update - Check if a Hytale server update is available
-router.get('/check-update', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/check-update', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     // Read installed version from file
     const versionFilePath = path.join(config.serverPath, '.hytale-version');
@@ -332,7 +333,7 @@ router.get('/check-update', authMiddleware, async (_req: Request, res: Response)
 });
 
 // GET /api/server/config/files - List config files
-router.get('/config/files', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/config/files', authMiddleware, requirePermission('config.view'), async (_req: Request, res: Response) => {
   try {
     const files = await readdir(config.serverPath);
     const configFiles = files.filter(f =>
@@ -363,7 +364,7 @@ router.get('/config/files', authMiddleware, async (_req: Request, res: Response)
 });
 
 // GET /api/server/config/:filename - Read config file
-router.get('/config/:filename', authMiddleware, async (req: Request, res: Response) => {
+router.get('/config/:filename', authMiddleware, requirePermission('config.view'), async (req: Request, res: Response) => {
   const { filename } = req.params;
 
   // Security: prevent path traversal
@@ -391,7 +392,7 @@ router.get('/config/:filename', authMiddleware, async (req: Request, res: Respon
 });
 
 // PUT /api/server/config/:filename - Write config file
-router.put('/config/:filename', authMiddleware, async (req: Request, res: Response) => {
+router.put('/config/:filename', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
   const { filename } = req.params;
   const { content } = req.body;
 
@@ -429,7 +430,7 @@ router.put('/config/:filename', authMiddleware, async (req: Request, res: Respon
 // =============================================
 
 // GET /api/server/plugin/status - Get KyuubiSoft API plugin status
-router.get('/plugin/status', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/plugin/status', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     const status = await kyuubiApiService.getPluginStatus();
     res.json(status);
@@ -442,7 +443,7 @@ router.get('/plugin/status', authMiddleware, async (_req: Request, res: Response
 });
 
 // GET /api/server/plugin/update-check - Check if plugin update is available
-router.get('/plugin/update-check', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/plugin/update-check', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     const updateInfo = kyuubiApiService.isUpdateAvailable();
     res.json(updateInfo);
@@ -455,7 +456,7 @@ router.get('/plugin/update-check', authMiddleware, async (_req: Request, res: Re
 });
 
 // POST /api/server/plugin/install - Install or update the KyuubiSoft API plugin
-router.post('/plugin/install', authMiddleware, async (_req: Request, res: Response) => {
+router.post('/plugin/install', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
   try {
     const result = await kyuubiApiService.installPlugin();
     if (!result.success) {
@@ -476,7 +477,7 @@ router.post('/plugin/install', authMiddleware, async (_req: Request, res: Respon
 });
 
 // DELETE /api/server/plugin/uninstall - Uninstall the KyuubiSoft API plugin
-router.delete('/plugin/uninstall', authMiddleware, async (_req: Request, res: Response) => {
+router.delete('/plugin/uninstall', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
   try {
     const result = await kyuubiApiService.uninstallPlugin();
     if (!result.success) {
@@ -496,7 +497,7 @@ router.delete('/plugin/uninstall', authMiddleware, async (_req: Request, res: Re
 });
 
 // GET /api/server/plugin/players - Get players from plugin API (more accurate)
-router.get('/plugin/players', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/plugin/players', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     const result = await kyuubiApiService.getPlayersFromPlugin();
     if (!result.success) {
@@ -513,7 +514,7 @@ router.get('/plugin/players', authMiddleware, async (_req: Request, res: Respons
 });
 
 // GET /api/server/plugin/info - Get server info from plugin API
-router.get('/plugin/info', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/plugin/info', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     const result = await kyuubiApiService.getServerInfoFromPlugin();
     if (!result.success) {
@@ -530,7 +531,7 @@ router.get('/plugin/info', authMiddleware, async (_req: Request, res: Response) 
 });
 
 // GET /api/server/plugin/memory - Get memory stats from plugin API
-router.get('/plugin/memory', authMiddleware, async (_req: Request, res: Response) => {
+router.get('/plugin/memory', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   try {
     const result = await kyuubiApiService.getMemoryFromPlugin();
     if (!result.success) {
@@ -547,7 +548,7 @@ router.get('/plugin/memory', authMiddleware, async (_req: Request, res: Response
 });
 
 // GET /api/server/plugin/players/:name/details - Get player details from plugin API
-router.get('/plugin/players/:name/details', authMiddleware, async (req: Request, res: Response) => {
+router.get('/plugin/players/:name/details', authMiddleware, requirePermission('server.view_status'), async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     const result = await kyuubiApiService.getPlayerDetailsFromPlugin(name);
@@ -565,7 +566,7 @@ router.get('/plugin/players/:name/details', authMiddleware, async (req: Request,
 });
 
 // GET /api/server/plugin/players/:name/inventory - Get player inventory from plugin API
-router.get('/plugin/players/:name/inventory', authMiddleware, async (req: Request, res: Response) => {
+router.get('/plugin/players/:name/inventory', authMiddleware, requirePermission('server.view_status'), async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     const result = await kyuubiApiService.getPlayerInventoryFromPlugin(name);
@@ -583,7 +584,7 @@ router.get('/plugin/players/:name/inventory', authMiddleware, async (req: Reques
 });
 
 // GET /api/server/plugin/players/:name/appearance - Get player appearance from plugin API
-router.get('/plugin/players/:name/appearance', authMiddleware, async (req: Request, res: Response) => {
+router.get('/plugin/players/:name/appearance', authMiddleware, requirePermission('server.view_status'), async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     const result = await kyuubiApiService.getPlayerAppearanceFromPlugin(name);
@@ -605,7 +606,7 @@ router.get('/plugin/players/:name/appearance', authMiddleware, async (req: Reque
 // ============================================================
 
 // GET /api/server/players/:name/file/details - Get player details from saved JSON file
-router.get('/players/:name/file/details', authMiddleware, async (req: Request, res: Response) => {
+router.get('/players/:name/file/details', authMiddleware, requirePermission('players.view'), async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     const details = await getPlayerDetailsFromFile(name);
@@ -630,7 +631,7 @@ router.get('/players/:name/file/details', authMiddleware, async (req: Request, r
 });
 
 // GET /api/server/players/:name/file/inventory - Get player inventory from saved JSON file
-router.get('/players/:name/file/inventory', authMiddleware, async (req: Request, res: Response) => {
+router.get('/players/:name/file/inventory', authMiddleware, requirePermission('players.view'), async (req: Request, res: Response) => {
   try {
     const { name } = req.params;
     const inventory = await getPlayerInventoryFromFile(name);
