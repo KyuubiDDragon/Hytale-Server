@@ -330,8 +330,9 @@ router.delete('/:name/whitelist', authMiddleware, async (req: AuthenticatedReque
 });
 
 // POST /api/players/:name/op
-router.post('/:name/op', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/op', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
@@ -339,11 +340,13 @@ router.post('/:name/op', authMiddleware, async (req: Request, res: Response) => 
   const result = await dockerService.execCommand(`/op add ${playerName}`);
 
   if (result.success) {
+    await logActivity(username, 'op_add', 'player', true, playerName);
     res.json({
       success: true,
       message: `Player ${playerName} is now an operator`,
     });
   } else {
+    await logActivity(username, 'op_add', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to op player',
@@ -352,8 +355,9 @@ router.post('/:name/op', authMiddleware, async (req: Request, res: Response) => 
 });
 
 // DELETE /api/players/:name/op
-router.delete('/:name/op', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/:name/op', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
@@ -361,11 +365,13 @@ router.delete('/:name/op', authMiddleware, async (req: Request, res: Response) =
   const result = await dockerService.execCommand(`/op remove ${playerName}`);
 
   if (result.success) {
+    await logActivity(username, 'op_remove', 'player', true, playerName);
     res.json({
       success: true,
       message: `Player ${playerName} is no longer an operator`,
     });
   } else {
+    await logActivity(username, 'op_remove', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to deop player',
@@ -408,14 +414,16 @@ router.post('/:name/message', authMiddleware, async (req: Request, res: Response
 });
 
 // POST /api/players/:name/teleport
-router.post('/:name/teleport', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/teleport', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { target, x, y, z } = req.body;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
   let command: string;
+  let teleportDetails: string;
   if (target) {
     // SECURITY: Validate target player name
     if (!isValidPlayerName(target)) {
@@ -424,6 +432,7 @@ router.post('/:name/teleport', authMiddleware, async (req: Request, res: Respons
     }
     // Teleport player to another player: /tp <source> <target>
     command = `/tp ${playerName} ${target}`;
+    teleportDetails = `to player ${target}`;
   } else if (x !== undefined && y !== undefined && z !== undefined) {
     // SECURITY: Validate coordinates
     if (!isValidCoordinate(x) || !isValidCoordinate(y) || !isValidCoordinate(z)) {
@@ -432,6 +441,7 @@ router.post('/:name/teleport', authMiddleware, async (req: Request, res: Respons
     }
     // Teleport to coordinates: /tp <player> <x> <y> <z>
     command = `/tp ${playerName} ${x} ${y} ${z}`;
+    teleportDetails = `to coordinates ${x}, ${y}, ${z}`;
   } else {
     res.status(400).json({
       success: false,
@@ -443,11 +453,13 @@ router.post('/:name/teleport', authMiddleware, async (req: Request, res: Respons
   const result = await dockerService.execCommand(command);
 
   if (result.success) {
+    await logActivity(username, 'teleport', 'player', true, playerName, teleportDetails);
     res.json({
       success: true,
       message: target ? `Teleported ${playerName} to ${target}` : `Teleported ${playerName} to ${x}, ${y}, ${z}`,
     });
   } else {
+    await logActivity(username, 'teleport', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to teleport player',
@@ -456,8 +468,9 @@ router.post('/:name/teleport', authMiddleware, async (req: Request, res: Respons
 });
 
 // POST /api/players/:name/kill
-router.post('/:name/kill', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/kill', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
@@ -465,11 +478,13 @@ router.post('/:name/kill', authMiddleware, async (req: Request, res: Response) =
   const result = await dockerService.execCommand(`/kill ${playerName}`);
 
   if (result.success) {
+    await logActivity(username, 'kill', 'player', true, playerName);
     res.json({
       success: true,
       message: `Player ${playerName} killed`,
     });
   } else {
+    await logActivity(username, 'kill', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to kill player',
@@ -501,9 +516,10 @@ router.post('/:name/respawn', authMiddleware, async (req: Request, res: Response
 });
 
 // POST /api/players/:name/gamemode
-router.post('/:name/gamemode', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/gamemode', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { gamemode } = req.body;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
@@ -528,11 +544,13 @@ router.post('/:name/gamemode', authMiddleware, async (req: Request, res: Respons
   const result = await dockerService.execCommand(`/gamemode ${gamemode} ${playerName}`);
 
   if (result.success) {
+    await logActivity(username, 'gamemode', 'player', true, playerName, `Changed to ${gamemode}`);
     res.json({
       success: true,
       message: `Set ${playerName}'s gamemode to ${gamemode}`,
     });
   } else {
+    await logActivity(username, 'gamemode', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to change gamemode',
@@ -541,9 +559,10 @@ router.post('/:name/gamemode', authMiddleware, async (req: Request, res: Respons
 });
 
 // POST /api/players/:name/give
-router.post('/:name/give', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/give', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { item, amount } = req.body;
+  const username = req.user || 'system';
 
   // DEBUG: Log received values
   console.log('[Give Debug] Received:', { playerName, item, amount, body: req.body });
@@ -586,11 +605,13 @@ router.post('/:name/give', authMiddleware, async (req: Request, res: Response) =
   console.log('[Give Debug] Command result:', result);
 
   if (result.success) {
+    await logActivity(username, 'give', 'player', true, playerName, `Gave ${amount || 1}x ${item}`);
     res.json({
       success: true,
       message: `Gave ${amount || 1} ${item} to ${playerName}`,
     });
   } else {
+    await logActivity(username, 'give', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to give item',
@@ -636,9 +657,10 @@ router.post('/:name/heal', authMiddleware, async (req: Request, res: Response) =
 });
 
 // POST /api/players/:name/effect
-router.post('/:name/effect', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/effect', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
   const { effect, action } = req.body;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
@@ -667,11 +689,14 @@ router.post('/:name/effect', authMiddleware, async (req: Request, res: Response)
   const result = await dockerService.execCommand(command);
 
   if (result.success) {
+    const effectDetails = action === 'clear' ? 'Cleared all effects' : `Applied ${effect}`;
+    await logActivity(username, 'effect', 'player', true, playerName, effectDetails);
     res.json({
       success: true,
       message: action === 'clear' ? `Cleared effects from ${playerName}` : `Applied ${effect} to ${playerName}`,
     });
   } else {
+    await logActivity(username, 'effect', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to apply effect',
@@ -680,8 +705,9 @@ router.post('/:name/effect', authMiddleware, async (req: Request, res: Response)
 });
 
 // POST /api/players/:name/inventory/clear
-router.post('/:name/inventory/clear', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:name/inventory/clear', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const playerName = req.params.name;
+  const username = req.user || 'system';
 
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
@@ -690,6 +716,7 @@ router.post('/:name/inventory/clear', authMiddleware, async (req: Request, res: 
   try {
     const pluginResult = await kyuubiApi.clearInventoryViaPlugin(playerName);
     if (pluginResult.success) {
+      await logActivity(username, 'inventory_clear', 'player', true, playerName);
       res.json({
         success: true,
         message: `Cleared ${playerName}'s inventory`,
@@ -704,11 +731,13 @@ router.post('/:name/inventory/clear', authMiddleware, async (req: Request, res: 
   const result = await dockerService.execCommand(`/inventory clear ${playerName}`);
 
   if (result.success) {
+    await logActivity(username, 'inventory_clear', 'player', true, playerName);
     res.json({
       success: true,
       message: `Cleared ${playerName}'s inventory`,
     });
   } else {
+    await logActivity(username, 'inventory_clear', 'player', false, playerName, result.error);
     res.status(500).json({
       success: false,
       error: result.error || 'Failed to clear inventory',

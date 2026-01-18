@@ -124,9 +124,10 @@ router.get('/whitelist', authMiddleware, async (_req: Request, res: Response) =>
 });
 
 // PUT /api/management/whitelist/enabled
-router.put('/whitelist/enabled', authMiddleware, async (req: Request, res: Response) => {
+router.put('/whitelist/enabled', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { enabled } = req.body;
+    const username = req.user || 'system';
     if (typeof enabled !== 'boolean') {
       res.status(400).json({ error: 'enabled must be a boolean' });
       return;
@@ -134,6 +135,7 @@ router.put('/whitelist/enabled', authMiddleware, async (req: Request, res: Respo
     const data = await readWhitelist();
     data.enabled = enabled;
     await writeWhitelist(data);
+    await logActivity(username, 'whitelist_toggle', 'config', true, undefined, enabled ? 'Enabled whitelist' : 'Disabled whitelist');
     res.json({ success: true, enabled });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update whitelist' });
@@ -528,9 +530,10 @@ router.get('/permissions', authMiddleware, async (_req: Request, res: Response) 
 });
 
 // POST /api/management/permissions/users
-router.post('/permissions/users', authMiddleware, async (req: Request, res: Response) => {
+router.post('/permissions/users', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, uuid, groups } = req.body;
+    const username = req.user || 'system';
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name required' });
       return;
@@ -562,6 +565,8 @@ router.post('/permissions/users', authMiddleware, async (req: Request, res: Resp
     mapping[targetUuid] = name;
     await writePermissionsNameMapping(mapping);
 
+    await logActivity(username, 'permissions_user_update', 'user', true, name, `Groups: ${(groups || []).join(', ') || 'none'}`);
+
     const displayData = await readPermissionsDisplay();
     res.json({ success: true, users: displayData.users });
   } catch (error) {
@@ -570,25 +575,32 @@ router.post('/permissions/users', authMiddleware, async (req: Request, res: Resp
 });
 
 // DELETE /api/management/permissions/users/:identifier (can be UUID or name)
-router.delete('/permissions/users/:identifier', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/permissions/users/:identifier', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { identifier } = req.params;
+    const username = req.user || 'system';
     const hytale = await readHytalePermissions();
     const mapping = await readPermissionsNameMapping();
 
     // Try to find the UUID - identifier could be UUID or name
     let targetUuid = identifier;
+    let displayName = identifier;
     if (!hytale.users[identifier]) {
       // Not a UUID, try to find by name
       const entry = Object.entries(mapping).find(([, name]) => name === identifier);
       if (entry) {
         targetUuid = entry[0];
+        displayName = entry[1];
       }
+    } else {
+      displayName = mapping[identifier] || identifier;
     }
 
     // Remove from Hytale permissions
     delete hytale.users[targetUuid];
     await writeHytalePermissions(hytale);
+
+    await logActivity(username, 'permissions_user_remove', 'user', true, displayName);
 
     const displayData = await readPermissionsDisplay();
     res.json({ success: true, users: displayData.users });
@@ -598,9 +610,10 @@ router.delete('/permissions/users/:identifier', authMiddleware, async (req: Requ
 });
 
 // POST /api/management/permissions/groups
-router.post('/permissions/groups', authMiddleware, async (req: Request, res: Response) => {
+router.post('/permissions/groups', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, permissions } = req.body;
+    const username = req.user || 'system';
     if (!name || typeof name !== 'string') {
       res.status(400).json({ error: 'name required' });
       return;
@@ -612,6 +625,8 @@ router.post('/permissions/groups', authMiddleware, async (req: Request, res: Res
     hytale.groups[name] = permissions || [];
     await writeHytalePermissions(hytale);
 
+    await logActivity(username, 'permissions_group_update', 'user', true, name, `Permissions: ${(permissions || []).length} entries`);
+
     const displayData = await readPermissionsDisplay();
     res.json({ success: true, groups: displayData.groups });
   } catch (error) {
@@ -620,14 +635,17 @@ router.post('/permissions/groups', authMiddleware, async (req: Request, res: Res
 });
 
 // DELETE /api/management/permissions/groups/:name
-router.delete('/permissions/groups/:name', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/permissions/groups/:name', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name } = req.params;
+    const username = req.user || 'system';
     const hytale = await readHytalePermissions();
 
     // Remove group from Hytale permissions
     delete hytale.groups[name];
     await writeHytalePermissions(hytale);
+
+    await logActivity(username, 'permissions_group_remove', 'user', true, name);
 
     const displayData = await readPermissionsDisplay();
     res.json({ success: true, groups: displayData.groups });
@@ -860,20 +878,24 @@ router.get('/plugins', authMiddleware, async (_req: Request, res: Response) => {
 });
 
 // PUT /api/management/mods/:filename/toggle
-router.put('/mods/:filename/toggle', authMiddleware, async (req: Request, res: Response) => {
+router.put('/mods/:filename/toggle', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { filename } = req.params;
+    const username = req.user || 'system';
     const filePath = path.join(config.modsPath, filename);
-    const disabledPath = filePath.endsWith('.disabled')
+    const isCurrentlyDisabled = filename.endsWith('.disabled');
+    const disabledPath = isCurrentlyDisabled
       ? filePath.slice(0, -9)
       : filePath + '.disabled';
 
     const { rename } = await import('fs/promises');
 
-    if (filename.endsWith('.disabled')) {
+    if (isCurrentlyDisabled) {
       await rename(filePath, disabledPath);
+      await logActivity(username, 'enable_mod', 'mod', true, filename.replace('.disabled', ''));
     } else {
       await rename(filePath, disabledPath);
+      await logActivity(username, 'disable_mod', 'mod', true, filename);
     }
 
     res.json({ success: true });
@@ -883,20 +905,24 @@ router.put('/mods/:filename/toggle', authMiddleware, async (req: Request, res: R
 });
 
 // PUT /api/management/plugins/:filename/toggle
-router.put('/plugins/:filename/toggle', authMiddleware, async (req: Request, res: Response) => {
+router.put('/plugins/:filename/toggle', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { filename } = req.params;
+    const username = req.user || 'system';
     const filePath = path.join(config.pluginsPath, filename);
-    const disabledPath = filePath.endsWith('.disabled')
+    const isCurrentlyDisabled = filename.endsWith('.disabled');
+    const disabledPath = isCurrentlyDisabled
       ? filePath.slice(0, -9)
       : filePath + '.disabled';
 
     const { rename } = await import('fs/promises');
 
-    if (filename.endsWith('.disabled')) {
+    if (isCurrentlyDisabled) {
       await rename(filePath, disabledPath);
+      await logActivity(username, 'enable_plugin', 'mod', true, filename.replace('.disabled', ''));
     } else {
       await rename(filePath, disabledPath);
+      await logActivity(username, 'disable_plugin', 'mod', true, filename);
     }
 
     res.json({ success: true });
@@ -1665,7 +1691,7 @@ router.put('/worlds/:worldName/config', authMiddleware, async (req: Authenticate
 
     // Log activity
     await logActivity(
-      (req.user as { username?: string })?.username || 'unknown',
+      req.user || 'unknown',
       'update_world_config',
       'config',
       true,
@@ -1814,7 +1840,7 @@ router.put('/worlds/:worldName/files/*', authMiddleware, async (req: Authenticat
     // Log activity
     const fileName = pathParts[pathParts.length - 1];
     await logActivity(
-      (req.user as { username?: string })?.username || 'unknown',
+      req.user || 'unknown',
       'update_world_file',
       'config',
       true,
