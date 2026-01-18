@@ -120,6 +120,13 @@ function openEditModal(role: Role) {
   showEditModal.value = true
 }
 
+// Handler for role card click - checks permission before opening edit modal
+function handleRoleCardClick(role: Role) {
+  if (canManageRoles.value) {
+    openEditModal(role)
+  }
+}
+
 function closeModal() {
   showEditModal.value = false
   editingRole.value = null
@@ -246,10 +253,10 @@ onMounted(loadRoles)
       <div
         v-for="role in roles"
         :key="role.id"
-        @click="authStore.hasPermission('roles.manage') && openEditModal(role)"
+        @click="handleRoleCardClick(role)"
         :class="[
           'bg-dark-200 rounded-xl p-5 transition-colors border border-transparent',
-          authStore.hasPermission('roles.manage') ? 'cursor-pointer hover:bg-dark-100 hover:border-dark-50' : ''
+          canManageRoles ? 'cursor-pointer hover:bg-dark-100 hover:border-dark-50' : ''
         ]"
       >
         <!-- Role Header -->
