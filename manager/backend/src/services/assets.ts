@@ -820,6 +820,104 @@ export function searchAssets(query: string, options?: {
   return results;
 }
 
+export interface ItemInfo {
+  id: string;
+  name: string;
+  path: string;
+  category?: string;
+}
+
+// Cache for item list
+let itemListCache: ItemInfo[] | null = null;
+let itemListCacheTime: number = 0;
+const ITEM_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+/**
+ * Get list of all available items from the extracted assets
+ * Scans common item icon directories and builds a list
+ */
+export function getItemList(forceRefresh: boolean = false): ItemInfo[] {
+  // Return cached list if available and not expired
+  const now = Date.now();
+  if (!forceRefresh && itemListCache && (now - itemListCacheTime) < ITEM_CACHE_TTL) {
+    return itemListCache;
+  }
+
+  const items: ItemInfo[] = [];
+  const seenIds = new Set<string>();
+
+  // Common directories where item icons are stored
+  const iconDirs = [
+    { path: 'hytale/textures/ui/icons/items', category: 'items' },
+    { path: 'hytale/textures/ui/icons/items/weapons', category: 'weapons' },
+    { path: 'hytale/textures/ui/icons/items/armor', category: 'armor' },
+    { path: 'hytale/textures/ui/icons/items/tools', category: 'tools' },
+    { path: 'hytale/textures/ui/icons/items/consumables', category: 'consumables' },
+    { path: 'hytale/textures/ui/icons/items/materials', category: 'materials' },
+    { path: 'hytale/textures/items', category: 'items' },
+    { path: 'hytale/textures/blocks', category: 'blocks' },
+    { path: 'textures/ui/icons/items', category: 'items' },
+    { path: 'textures/items', category: 'items' },
+    { path: 'textures/blocks', category: 'blocks' },
+    { path: 'icons/items', category: 'items' },
+  ];
+
+  for (const dir of iconDirs) {
+    const files = listAssetDirectory(dir.path);
+    if (!files) continue;
+
+    for (const file of files) {
+      if (file.type !== 'file') continue;
+      if (!file.name.endsWith('.png')) continue;
+
+      // Extract item ID from filename
+      const itemName = file.name.replace('.png', '');
+      const itemId = `hytale:${itemName}`;
+
+      // Skip duplicates
+      if (seenIds.has(itemId.toLowerCase())) continue;
+      seenIds.add(itemId.toLowerCase());
+
+      // Create display name from item ID
+      const displayName = itemName
+        .replace(/_/g, ' ')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, c => c.toUpperCase());
+
+      items.push({
+        id: itemId,
+        name: displayName,
+        path: file.path,
+        category: dir.category,
+      });
+    }
+  }
+
+  // Sort by name
+  items.sort((a, b) => a.name.localeCompare(b.name));
+
+  // Cache the result
+  itemListCache = items;
+  itemListCacheTime = now;
+
+  return items;
+}
+
+/**
+ * Search items by name or ID
+ */
+export function searchItems(query: string, limit: number = 20): ItemInfo[] {
+  const items = getItemList();
+  const queryLower = query.toLowerCase();
+
+  return items
+    .filter(item =>
+      item.id.toLowerCase().includes(queryLower) ||
+      item.name.toLowerCase().includes(queryLower)
+    )
+    .slice(0, limit);
+}
+
 export default {
   findAssetsArchive,
   getAssetStatus,
@@ -829,4 +927,6 @@ export default {
   getAssetTree,
   readAssetFile,
   searchAssets,
+  getItemList,
+  searchItems,
 };

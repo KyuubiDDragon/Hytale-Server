@@ -477,6 +477,31 @@ router.get('/item-icon-search/:itemId', authMiddleware, (req: Request, res: Resp
   });
 });
 
+// GET /api/assets/items - Get list of all available items
+// Returns items with their IDs, display names, and icon paths
+router.get('/items', authMiddleware, (req: Request, res: Response) => {
+  const query = (req.query.q as string) || '';
+  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+
+  if (query) {
+    // Search items
+    const items = assetService.searchItems(query, limit);
+    res.json({
+      items,
+      count: items.length,
+      query,
+    });
+  } else {
+    // Return all items
+    const items = assetService.getItemList();
+    res.json({
+      items: items.slice(0, limit),
+      count: items.length,
+      total: items.length,
+    });
+  }
+});
+
 // GET /api/assets/debug/structure - Get top-level structure of extracted assets
 // Useful for debugging and finding where icons are located
 router.get('/debug/structure', authMiddleware, (_req: Request, res: Response) => {
