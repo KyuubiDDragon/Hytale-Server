@@ -727,8 +727,9 @@ router.get('/activity', authMiddleware, async (req: Request, res: Response) => {
 router.get('/chat', authMiddleware, async (req: Request, res: Response) => {
   const limit = parseInt(req.query.limit as string) || 100;
   const offset = parseInt(req.query.offset as string) || 0;
+  const days = parseInt(req.query.days as string) || 7; // Default 7 days, 0 = all
 
-  const result = chatLog.getGlobalChatLog({ limit, offset });
+  const result = await chatLog.getGlobalChatLog({ limit, offset, days });
   res.json(result);
 });
 
@@ -741,8 +742,9 @@ router.get('/:name/chat', authMiddleware, async (req: Request, res: Response) =>
 
   const limit = parseInt(req.query.limit as string) || 100;
   const offset = parseInt(req.query.offset as string) || 0;
+  const days = parseInt(req.query.days as string) || 7; // Default 7 days, 0 = all
 
-  const result = await chatLog.getPlayerChatLog(playerName, { limit, offset });
+  const result = await chatLog.getPlayerChatLog(playerName, { limit, offset, days });
   res.json(result);
 });
 

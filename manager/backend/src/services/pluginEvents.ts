@@ -30,6 +30,7 @@ interface PluginEvent {
 interface PlayerChatEvent extends PluginEvent {
   type: 'player_chat';
   player: string;
+  uuid?: string;
   message: string;
 }
 
@@ -71,7 +72,7 @@ async function handleEvent(event: PluginEventData): Promise<void> {
   switch (event.type) {
     case 'player_chat':
       console.log(`[Chat] ${event.player}: ${event.message}`);
-      await addChatMessage(event.player, event.message);
+      await addChatMessage(event.player, event.message, event.uuid);
       break;
 
     case 'player_death':

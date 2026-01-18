@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
@@ -9,11 +9,21 @@ const { t } = useI18n()
 
 const messages = ref<ChatMessage[]>([])
 const total = ref(0)
+const availableDays = ref(0)
 const loading = ref(true)
 const error = ref('')
 const searchQuery = ref('')
 const limit = ref(100)
 const offset = ref(0)
+const selectedDays = ref(7) // Default: 7 days
+
+// Time range options
+const timeRangeOptions = [
+  { value: 7, label: '7 Tage' },
+  { value: 14, label: '14 Tage' },
+  { value: 30, label: '30 Tage' },
+  { value: 0, label: 'Alle' },
+]
 
 let pollInterval: ReturnType<typeof setInterval> | null = null
 
@@ -21,15 +31,26 @@ async function loadData() {
   loading.value = true
   error.value = ''
   try {
-    const result = await playersApi.getGlobalChatLog({ limit: limit.value, offset: offset.value })
+    const result = await playersApi.getGlobalChatLog({
+      limit: limit.value,
+      offset: offset.value,
+      days: selectedDays.value
+    })
     messages.value = result.messages
     total.value = result.total
+    availableDays.value = result.availableDays || 0
   } catch (e) {
     error.value = t('errors.connectionFailed')
   } finally {
     loading.value = false
   }
 }
+
+// Reload when time range changes
+watch(selectedDays, () => {
+  offset.value = 0
+  loadData()
+})
 
 // Filter messages by search query
 const filteredMessages = computed(() => {
@@ -133,8 +154,8 @@ onUnmounted(() => {
     </div>
 
     <!-- Search & Filters -->
-    <div class="flex gap-4 items-center">
-      <div class="flex-1">
+    <div class="flex gap-4 items-center flex-wrap">
+      <div class="flex-1 min-w-[200px]">
         <div class="relative">
           <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -147,8 +168,32 @@ onUnmounted(() => {
           />
         </div>
       </div>
+
+      <!-- Time Range Filter -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-gray-400">Zeitraum:</span>
+        <div class="flex bg-dark-100 rounded-lg p-1">
+          <button
+            v-for="option in timeRangeOptions"
+            :key="option.value"
+            @click="selectedDays = option.value"
+            :class="[
+              'px-3 py-1.5 text-sm rounded-md transition-colors',
+              selectedDays === option.value
+                ? 'bg-hytale-orange text-white'
+                : 'text-gray-400 hover:text-white hover:bg-dark-50'
+            ]"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
       <div class="text-sm text-gray-400">
         {{ t('chat.messageCount', { count: total }) }}
+        <span v-if="availableDays > 0" class="text-gray-500">
+          ({{ availableDays }} {{ availableDays === 1 ? 'Tag' : 'Tage' }} verfügbar)
+        </span>
       </div>
     </div>
 
