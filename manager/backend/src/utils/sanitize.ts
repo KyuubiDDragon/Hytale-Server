@@ -10,8 +10,8 @@ const SHELL_METACHARACTERS = /[;&|`$(){}[\]<>\\!#*?~^\n\r]/g;
 const PATTERNS = {
   // Player names: alphanumeric, underscore, hyphen (Minecraft/Hytale standard)
   playerName: /^[a-zA-Z0-9_-]{1,32}$/,
-  // Item IDs: namespace:item format
-  itemId: /^[a-z][a-z0-9_]*:[a-z][a-z0-9_/]*$/,
+  // Item IDs: item_name format (with optional namespace:prefix)
+  itemId: /^[a-z][a-z0-9_]*(:[a-z][a-z0-9_/]*)?$/,
   // Numeric values
   integer: /^-?\d+$/,
   float: /^-?\d+(\.\d+)?$/,

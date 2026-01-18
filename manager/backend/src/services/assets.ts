@@ -889,8 +889,8 @@ export function getItemList(forceRefresh: boolean = false): ItemInfo[] {
     // Skip very short names
     if (itemName.length < 2) continue;
 
-    // Use lowercase for the item ID (Hytale expects lowercase IDs)
-    const itemId = `hytale:${itemName.toLowerCase()}`;
+    // Use lowercase for the item ID (Hytale expects item names without namespace)
+    const itemId = itemName.toLowerCase();
 
     // Skip duplicates
     if (seenIds.has(itemId.toLowerCase())) continue;
