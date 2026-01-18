@@ -26,6 +26,11 @@ import { startSchedulers } from './services/scheduler.js';
 import { initializePlayerTracking } from './services/players.js';
 import { initializePluginEvents, disconnectFromPluginWebSocket } from './services/pluginEvents.js';
 import { initializeRoles } from './services/roles.js';
+import { initializeDemoReset, isDemoModeEnabled } from './services/demo.js';
+
+// Middleware
+import { demoMiddleware } from './middleware/demo.js';
+import { authMiddleware } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +59,10 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+// Demo mode middleware - intercepts requests from demo users and returns simulated responses
+// Must be before API routes to intercept modifying requests
+app.use('/api', demoMiddleware);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -121,6 +130,9 @@ server.listen(config.port, '0.0.0.0', async () => {
 
   // Start schedulers
   startSchedulers();
+
+  // Initialize demo mode auto-reset if enabled
+  initializeDemoReset();
 });
 
 // Graceful shutdown

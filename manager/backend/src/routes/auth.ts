@@ -3,10 +3,13 @@ import rateLimit from 'express-rate-limit';
 import { verifyCredentials, createAccessToken, createRefreshToken, verifyToken } from '../services/auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
+import { demoMiddleware, checkDemoUser } from '../middleware/demo.js';
 import { getAllUsers, createUser, updateUser, deleteUser, getUser } from '../services/users.js';
 import { getUserPermissions } from '../services/roles.js';
 import { initiateDeviceLogin, checkAuthCompletion, getAuthStatus, resetAuth, setPersistence, listAuthFiles, inspectDownloaderCredentials } from '../services/hytaleAuth.js';
+import { isDemoModeEnabled, createDemoLogin, getResetState, isDemoUser, getDemoPermissions } from '../services/demo.js';
 import type { AuthenticatedRequest, LoginRequest } from '../types/index.js';
+import type { DemoAuthenticatedRequest } from '../types/demo.js';
 
 const router = Router();
 
@@ -88,9 +91,62 @@ router.post('/logout', authMiddleware, (_req: Request, res: Response) => {
   res.json({ message: 'Logged out successfully' });
 });
 
+// ============== DEMO MODE ==============
+
+// Rate limiting for demo login
+const demoLoginLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 demo logins per minute per IP
+  message: { detail: 'Too many demo login attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// GET /api/auth/demo/status - Check if demo mode is enabled
+router.get('/demo/status', (_req: Request, res: Response) => {
+  const enabled = isDemoModeEnabled();
+  const resetInfo = getResetState();
+
+  res.json({
+    enabled,
+    resetInfo: enabled ? {
+      lastReset: resetInfo.lastReset?.toISOString() || null,
+      nextReset: resetInfo.nextReset?.toISOString() || null,
+      resetIntervalHours: resetInfo.resetIntervalHours,
+    } : undefined,
+  });
+});
+
+// POST /api/auth/demo/login - Login as demo user
+router.post('/demo/login', demoLoginLimiter, async (_req: Request, res: Response) => {
+  if (!isDemoModeEnabled()) {
+    res.status(403).json({ detail: 'Demo mode is not enabled' });
+    return;
+  }
+
+  try {
+    const response = await createDemoLogin();
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ detail: 'Failed to create demo session' });
+  }
+});
+
 // GET /api/auth/me
 router.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const username = req.user!;  // authMiddleware guarantees this is set
+
+  // Handle demo user
+  if (isDemoUser(username)) {
+    res.json({
+      username: 'Demo User',
+      role: 'demo',
+      permissions: getDemoPermissions(),
+      isDemo: true,
+    });
+    return;
+  }
+
   const user = await getUser(username);
   const permissions = await getUserPermissions(username);
   if (!user) {

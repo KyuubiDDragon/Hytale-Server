@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
 import { setLocale, getLocale } from '@/i18n'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
@@ -16,15 +17,26 @@ const password = ref('')
 const error = ref('')
 const infoMessage = ref('')
 const loading = ref(false)
+const demoLoading = ref(false)
 const showPassword = ref(false)
 const currentLocale = ref(getLocale())
+const demoEnabled = ref(false)
 
-// Check for logout message from session invalidation
-onMounted(() => {
+// Check for logout message from session invalidation and demo mode status
+onMounted(async () => {
   const logoutMessage = sessionStorage.getItem('logoutMessage')
   if (logoutMessage) {
     infoMessage.value = logoutMessage
     sessionStorage.removeItem('logoutMessage')
+  }
+
+  // Check if demo mode is enabled
+  try {
+    const status = await authApi.getDemoStatus()
+    demoEnabled.value = status.enabled
+  } catch {
+    // Demo mode not available
+    demoEnabled.value = false
   }
 })
 
@@ -48,6 +60,20 @@ async function handleLogin() {
     error.value = t('auth.invalidCredentials')
   } finally {
     loading.value = false
+  }
+}
+
+async function handleDemoLogin() {
+  error.value = ''
+  demoLoading.value = true
+
+  try {
+    await authStore.demoLogin()
+    router.push('/')
+  } catch (err) {
+    error.value = t('auth.demoLoginFailed')
+  } finally {
+    demoLoading.value = false
   }
 }
 </script>
@@ -127,6 +153,32 @@ async function handleLogin() {
             {{ t('auth.login') }}
           </Button>
         </form>
+
+        <!-- Demo Login Button -->
+        <div v-if="demoEnabled" class="mt-4">
+          <div class="relative">
+            <div class="absolute inset-0 flex items-center">
+              <div class="w-full border-t border-dark-50"></div>
+            </div>
+            <div class="relative flex justify-center text-sm">
+              <span class="px-2 bg-dark-100 text-gray-400">{{ t('auth.or') }}</span>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            :loading="demoLoading"
+            class="w-full mt-4"
+            @click="handleDemoLogin"
+          >
+            <svg class="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            {{ t('auth.tryDemo') }}
+          </Button>
+          <p class="text-xs text-gray-500 text-center mt-2">{{ t('auth.demoHint') }}</p>
+        </div>
 
         <!-- Language Toggle -->
         <div class="mt-6 text-center">

@@ -32,7 +32,15 @@
     "loginTitle": "Server Manager",
     "loginSubtitle": "Sign in to continue",
     "invalidCredentials": "Invalid credentials",
-    "sessionExpired": "Session expired. Please login again."
+    "sessionExpired": "Session expired. Please login again.",
+    "or": "or",
+    "tryDemo": "Try Demo",
+    "demoHint": "Test all features without logging in",
+    "demoLoginFailed": "Demo login failed",
+    "demoMode": "Demo Mode",
+    "demoBadge": "DEMO",
+    "demoModeActive": "You are in demo mode. Changes are simulated and not saved.",
+    "demoResetInfo": "Next reset: {time}"
   },
   "nav": {
     "dashboard": "Dashboard",

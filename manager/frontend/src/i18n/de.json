@@ -32,7 +32,15 @@
     "loginTitle": "Server Manager",
     "loginSubtitle": "Melde dich an, um fortzufahren",
     "invalidCredentials": "Ungültige Anmeldedaten",
-    "sessionExpired": "Sitzung abgelaufen. Bitte erneut anmelden."
+    "sessionExpired": "Sitzung abgelaufen. Bitte erneut anmelden.",
+    "or": "oder",
+    "tryDemo": "Demo testen",
+    "demoHint": "Teste alle Funktionen ohne Anmeldung",
+    "demoLoginFailed": "Demo-Login fehlgeschlagen",
+    "demoMode": "Demo-Modus",
+    "demoBadge": "DEMO",
+    "demoModeActive": "Du befindest dich im Demo-Modus. Änderungen werden simuliert und nicht gespeichert.",
+    "demoResetInfo": "Nächster Reset: {time}"
   },
   "nav": {
     "dashboard": "Dashboard",

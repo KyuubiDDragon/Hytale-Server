@@ -22,7 +22,7 @@ const removeStorageItem = (key: string): void => {
   }
 }
 
-export type UserRole = 'admin' | 'moderator' | 'operator' | 'viewer'
+export type UserRole = 'admin' | 'moderator' | 'operator' | 'viewer' | 'demo'
 
 export const useAuthStore = defineStore('auth', () => {
   // State
@@ -31,6 +31,7 @@ export const useAuthStore = defineStore('auth', () => {
   const username = ref<string | null>(getStorageItem('username'))
   const role = ref<UserRole | null>((getStorageItem('role') as UserRole) || null)
   const permissions = ref<string[]>(JSON.parse(getStorageItem('permissions') || '[]'))
+  const isDemo = ref<boolean>(getStorageItem('isDemo') === 'true')
 
   // Getters
   const isAuthenticated = computed(() => !!accessToken.value)
@@ -63,7 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
     setStorageItem('refreshToken', refresh)
   }
 
-  function setUser(name: string, userRole?: UserRole, userPermissions?: string[]) {
+  function setUser(name: string, userRole?: UserRole, userPermissions?: string[], demoMode?: boolean) {
     username.value = name
     setStorageItem('username', name)
     if (userRole) {
@@ -74,12 +75,23 @@ export const useAuthStore = defineStore('auth', () => {
       permissions.value = userPermissions
       setStorageItem('permissions', JSON.stringify(userPermissions))
     }
+    if (demoMode !== undefined) {
+      isDemo.value = demoMode
+      setStorageItem('isDemo', demoMode ? 'true' : 'false')
+    }
   }
 
   async function login(credentials: { username: string; password: string }) {
     const response = await authApi.login(credentials)
     setTokens(response.access_token, response.refresh_token)
-    setUser(credentials.username, response.role as UserRole, response.permissions)
+    setUser(credentials.username, response.role as UserRole, response.permissions, false)
+    return response
+  }
+
+  async function demoLogin() {
+    const response = await authApi.demoLogin()
+    setTokens(response.access_token, response.refresh_token)
+    setUser('Demo User', 'demo', response.permissions, true)
     return response
   }
 
@@ -98,11 +110,13 @@ export const useAuthStore = defineStore('auth', () => {
     username.value = null
     role.value = null
     permissions.value = []
+    isDemo.value = false
     removeStorageItem('accessToken')
     removeStorageItem('refreshToken')
     removeStorageItem('username')
     removeStorageItem('role')
     removeStorageItem('permissions')
+    removeStorageItem('isDemo')
   }
 
   return {
@@ -112,6 +126,7 @@ export const useAuthStore = defineStore('auth', () => {
     username,
     role,
     permissions,
+    isDemo,
     // Getters
     isAuthenticated,
     isAdmin,
@@ -126,6 +141,7 @@ export const useAuthStore = defineStore('auth', () => {
     setTokens,
     setUser,
     login,
+    demoLogin,
     refresh,
     logout,
     hasPermission,
