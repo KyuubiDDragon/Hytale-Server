@@ -32,7 +32,15 @@
     "loginTitle": "Gerenciador do Servidor",
     "loginSubtitle": "Faça login para continuar",
     "invalidCredentials": "Credenciais inválidas",
-    "sessionExpired": "Sessão expirada. Por favor, faça login novamente."
+    "sessionExpired": "Sessão expirada. Por favor, faça login novamente.",
+    "or": "ou",
+    "tryDemo": "Testar Demo",
+    "demoHint": "Teste todas as funções sem fazer login",
+    "demoLoginFailed": "Falha no login de demonstração",
+    "demoMode": "Modo Demo",
+    "demoBadge": "DEMO",
+    "demoModeActive": "Você está no modo de demonstração. As alterações são simuladas e não salvas.",
+    "demoResetInfo": "Próximo reset: {time}"
   },
   "nav": {
     "dashboard": "Painel",

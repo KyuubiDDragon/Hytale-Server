@@ -10,6 +10,17 @@ export interface TokenResponse {
   refresh_token: string
   token_type: string
   permissions?: string[]
+  isDemo?: boolean
+  expiresAt?: string
+}
+
+export interface DemoStatusResponse {
+  enabled: boolean
+  resetInfo?: {
+    lastReset: string | null
+    nextReset: string | null
+    resetIntervalHours: number
+  }
 }
 
 export interface UserInfo {
@@ -89,6 +100,17 @@ export const authApi = {
 
   async setHytalePersistence(type: 'Memory' | 'Encrypted'): Promise<HytaleAuthCheckResponse> {
     const response = await api.post<HytaleAuthCheckResponse>('/auth/hytale/persistence', { type })
+    return response.data
+  },
+
+  // Demo Mode
+  async getDemoStatus(): Promise<DemoStatusResponse> {
+    const response = await api.get<DemoStatusResponse>('/auth/demo/status')
+    return response.data
+  },
+
+  async demoLogin(): Promise<TokenResponse> {
+    const response = await api.post<TokenResponse>('/auth/demo/login')
     return response.data
   },
 }

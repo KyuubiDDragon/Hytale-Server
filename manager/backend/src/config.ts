@@ -41,6 +41,51 @@ export const config = {
 
   // Modtale Integration
   modtaleApiKey: process.env.MODTALE_API_KEY || '',
+
+  // Demo Mode Configuration
+  demoMode: {
+    enabled: process.env.DEMO_MODE === 'true' || process.env.DEMO_MODE === '1',
+    resetIntervalHours: parseInt(process.env.DEMO_RESET_INTERVAL || '24', 10),
+    // Actions that will be simulated (show success but do nothing)
+    simulatedActions: [
+      'server.start',
+      'server.stop',
+      'server.restart',
+      'console.execute',
+      'players.kick',
+      'players.ban',
+      'players.unban',
+      'players.teleport',
+      'players.kill',
+      'players.heal',
+      'players.gamemode',
+      'players.give',
+      'players.effects',
+      'players.clear_inventory',
+      'players.message',
+      'backups.create',
+      'backups.restore',
+      'backups.delete',
+      'scheduler.edit',
+      'worlds.manage',
+      'mods.install',
+      'mods.delete',
+      'mods.config',
+      'mods.toggle',
+      'plugins.install',
+      'plugins.delete',
+      'plugins.config',
+      'plugins.toggle',
+      'config.edit',
+      'users.create',
+      'users.edit',
+      'users.delete',
+      'roles.manage',
+      'settings.edit',
+      'hytale_auth.manage',
+      'chat.send',
+    ],
+  },
 };
 
 // SECURITY: Check for insecure default credentials on startup
