@@ -66,7 +66,7 @@ export function setupWebSocket(wss: WebSocketServer): void {
     clientUsernames.set(ws, username);
 
     // Send existing logs to new client (user already verified to have console.view)
-    sendExistingLogs(ws);
+    await sendExistingLogs(ws);
 
     // Start streaming if first client
     if (clients.size === 1) {

@@ -246,8 +246,11 @@ onMounted(loadRoles)
       <div
         v-for="role in roles"
         :key="role.id"
-        @click="openEditModal(role)"
-        class="bg-dark-200 rounded-xl p-5 cursor-pointer hover:bg-dark-100 transition-colors border border-transparent hover:border-dark-50"
+        @click="authStore.hasPermission('roles.manage') && openEditModal(role)"
+        :class="[
+          'bg-dark-200 rounded-xl p-5 transition-colors border border-transparent',
+          authStore.hasPermission('roles.manage') ? 'cursor-pointer hover:bg-dark-100 hover:border-dark-50' : ''
+        ]"
       >
         <!-- Role Header -->
         <div class="flex items-start justify-between mb-3">
@@ -474,6 +477,7 @@ onMounted(loadRoles)
             {{ t('common.cancel') }}
           </button>
           <button
+            v-if="authStore.hasPermission('roles.manage')"
             @click="saveRole"
             :disabled="saving || !formName.trim()"
             class="flex-1 px-4 py-2 bg-hytale-orange text-dark font-medium rounded-lg hover:bg-hytale-yellow transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

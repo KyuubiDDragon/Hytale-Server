@@ -2,8 +2,10 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { worldsApi, type WorldInfo, type WorldConfig, type WorldFileInfo } from '@/api/management'
+import { useAuthStore } from '@/stores/auth'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 
 // State
 const worlds = ref<WorldInfo[]>([])
@@ -293,6 +295,7 @@ onMounted(loadWorlds)
               Saved
             </span>
             <button
+              v-if="authStore.hasPermission('worlds.manage')"
               @click="saveFile"
               :disabled="saving"
               class="px-4 py-2 bg-hytale-orange hover:bg-hytale-orange/80 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors flex items-center gap-2"

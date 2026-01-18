@@ -64,11 +64,15 @@ export const PERMISSIONS = {
   'mods.view': 'Mods anzeigen',
   'mods.install': 'Mods installieren',
   'mods.delete': 'Mods löschen',
+  'mods.config': 'Mod-Konfiguration bearbeiten',
+  'mods.toggle': 'Mods aktivieren/deaktivieren',
 
   // Plugins
   'plugins.view': 'Plugins anzeigen',
   'plugins.install': 'Plugins installieren',
   'plugins.delete': 'Plugins löschen',
+  'plugins.config': 'Plugin-Konfiguration bearbeiten',
+  'plugins.toggle': 'Plugins aktivieren/deaktivieren',
 
   // Config
   'config.view': 'Konfiguration anzeigen',
@@ -220,8 +224,12 @@ export const DEFAULT_ROLES: Omit<Role, 'id' | 'createdAt' | 'updatedAt'>[] = [
       'worlds.manage',
       'mods.view',
       'mods.install',
+      'mods.config',
+      'mods.toggle',
       'plugins.view',
       'plugins.install',
+      'plugins.config',
+      'plugins.toggle',
       'config.view',
       'config.edit',
       'activity.view',
