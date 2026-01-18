@@ -574,7 +574,11 @@ router.post('/:name/give', authMiddleware, async (req: Request, res: Response) =
     return;
   }
 
-  const command = amount ? `/give ${playerName} ${item} ${amount}` : `/give ${playerName} ${item}`;
+  // Use the item ID directly (with underscores, not display name with spaces)
+  // Command format: /give player item --quantity=X
+  const command = amount && amount > 1
+    ? `/give ${playerName} ${item} --quantity=${amount}`
+    : `/give ${playerName} ${item}`;
   const result = await dockerService.execCommand(command);
 
   if (result.success) {
