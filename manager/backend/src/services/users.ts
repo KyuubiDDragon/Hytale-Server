@@ -10,6 +10,14 @@ export interface User {
   roleId: string;
   createdAt: string;
   lastLogin?: string;
+  tokenVersion: number;
+}
+
+// Track deleted users for session-based invalidation
+const invalidatedUsers = new Set<string>();
+
+export function isUserInvalidated(username: string): boolean {
+  return invalidatedUsers.has(username);
 }
 
 interface UsersData {
@@ -44,6 +52,11 @@ async function readUsers(): Promise<UsersData> {
         delete userAny.role;
         needsMigration = true;
       }
+      // Migrate users without tokenVersion
+      if (user.tokenVersion === undefined) {
+        user.tokenVersion = 1;
+        needsMigration = true;
+      }
     }
 
     // Save migrated data if needed
@@ -59,6 +72,7 @@ async function readUsers(): Promise<UsersData> {
       passwordHash: bcrypt.hashSync(config.managerPassword, 12),
       roleId: 'admin',
       createdAt: new Date().toISOString(),
+      tokenVersion: 1,
     };
     const data: UsersData = { users: [defaultAdmin] };
     await writeUsers(data);
@@ -124,6 +138,7 @@ export async function createUser(
     passwordHash: bcrypt.hashSync(password, 12),
     roleId,
     createdAt: new Date().toISOString(),
+    tokenVersion: 1,
   };
 
   data.users.push(newUser);
@@ -145,18 +160,27 @@ export async function updateUser(
     throw new Error('User not found');
   }
 
+  let shouldInvalidateTokens = false;
+
   if (updates.password) {
     if (updates.password.length < 6) {
       throw new Error('Password must be at least 6 characters');
     }
     data.users[userIndex].passwordHash = bcrypt.hashSync(updates.password, 12);
+    shouldInvalidateTokens = true;
   }
 
   if (updates.roleId) {
     data.users[userIndex].roleId = updates.roleId;
+    shouldInvalidateTokens = true;
   }
 
   await writeUsers(data);
+
+  // Invalidate tokens after password or role changes
+  if (shouldInvalidateTokens) {
+    await invalidateUserTokens(username);
+  }
 
   const { passwordHash, ...userWithoutPassword } = data.users[userIndex];
   return userWithoutPassword;
@@ -178,6 +202,9 @@ export async function deleteUser(username: string): Promise<void> {
     throw new Error('Cannot delete the last admin user');
   }
 
+  // Add to invalidation list before deleting
+  invalidatedUsers.add(username);
+
   data.users = data.users.filter(u => u.username !== username);
   await writeUsers(data);
 }
@@ -191,6 +218,23 @@ export async function updateLastLogin(username: string): Promise<void> {
     data.users[userIndex].lastLogin = new Date().toISOString();
     await writeUsers(data);
   }
+}
+
+// Invalidate all tokens for a user by incrementing tokenVersion
+export async function invalidateUserTokens(username: string): Promise<void> {
+  const data = await readUsers();
+  const userIndex = data.users.findIndex(u => u.username === username);
+
+  if (userIndex !== -1) {
+    data.users[userIndex].tokenVersion = (data.users[userIndex].tokenVersion || 0) + 1;
+    await writeUsers(data);
+  }
+}
+
+// Get current token version for a user
+export async function getTokenVersion(username: string): Promise<number> {
+  const user = await getUser(username);
+  return user?.tokenVersion ?? 1;
 }
 
 // Initialize users on startup

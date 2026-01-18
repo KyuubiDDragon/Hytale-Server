@@ -44,7 +44,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
     return;
   }
 
-  const accessToken = createAccessToken(username);
+  const accessToken = await createAccessToken(username);
   const refreshToken = createRefreshToken(username);
   const permissions = await getUserPermissions(username);
 
@@ -58,7 +58,7 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/refresh
-router.post('/refresh', refreshLimiter, (req: Request, res: Response) => {
+router.post('/refresh', refreshLimiter, async (req: Request, res: Response) => {
   const { refresh_token } = req.body;
 
   if (!refresh_token) {
@@ -66,15 +66,15 @@ router.post('/refresh', refreshLimiter, (req: Request, res: Response) => {
     return;
   }
 
-  const username = verifyToken(refresh_token, 'refresh');
+  const result = verifyToken(refresh_token, 'refresh');
 
-  if (!username) {
+  if (!result) {
     res.status(401).json({ detail: 'Invalid or expired refresh token' });
     return;
   }
 
-  const accessToken = createAccessToken(username);
-  const newRefreshToken = createRefreshToken(username);
+  const accessToken = await createAccessToken(result.username);
+  const newRefreshToken = createRefreshToken(result.username);
 
   res.json({
     access_token: accessToken,

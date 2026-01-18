@@ -25,12 +25,32 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor - handle token refresh
+// Response interceptor - handle token refresh and forced logout
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
+  async (error: AxiosError<{ detail?: string; code?: string }>) => {
     const originalRequest = error.config
     const authStore = useAuthStore()
+    const responseData = error.response?.data
+
+    // Check for token invalidation codes - immediate logout, no refresh attempt
+    if (error.response?.status === 401) {
+      const invalidationCodes = ['USER_DELETED', 'TOKEN_INVALIDATED']
+      if (responseData?.code && invalidationCodes.includes(responseData.code)) {
+        authStore.logout()
+        if (typeof window !== 'undefined') {
+          // Show message based on code
+          const message = responseData.code === 'USER_DELETED'
+            ? 'Your account has been deleted.'
+            : 'Your session has expired due to account changes. Please log in again.'
+
+          // Store message for login page to display
+          sessionStorage.setItem('logoutMessage', message)
+          window.location.href = '/login'
+        }
+        return Promise.reject(error)
+      }
+    }
 
     // If 401 and we have a refresh token, try to refresh
     if (

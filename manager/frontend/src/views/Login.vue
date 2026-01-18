@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -14,9 +14,19 @@ const authStore = useAuthStore()
 const username = ref('')
 const password = ref('')
 const error = ref('')
+const infoMessage = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 const currentLocale = ref(getLocale())
+
+// Check for logout message from session invalidation
+onMounted(() => {
+  const logoutMessage = sessionStorage.getItem('logoutMessage')
+  if (logoutMessage) {
+    infoMessage.value = logoutMessage
+    sessionStorage.removeItem('logoutMessage')
+  }
+})
 
 function toggleLocale() {
   const newLocale = currentLocale.value === 'de' ? 'en' : 'de'
@@ -60,6 +70,11 @@ async function handleLogin() {
           </div>
           <h1 class="text-2xl font-bold text-white">KyuubiSoft Panel</h1>
           <p class="text-gray-400 mt-1 text-sm">Hytale Server Management</p>
+        </div>
+
+        <!-- Info Message (e.g., forced logout) -->
+        <div v-if="infoMessage" class="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+          <p class="text-blue-400 text-sm">{{ infoMessage }}</p>
         </div>
 
         <!-- Error Message -->

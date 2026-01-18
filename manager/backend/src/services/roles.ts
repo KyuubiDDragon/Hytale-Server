@@ -8,7 +8,7 @@ import {
   DEFAULT_ROLES,
   PermissionEntry,
 } from '../types/permissions.js';
-import { getUser } from './users.js';
+import { getUser, getAllUsers, invalidateUserTokens } from './users.js';
 
 // Path to roles file in the persistent data volume
 const DATA_DIR = process.env.DATA_PATH || '/app/data';
@@ -170,6 +170,10 @@ export async function updateRole(
     }
   }
 
+  // Check if permissions are being changed
+  const permissionsChanged = updates.permissions !== undefined &&
+    JSON.stringify(updates.permissions.sort()) !== JSON.stringify(role.permissions.sort());
+
   // Apply updates (excluding isSystem for system roles)
   if (updates.name !== undefined) {
     data.roles[roleIndex].name = updates.name;
@@ -192,7 +196,27 @@ export async function updateRole(
   data.version += 1;
   await writeRoles(data);
 
+  // If permissions changed, invalidate tokens for all users with this role
+  if (permissionsChanged) {
+    await invalidateUsersWithRole(id);
+  }
+
   return data.roles[roleIndex];
+}
+
+// Invalidate tokens for all users with a specific role
+async function invalidateUsersWithRole(roleId: string): Promise<void> {
+  try {
+    const users = await getAllUsers();
+    for (const user of users) {
+      if (user.roleId === roleId) {
+        await invalidateUserTokens(user.username);
+      }
+    }
+  } catch {
+    // Log error but don't fail the role update
+    console.error('Failed to invalidate user tokens for role:', roleId);
+  }
 }
 
 // Delete role (only if isSystem is false and no users have this role)
