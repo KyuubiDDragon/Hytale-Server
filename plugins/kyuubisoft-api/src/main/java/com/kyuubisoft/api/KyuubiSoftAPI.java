@@ -4,6 +4,7 @@ import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.event.events.player.PlayerConnectEvent;
 import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent;
+import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent;
 import com.hypixel.hytale.event.EventRegistry;
 import com.kyuubisoft.api.web.WebServer;
 import com.kyuubisoft.api.websocket.EventBroadcaster;
@@ -89,6 +90,14 @@ public class KyuubiSoftAPI extends JavaPlugin {
             String uuid = event.getPlayerRef().getUuid().toString();
             LOGGER.info("Player disconnected: " + playerName);
             eventBroadcaster.broadcastPlayerLeave(playerName, uuid);
+        });
+
+        // Player chat event (async event with String key - using empty string for global listener)
+        eventRegistry.register(PlayerChatEvent.class, "", event -> {
+            String playerName = event.getSender().getUsername();
+            String message = event.getContent();
+            LOGGER.info("[Chat] " + playerName + ": " + message);
+            eventBroadcaster.broadcastChat(playerName, message);
         });
     }
 
