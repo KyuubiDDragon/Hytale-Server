@@ -6,6 +6,22 @@ All notable changes to the Hytale Server Manager will be documented in this file
 
 ### Added
 
+- **Granular Permission System**: Complete role-based access control
+  - 53 individual permissions across 18 categories
+  - Custom role creation with color badges
+  - Permission categories: Dashboard, Server, Console, Performance, Players, Chat, Backups, Scheduler, Worlds, Mods, Plugins, Config, Assets, Users, Roles, Activity, Hytale Auth, Settings
+  - Wildcard `*` permission for full admin access
+  - System roles (Administrator, Moderator, Operator, Viewer) with predefined permissions
+
+- **i18n for Permission Descriptions**: Internationalized permission management
+  - All 53 permissions have translated descriptions in German, English, and Portuguese
+  - Nested translation structure for proper vue-i18n compatibility
+  - Permission display shows human-readable name with technical key below
+
+- **Styled Permission Checkboxes**: Improved UI for role permission editing
+  - Custom styled checkboxes matching app design (orange when checked)
+  - Replaced standard HTML checkboxes with accessible peer-checked pattern
+
 - **Enhanced Player Menu**: Complete redesign of the player management interface
   - Click on any player (online or offline) to open detailed player modal
   - Tabbed interface: Overview, Inventory, Appearance, Chat, Deaths
@@ -56,6 +72,27 @@ All notable changes to the Hytale Server Manager will be documented in this file
 
 ### Fixed
 
+- **User Creation Role Assignment**: Fixed users always being created with "Viewer" role
+  - Frontend API was sending `role` instead of `roleId` in request body
+  - Backend expected `roleId` parameter, fell back to default 'viewer'
+  - Custom role selection now works correctly when creating users
+
+- **Empty Navigation Sections**: Hide sidebar sections when user has no permissions
+  - Added `v-if` conditions to Main, Management, and Data sections
+  - Sections now hide completely if user has no items with required permissions
+  - Admin section already had this behavior
+
+- **Mods & Plugins Page Permission Handling**: Fixed page crash with partial permissions
+  - Changed from `Promise.all` to `Promise.allSettled` for loading mods/plugins
+  - Checks user permissions before making API calls
+  - Users with only `mods.view` can now see mods without `plugins.view`
+  - Error only shows if both requests fail (not due to missing permissions)
+
+- **Chat Endpoint Permissions**: Fixed chat requiring `players.view` instead of `chat.view`
+  - Changed `/api/players/chat` endpoint from `players.view` to `chat.view`
+  - Changed `/api/players/:name/chat` endpoint from `players.view` to `chat.view`
+  - Sidebar and backend now use consistent `chat.view` permission
+
 - **Chat Event Detection**: Fixed PlayerChatEvent not being captured
   - Changed from `eventRegistry.register()` to `eventRegistry.registerGlobal()` based on Serilum's Chat-History plugin
   - Chat messages now properly captured and broadcasted via WebSocket
@@ -70,6 +107,11 @@ All notable changes to the Hytale Server Manager will be documented in this file
   - In-memory caching for performance
 
 ### Changed
+
+- **Permission Display Order**: Improved readability in role editor
+  - Human-readable permission name now displayed prominently on top
+  - Technical permission key (e.g., `activity.clear`) shown smaller below
+  - Removed monospace font from name, applied to technical key instead
 
 - **KyuubiSoft API Plugin v1.1.6**:
   - Fixed chat event registration using `registerGlobal()` for global chat listener
