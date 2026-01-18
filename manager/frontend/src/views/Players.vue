@@ -6,6 +6,7 @@ import { serverApi, type PluginPlayer } from '@/api/server'
 import Card from '@/components/ui/Card.vue'
 import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
+import ItemAutocomplete from '@/components/ui/ItemAutocomplete.vue'
 import PlayerDetailModal from '@/components/players/PlayerDetailModal.vue'
 import { formatItemPath } from '@/utils/formatItemPath'
 
@@ -897,19 +898,19 @@ onUnmounted(() => {
             <div class="grid grid-cols-3 gap-2 text-sm">
               <div class="text-center">
                 <span class="text-gray-500">X:</span>
-                <span class="text-white font-mono ml-1">{{ lastDeathPosition.x }}</span>
+                <span class="text-white font-mono ml-1">{{ lastDeathPosition.position.x }}</span>
               </div>
               <div class="text-center">
                 <span class="text-gray-500">Y:</span>
-                <span class="text-white font-mono ml-1">{{ lastDeathPosition.y }}</span>
+                <span class="text-white font-mono ml-1">{{ lastDeathPosition.position.y }}</span>
               </div>
               <div class="text-center">
                 <span class="text-gray-500">Z:</span>
-                <span class="text-white font-mono ml-1">{{ lastDeathPosition.z }}</span>
+                <span class="text-white font-mono ml-1">{{ lastDeathPosition.position.z }}</span>
               </div>
             </div>
             <div class="text-xs text-gray-500 text-center">
-              {{ lastDeathPosition.world }} - {{ new Date(lastDeathPosition.timestamp).toLocaleString() }}
+              {{ lastDeathPosition.world }} - {{ t('players.day') }} {{ lastDeathPosition.day }}
             </div>
           </div>
         </div>
@@ -961,12 +962,11 @@ onUnmounted(() => {
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-400 mb-2">{{ t('players.itemId') }}</label>
-          <input
+          <ItemAutocomplete
             v-model="giveItem"
-            type="text"
-            placeholder="hytale:diamond"
-            class="w-full px-4 py-2 bg-dark-100 border border-dark-50 rounded-lg text-white focus:outline-none focus:border-hytale-orange"
+            :placeholder="t('players.searchItems')"
           />
+          <p class="mt-1 text-xs text-gray-500">{{ t('players.itemIdHint') }}</p>
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-400 mb-2">{{ t('players.amount') }}</label>

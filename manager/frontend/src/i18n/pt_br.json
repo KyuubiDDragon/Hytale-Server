@@ -187,6 +187,7 @@
     "teleportToDeath": "Teleportar para local de morte",
     "lastDeathLocation": "Último Local de Morte",
     "noDeathPosition": "Nenhuma posição de morte registrada",
+    "day": "Dia",
     "details": {
       "info": "Info",
       "inventory": "Inventário",
@@ -212,6 +213,8 @@
     },
     "give": "Dar Item",
     "itemId": "ID do Item",
+    "searchItems": "Buscar itens...",
+    "itemIdHint": "Digite para buscar ou insira um ID de item personalizado",
     "amount": "Quantidade",
     "effect": "Efeito",
     "clearEffects": "Limpar Efeitos",
