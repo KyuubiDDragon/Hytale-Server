@@ -559,11 +559,11 @@ router.post('/:name/give', authMiddleware, async (req: Request, res: Response) =
     return;
   }
 
-  // SECURITY: Validate item ID format
+  // SECURITY: Validate item ID format (item_name with underscores, lowercase)
   if (!isValidItemId(String(item).toLowerCase())) {
     res.status(400).json({
       success: false,
-      error: 'Invalid item ID format. Use: namespace:item_name',
+      error: 'Invalid item ID format. Use: item_name (e.g., furniture_crude_sign)',
     });
     return;
   }
@@ -577,13 +577,11 @@ router.post('/:name/give', authMiddleware, async (req: Request, res: Response) =
     return;
   }
 
-  // Use the item ID directly (with underscores, not display name with spaces)
   // Command format: /give <player> <item> --quantity=<amount>
   const command = amount && amount > 1
     ? `/give ${playerName} ${item} --quantity=${amount}`
     : `/give ${playerName} ${item}`;
 
-  console.log('[Give Debug] Built command:', command);
   const result = await dockerService.execCommand(command);
   console.log('[Give Debug] Command result:', result);
 
