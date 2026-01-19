@@ -49,9 +49,12 @@ LABEL description="Web-based management tool for Hytale servers"
 RUN apk add --no-cache wget dumb-init su-exec
 
 # Create non-root user for security
-# Using UID/GID 1001 to avoid conflicts with host user mappings
-RUN addgroup -g 1001 -S manager && \
-    adduser -u 1001 -S manager -G manager
+# Using UID 1001, but sharing GID 9999 with hytale container for shared volume access
+# This allows both containers to read/write files in shared directories
+RUN addgroup -g 9999 -S hytale && \
+    addgroup -g 1001 -S manager && \
+    adduser -u 1001 -S manager -G hytale && \
+    adduser manager manager
 
 WORKDIR /app
 
