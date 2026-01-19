@@ -27,6 +27,54 @@ const form = ref<Partial<WorldConfig>>({})
 const configEditMode = ref<'form' | 'text'>('form')
 const configRawText = ref<string>('')
 
+// Danger zone confirmation dialog
+const dangerConfirmDialog = ref({
+  show: false,
+  type: '' as 'deleteOnUniverseStart' | 'deleteOnRemove',
+  title: '',
+  message: ''
+})
+
+// Handle danger zone checkbox clicks with confirmation
+function onDangerCheckboxChange(type: 'deleteOnUniverseStart' | 'deleteOnRemove', event: Event) {
+  const checkbox = event.target as HTMLInputElement
+  const newValue = checkbox.checked
+
+  // If unchecking, allow without confirmation
+  if (!newValue) {
+    form.value[type] = false
+    return
+  }
+
+  // If checking, show confirmation dialog
+  checkbox.checked = false // Prevent immediate check
+
+  if (type === 'deleteOnUniverseStart') {
+    dangerConfirmDialog.value = {
+      show: true,
+      type: 'deleteOnUniverseStart',
+      title: t('worlds.dangerZone.confirmDeleteOnUniverseStart.title'),
+      message: t('worlds.dangerZone.confirmDeleteOnUniverseStart.message')
+    }
+  } else {
+    dangerConfirmDialog.value = {
+      show: true,
+      type: 'deleteOnRemove',
+      title: t('worlds.dangerZone.confirmDeleteOnRemove.title'),
+      message: t('worlds.dangerZone.confirmDeleteOnRemove.message')
+    }
+  }
+}
+
+function confirmDangerAction() {
+  form.value[dangerConfirmDialog.value.type] = true
+  dangerConfirmDialog.value.show = false
+}
+
+function cancelDangerAction() {
+  dangerConfirmDialog.value.show = false
+}
+
 // Computed: Is the selected file config.json?
 const isConfigJson = computed(() => selectedFile.value === 'config.json')
 
@@ -468,14 +516,24 @@ onMounted(loadWorlds)
               <p class="text-gray-400 text-sm mb-4">These settings can cause data loss. Use with caution.</p>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label class="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" v-model="form.deleteOnUniverseStart" class="w-5 h-5 rounded bg-gray-700 border-gray-600 text-status-error focus:ring-status-error">
+                  <input
+                    type="checkbox"
+                    :checked="form.deleteOnUniverseStart"
+                    @change="onDangerCheckboxChange('deleteOnUniverseStart', $event)"
+                    class="w-5 h-5 rounded bg-gray-700 border-gray-600 text-status-error focus:ring-status-error"
+                  >
                   <div>
                     <span class="text-white">Delete on Universe Start</span>
                     <p class="text-xs text-gray-500">World will be deleted when the universe starts</p>
                   </div>
                 </label>
                 <label class="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" v-model="form.deleteOnRemove" class="w-5 h-5 rounded bg-gray-700 border-gray-600 text-status-error focus:ring-status-error">
+                  <input
+                    type="checkbox"
+                    :checked="form.deleteOnRemove"
+                    @change="onDangerCheckboxChange('deleteOnRemove', $event)"
+                    class="w-5 h-5 rounded bg-gray-700 border-gray-600 text-status-error focus:ring-status-error"
+                  >
                   <div>
                     <span class="text-white">Delete on Remove</span>
                     <p class="text-xs text-gray-500">World will be permanently deleted when removed</p>
@@ -532,5 +590,47 @@ onMounted(loadWorlds)
         </div>
       </div>
     </div>
+
+    <!-- Danger Zone Confirmation Modal -->
+    <Teleport to="body">
+      <div v-if="dangerConfirmDialog.show" class="fixed inset-0 z-50 flex items-center justify-center">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/70" @click="cancelDangerAction"></div>
+
+        <!-- Modal -->
+        <div class="relative bg-gray-800 rounded-xl border border-status-error/50 shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+          <!-- Header -->
+          <div class="bg-status-error/20 border-b border-status-error/30 px-6 py-4 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-status-error/20 flex items-center justify-center">
+              <svg class="w-6 h-6 text-status-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 class="text-lg font-bold text-status-error">{{ dangerConfirmDialog.title }}</h3>
+          </div>
+
+          <!-- Body -->
+          <div class="px-6 py-5">
+            <p class="text-gray-300">{{ dangerConfirmDialog.message }}</p>
+          </div>
+
+          <!-- Footer -->
+          <div class="px-6 py-4 bg-gray-900/50 flex justify-end gap-3">
+            <button
+              @click="cancelDangerAction"
+              class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+            >
+              {{ t('common.cancel') }}
+            </button>
+            <button
+              @click="confirmDangerAction"
+              class="px-4 py-2 bg-status-error hover:bg-status-error/80 text-white font-medium rounded-lg transition-colors"
+            >
+              {{ t('worlds.dangerZone.confirm') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

@@ -336,7 +336,19 @@
     "title": "Worlds",
     "infoTitle": "Worlds Overview",
     "infoDescription": "Here you can see all worlds available on the server. Worlds are automatically detected.",
-    "noWorlds": "No worlds found"
+    "noWorlds": "No worlds found",
+    "files": "Files",
+    "dangerZone": {
+      "confirm": "Yes, enable",
+      "confirmDeleteOnUniverseStart": {
+        "title": "Delete world on universe start?",
+        "message": "WARNING: When this option is enabled, this world will be PERMANENTLY DELETED when the universe (server) starts. This action cannot be undone. Are you sure you want to enable this dangerous option?"
+      },
+      "confirmDeleteOnRemove": {
+        "title": "Delete world on remove?",
+        "message": "WARNING: When this option is enabled, this world will be PERMANENTLY DELETED when it is removed from the universe. This action cannot be undone. Are you sure you want to enable this dangerous option?"
+      }
+    }
   },
   "config": {
     "title": "Configuration",

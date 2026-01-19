@@ -270,7 +270,19 @@
     "title": "Mundos",
     "infoTitle": "Visão Geral dos Mundos",
     "infoDescription": "Aqui você pode ver todos os mundos disponíveis no servidor. Os mundos são detectados automaticamente.",
-    "noWorlds": "Nenhum mundo encontrado"
+    "noWorlds": "Nenhum mundo encontrado",
+    "files": "Arquivos",
+    "dangerZone": {
+      "confirm": "Sim, ativar",
+      "confirmDeleteOnUniverseStart": {
+        "title": "Excluir mundo ao iniciar o universo?",
+        "message": "AVISO: Quando esta opção estiver ativada, este mundo será PERMANENTEMENTE EXCLUÍDO quando o universo (servidor) iniciar. Esta ação não pode ser desfeita. Tem certeza de que deseja ativar esta opção perigosa?"
+      },
+      "confirmDeleteOnRemove": {
+        "title": "Excluir mundo ao remover?",
+        "message": "AVISO: Quando esta opção estiver ativada, este mundo será PERMANENTEMENTE EXCLUÍDO quando for removido do universo. Esta ação não pode ser desfeita. Tem certeza de que deseja ativar esta opção perigosa?"
+      }
+    }
   },
   "config": {
     "title": "Configuração",

@@ -336,7 +336,19 @@
     "title": "Welten",
     "infoTitle": "Welten Übersicht",
     "infoDescription": "Hier siehst du alle auf dem Server verfügbaren Welten. Welten werden automatisch erkannt.",
-    "noWorlds": "Keine Welten gefunden"
+    "noWorlds": "Keine Welten gefunden",
+    "files": "Dateien",
+    "dangerZone": {
+      "confirm": "Ja, aktivieren",
+      "confirmDeleteOnUniverseStart": {
+        "title": "Welt beim Universe-Start löschen?",
+        "message": "WARNUNG: Wenn diese Option aktiviert ist, wird diese Welt PERMANENT GELÖSCHT, sobald das Universe (Server) startet. Diese Aktion kann nicht rückgängig gemacht werden. Bist du sicher, dass du diese gefährliche Option aktivieren möchtest?"
+      },
+      "confirmDeleteOnRemove": {
+        "title": "Welt beim Entfernen löschen?",
+        "message": "WARNUNG: Wenn diese Option aktiviert ist, wird diese Welt PERMANENT GELÖSCHT, wenn sie aus dem Universe entfernt wird. Diese Aktion kann nicht rückgängig gemacht werden. Bist du sicher, dass du diese gefährliche Option aktivieren möchtest?"
+      }
+    }
   },
   "config": {
     "title": "Konfiguration",
