@@ -45,8 +45,13 @@ FROM node:20-alpine
 LABEL maintainer="Hytale Server Manager"
 LABEL description="Web-based management tool for Hytale servers"
 
-# Install wget for healthcheck
-RUN apk add --no-cache wget
+# Install wget for healthcheck and dumb-init for proper signal handling
+RUN apk add --no-cache wget dumb-init
+
+# Create non-root user for security
+# Using UID/GID 1001 to avoid conflicts with host user mappings
+RUN addgroup -g 1001 -S manager && \
+    adduser -u 1001 -S manager -G manager
 
 WORKDIR /app
 
@@ -63,19 +68,26 @@ COPY --from=backend-builder /app/backend/assets ./assets
 # Copy frontend build from frontend builder
 COPY --from=frontend-builder /app/static ./static
 
-# Create data directory
-RUN mkdir -p /app/data
+# Create data directory with proper ownership
+RUN mkdir -p /app/data && \
+    chown -R manager:manager /app
 
 # Environment variables
 ENV NODE_ENV=production
 ENV MANAGER_PORT=18080
 
-# Expose port
+# Switch to non-root user
+USER manager
+
+# Expose port (unprivileged port, no root needed)
 EXPOSE 18080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
     CMD wget --quiet --tries=1 -O /dev/null http://localhost:18080/api/health || exit 1
+
+# Use dumb-init as entrypoint for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
 
 # Run the application
 CMD ["node", "dist/index.js"]
