@@ -53,21 +53,21 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Vue/CSS-in-JS needs unsafe-inline
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Vue/CSS-in-JS + Google Fonts
       imgSrc: ["'self'", "data:", "blob:"], // Allow data URIs for inline images
-      fontSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts
       connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
       frameAncestors: ["'none'"], // Prevent clickjacking
-      upgradeInsecureRequests: [], // Upgrade HTTP to HTTPS
+      // Note: upgradeInsecureRequests removed - only use if running behind HTTPS proxy
     },
   },
   // Additional security headers
   crossOriginEmbedderPolicy: false, // Disable for compatibility with external resources
-  crossOriginOpenerPolicy: { policy: 'same-origin' },
-  crossOriginResourcePolicy: { policy: 'same-origin' },
+  crossOriginOpenerPolicy: false, // Disable for HTTP compatibility
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow loading cross-origin resources
 }));
 app.use(compression());
 
