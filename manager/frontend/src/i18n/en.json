@@ -510,7 +510,17 @@
     "patchlineRestartNote": "After changing the patchline, the server must be restarted for the change to take effect.",
     "patchlineRestartRequired": "Restart Required",
     "patchlineRestartRequiredDesc": "The patchline has been changed. The server must now be restarted to download the new version.",
-    "patchlineRestarting": "Server is restarting and downloading the new version..."
+    "patchlineRestarting": "Server is restarting and downloading the new version...",
+    "acceptEarlyPluginsTitle": "Accept Early Plugins",
+    "acceptEarlyPluginsDesc": "Enable this option to allow the server to load early plugins. Early plugins are loaded before the server fully starts and may be unstable.",
+    "acceptEarlyPluginsLabel": "Accept Early Plugins",
+    "acceptEarlyPluginsHint": "Adds the --accept-early-plugins flag when starting the server",
+    "acceptEarlyPluginsRestartNote": "After changing this setting, the server must be restarted for the change to take effect.",
+    "acceptEarlyPluginsRestartRequired": "Restart Required",
+    "acceptEarlyPluginsRestartRequiredDesc": "The setting has been changed. The server must now be restarted to apply the change.",
+    "acceptEarlyPluginsRestarting": "Server is restarting to apply the new setting...",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "users": {
     "title": "User Management",
@@ -576,7 +586,13 @@
     "description": "View all player chat messages",
     "noMessages": "No chat messages yet",
     "searchPlaceholder": "Search messages or player names...",
-    "messageCount": "{count} messages total"
+    "messageCount": "{count} messages total",
+    "timeRange": "Time range:",
+    "days7": "7 days",
+    "days14": "14 days",
+    "days30": "30 days",
+    "all": "All",
+    "daysAvailable": "{count} day(s) available"
   },
   "commands": {
     "title": "Command Reference",

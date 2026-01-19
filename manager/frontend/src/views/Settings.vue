@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { setLocale, getLocale } from '@/i18n'
 import { useAuthStore } from '@/stores/auth'
 import Card from '@/components/ui/Card.vue'
-import { serverApi, type ConfigFile, type PatchlineResponse } from '@/api/server'
+import { serverApi, type ConfigFile, type PatchlineResponse, type AcceptEarlyPluginsResponse } from '@/api/server'
 import { authApi, type HytaleAuthStatus, type HytaleDeviceCodeResponse } from '@/api/auth'
 
 const { t } = useI18n()
@@ -34,6 +34,13 @@ const patchlineLoading = ref(false)
 const patchlineError = ref<string | null>(null)
 const patchlineSuccess = ref<string | null>(null)
 const patchlineNeedsRestart = ref(false)
+
+// Accept Early Plugins Settings
+const acceptEarlyPluginsData = ref<AcceptEarlyPluginsResponse | null>(null)
+const acceptEarlyPluginsLoading = ref(false)
+const acceptEarlyPluginsError = ref<string | null>(null)
+const acceptEarlyPluginsSuccess = ref<string | null>(null)
+const acceptEarlyPluginsNeedsRestart = ref(false)
 
 function changeLocale(locale: 'de' | 'en' | 'pt_br') {
   setLocale(locale)
@@ -144,6 +151,57 @@ async function restartForPatchline() {
     patchlineError.value = 'Failed to restart server'
   } finally {
     patchlineLoading.value = false
+  }
+}
+
+// Accept Early Plugins Functions
+async function loadAcceptEarlyPlugins() {
+  try {
+    acceptEarlyPluginsLoading.value = true
+    acceptEarlyPluginsError.value = null
+    const response = await serverApi.getAcceptEarlyPlugins()
+    acceptEarlyPluginsData.value = response
+  } catch (e) {
+    acceptEarlyPluginsError.value = 'Failed to load accept early plugins setting'
+  } finally {
+    acceptEarlyPluginsLoading.value = false
+  }
+}
+
+async function setAcceptEarlyPlugins(enabled: boolean) {
+  try {
+    acceptEarlyPluginsLoading.value = true
+    acceptEarlyPluginsError.value = null
+    acceptEarlyPluginsSuccess.value = null
+
+    const response = await serverApi.setAcceptEarlyPlugins(enabled)
+
+    if (response.success) {
+      acceptEarlyPluginsData.value = { acceptEarlyPlugins: response.acceptEarlyPlugins }
+      acceptEarlyPluginsSuccess.value = response.message
+
+      // If setting was changed, show restart button
+      if (response.changed) {
+        acceptEarlyPluginsNeedsRestart.value = true
+      }
+    }
+  } catch (e) {
+    acceptEarlyPluginsError.value = 'Failed to update accept early plugins setting'
+  } finally {
+    acceptEarlyPluginsLoading.value = false
+  }
+}
+
+async function restartForAcceptEarlyPlugins() {
+  try {
+    acceptEarlyPluginsLoading.value = true
+    await serverApi.restart()
+    acceptEarlyPluginsNeedsRestart.value = false
+    acceptEarlyPluginsSuccess.value = t('settings.acceptEarlyPluginsRestarting')
+  } catch (e) {
+    acceptEarlyPluginsError.value = 'Failed to restart server'
+  } finally {
+    acceptEarlyPluginsLoading.value = false
   }
 }
 
@@ -275,6 +333,7 @@ onMounted(() => {
   if (authStore.canManageServer) {
     loadHytaleAuthStatus()
     loadPatchline()
+    loadAcceptEarlyPlugins()
   }
 })
 
@@ -600,6 +659,68 @@ onUnmounted(() => {
 
         <p v-if="!patchlineNeedsRestart" class="text-xs text-gray-500">
           {{ t('settings.patchlineRestartNote') }}
+        </p>
+      </div>
+    </Card>
+
+    <!-- Accept Early Plugins Settings (admins and moderators only) -->
+    <Card v-if="authStore.canManageServer" :title="t('settings.acceptEarlyPluginsTitle')">
+      <p class="text-gray-400 text-sm mb-4">{{ t('settings.acceptEarlyPluginsDesc') }}</p>
+
+      <!-- Error/Success Messages -->
+      <div v-if="acceptEarlyPluginsError" class="mb-4 p-3 bg-status-error/20 border border-status-error/30 rounded-lg text-status-error text-sm">
+        {{ acceptEarlyPluginsError }}
+      </div>
+      <div v-if="acceptEarlyPluginsSuccess" class="mb-4 p-3 bg-status-success/20 border border-status-success/30 rounded-lg text-status-success text-sm">
+        {{ acceptEarlyPluginsSuccess }}
+      </div>
+
+      <div class="space-y-4">
+        <!-- Current Setting -->
+        <div class="flex items-center justify-between p-4 bg-dark-300 rounded-lg">
+          <div class="flex items-center gap-3">
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                :checked="acceptEarlyPluginsData?.acceptEarlyPlugins ?? false"
+                :disabled="acceptEarlyPluginsLoading || !authStore.hasPermission('settings.edit')"
+                @change="setAcceptEarlyPlugins(($event.target as HTMLInputElement).checked)"
+                class="sr-only peer"
+              />
+              <div class="w-11 h-6 bg-dark-50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-hytale-orange peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+            </label>
+            <div>
+              <p class="text-white font-medium">{{ t('settings.acceptEarlyPluginsLabel') }}</p>
+              <p class="text-sm text-gray-400">{{ t('settings.acceptEarlyPluginsHint') }}</p>
+            </div>
+          </div>
+          <div class="text-sm text-gray-400">
+            <span v-if="acceptEarlyPluginsLoading">{{ t('common.loading') }}...</span>
+            <span v-else-if="acceptEarlyPluginsData?.acceptEarlyPlugins" class="text-status-success">{{ t('settings.enabled') }}</span>
+            <span v-else class="text-gray-500">{{ t('settings.disabled') }}</span>
+          </div>
+        </div>
+
+        <!-- Restart Required Banner -->
+        <div v-if="acceptEarlyPluginsNeedsRestart" class="p-4 bg-status-warning/20 border border-status-warning/30 rounded-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-status-warning font-medium">{{ t('settings.acceptEarlyPluginsRestartRequired') }}</p>
+              <p class="text-sm text-gray-400 mt-1">{{ t('settings.acceptEarlyPluginsRestartRequiredDesc') }}</p>
+            </div>
+            <button
+              v-if="authStore.hasPermission('server.restart')"
+              @click="restartForAcceptEarlyPlugins"
+              :disabled="acceptEarlyPluginsLoading"
+              class="px-4 py-2 bg-status-warning text-dark-400 font-medium rounded-lg hover:bg-status-warning/90 transition-colors disabled:opacity-50"
+            >
+              {{ acceptEarlyPluginsLoading ? t('common.loading') : t('dashboard.restart') }}
+            </button>
+          </div>
+        </div>
+
+        <p v-if="!acceptEarlyPluginsNeedsRestart" class="text-xs text-gray-500">
+          {{ t('settings.acceptEarlyPluginsRestartNote') }}
         </p>
       </div>
     </Card>

@@ -990,21 +990,25 @@ export async function getPlayerDeathPositionsFromFile(playerName: string): Promi
 /**
  * Get all players from JSON files with online status merged in
  * This is the primary source of truth - all players who have ever played
+ * Also includes online players who don't have JSON files yet (e.g., after folder deletion)
  */
 export async function getAllPlayersUnified(): Promise<UnifiedPlayerEntry[]> {
   await loadPlayers(); // Load session tracking data
 
+  const result: UnifiedPlayerEntry[] = [];
+  const includedPlayerNames = new Set<string>(); // Track which players we've already added
+
+  // Get list of online player names for quick lookup
+  const onlinePlayerNames = new Set(
+    Array.from(players.values())
+      .filter(p => p.online)
+      .map(p => p.name.toLowerCase())
+  );
+
+  // First, read players from JSON files
   try {
     const playersDir = getUniversePlayersPath();
     const files = await readdir(playersDir);
-    const result: UnifiedPlayerEntry[] = [];
-
-    // Get list of online player names for quick lookup
-    const onlinePlayerNames = new Set(
-      Array.from(players.values())
-        .filter(p => p.online)
-        .map(p => p.name.toLowerCase())
-    );
 
     for (const file of files) {
       if (!file.endsWith('.json')) continue;
@@ -1055,22 +1059,41 @@ export async function getAllPlayersUnified(): Promise<UnifiedPlayerEntry[]> {
           playTime: sessionData?.playTime,
           sessionCount: sessionData?.sessionCount,
         });
+
+        includedPlayerNames.add(displayName.toLowerCase());
       } catch {
         // Skip invalid files
       }
     }
-
-    // Sort: online first, then by last seen (most recent first)
-    result.sort((a, b) => {
-      if (a.online !== b.online) return a.online ? -1 : 1;
-      if (a.lastSeen && b.lastSeen) {
-        return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
-      }
-      return a.name.localeCompare(b.name);
-    });
-
-    return result;
   } catch {
-    return [];
+    // Directory might not exist, continue to add online players from session tracking
   }
+
+  // Second, add online players from session tracking who don't have JSON files
+  // This ensures players are shown even if their JSON files were deleted
+  for (const player of players.values()) {
+    if (player.online && !includedPlayerNames.has(player.name.toLowerCase())) {
+      result.push({
+        name: player.name,
+        uuid: player.uuid || '',
+        online: true,
+        world: player.world,
+        lastSeen: player.lastSeen,
+        playTime: player.playTime,
+        sessionCount: player.sessionCount,
+      });
+      includedPlayerNames.add(player.name.toLowerCase());
+    }
+  }
+
+  // Sort: online first, then by last seen (most recent first)
+  result.sort((a, b) => {
+    if (a.online !== b.online) return a.online ? -1 : 1;
+    if (a.lastSeen && b.lastSeen) {
+      return new Date(b.lastSeen).getTime() - new Date(a.lastSeen).getTime();
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  return result;
 }

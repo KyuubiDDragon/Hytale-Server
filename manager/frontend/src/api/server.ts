@@ -94,6 +94,17 @@ export interface PatchlineUpdateResponse {
   message: string
 }
 
+export interface AcceptEarlyPluginsResponse {
+  acceptEarlyPlugins: boolean
+}
+
+export interface AcceptEarlyPluginsUpdateResponse {
+  success: boolean
+  acceptEarlyPlugins: boolean
+  changed?: boolean
+  message: string
+}
+
 // KyuubiSoft API Plugin interfaces
 export interface PluginStatus {
   installed: boolean
@@ -326,6 +337,16 @@ export const serverApi = {
 
   async setPatchline(patchline: string): Promise<PatchlineUpdateResponse> {
     const response = await api.put<PatchlineUpdateResponse>('/server/patchline', { patchline })
+    return response.data
+  },
+
+  async getAcceptEarlyPlugins(): Promise<AcceptEarlyPluginsResponse> {
+    const response = await api.get<AcceptEarlyPluginsResponse>('/server/accept-early-plugins')
+    return response.data
+  },
+
+  async setAcceptEarlyPlugins(acceptEarlyPlugins: boolean): Promise<AcceptEarlyPluginsUpdateResponse> {
+    const response = await api.put<AcceptEarlyPluginsUpdateResponse>('/server/accept-early-plugins', { acceptEarlyPlugins })
     return response.data
   },
 

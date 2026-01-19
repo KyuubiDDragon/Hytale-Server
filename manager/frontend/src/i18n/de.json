@@ -510,7 +510,17 @@
     "patchlineRestartNote": "Nach dem Ändern der Patchline muss der Server neugestartet werden, damit die Änderung wirksam wird.",
     "patchlineRestartRequired": "Neustart erforderlich",
     "patchlineRestartRequiredDesc": "Die Patchline wurde geändert. Der Server muss jetzt neugestartet werden, um die neue Version herunterzuladen.",
-    "patchlineRestarting": "Server wird neugestartet und lädt die neue Version herunter..."
+    "patchlineRestarting": "Server wird neugestartet und lädt die neue Version herunter...",
+    "acceptEarlyPluginsTitle": "Early Plugins akzeptieren",
+    "acceptEarlyPluginsDesc": "Aktiviere diese Option, um dem Server das Laden von Early Plugins zu erlauben. Early Plugins werden geladen, bevor der Server vollständig startet und können instabil sein.",
+    "acceptEarlyPluginsLabel": "Early Plugins akzeptieren",
+    "acceptEarlyPluginsHint": "Fügt das --accept-early-plugins Flag beim Server-Start hinzu",
+    "acceptEarlyPluginsRestartNote": "Nach dem Ändern dieser Einstellung muss der Server neugestartet werden, damit die Änderung wirksam wird.",
+    "acceptEarlyPluginsRestartRequired": "Neustart erforderlich",
+    "acceptEarlyPluginsRestartRequiredDesc": "Die Einstellung wurde geändert. Der Server muss jetzt neugestartet werden, um die Änderung anzuwenden.",
+    "acceptEarlyPluginsRestarting": "Server wird neugestartet, um die neue Einstellung anzuwenden...",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert"
   },
   "users": {
     "title": "Benutzerverwaltung",
@@ -625,7 +635,13 @@
     "description": "Alle Chat-Nachrichten der Spieler anzeigen",
     "noMessages": "Noch keine Chat-Nachrichten",
     "searchPlaceholder": "Nachrichten oder Spielernamen suchen...",
-    "messageCount": "{count} Nachrichten insgesamt"
+    "messageCount": "{count} Nachrichten insgesamt",
+    "timeRange": "Zeitraum:",
+    "days7": "7 Tage",
+    "days14": "14 Tage",
+    "days30": "30 Tage",
+    "all": "Alle",
+    "daysAvailable": "{count} Tag(e) verfügbar"
   },
   "commands": {
     "title": "Befehlsreferenz",

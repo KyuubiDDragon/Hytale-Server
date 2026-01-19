@@ -444,7 +444,17 @@
     "patchlineRestartNote": "Após alterar a patchline, o servidor deve ser reiniciado para que a alteração tenha efeito.",
     "patchlineRestartRequired": "Reinicialização Necessária",
     "patchlineRestartRequiredDesc": "A patchline foi alterada. O servidor deve ser reiniciado agora para baixar a nova versão.",
-    "patchlineRestarting": "O servidor está reiniciando e baixando a nova versão..."
+    "patchlineRestarting": "O servidor está reiniciando e baixando a nova versão...",
+    "acceptEarlyPluginsTitle": "Aceitar Early Plugins",
+    "acceptEarlyPluginsDesc": "Ative esta opção para permitir que o servidor carregue early plugins. Early plugins são carregados antes do servidor iniciar completamente e podem ser instáveis.",
+    "acceptEarlyPluginsLabel": "Aceitar Early Plugins",
+    "acceptEarlyPluginsHint": "Adiciona a flag --accept-early-plugins ao iniciar o servidor",
+    "acceptEarlyPluginsRestartNote": "Após alterar esta configuração, o servidor deve ser reiniciado para que a alteração tenha efeito.",
+    "acceptEarlyPluginsRestartRequired": "Reinicialização Necessária",
+    "acceptEarlyPluginsRestartRequiredDesc": "A configuração foi alterada. O servidor deve ser reiniciado agora para aplicar a alteração.",
+    "acceptEarlyPluginsRestarting": "O servidor está reiniciando para aplicar a nova configuração...",
+    "enabled": "Ativado",
+    "disabled": "Desativado"
   },
   "users": {
     "title": "Gerenciamento de Usuários",

@@ -185,19 +185,33 @@ router.post('/restart', authMiddleware, requirePermission('server.restart'), asy
 // Panel config file path (for patchline setting)
 const PANEL_CONFIG_PATH = '/opt/hytale/data/panel-config.json';
 
+// Panel config interface
+interface PanelConfig {
+  patchline: string;
+  acceptEarlyPlugins: boolean;
+}
+
 // Helper to read panel config
-async function readPanelConfig(): Promise<{ patchline: string }> {
+async function readPanelConfig(): Promise<PanelConfig> {
   try {
     const content = await readFile(PANEL_CONFIG_PATH, 'utf-8');
-    return JSON.parse(content);
+    const config = JSON.parse(content);
+    // Ensure all fields have defaults
+    return {
+      patchline: config.patchline || process.env.HYTALE_PATCHLINE || 'release',
+      acceptEarlyPlugins: config.acceptEarlyPlugins ?? false,
+    };
   } catch {
     // Return defaults if file doesn't exist
-    return { patchline: process.env.HYTALE_PATCHLINE || 'release' };
+    return {
+      patchline: process.env.HYTALE_PATCHLINE || 'release',
+      acceptEarlyPlugins: false,
+    };
   }
 }
 
 // Helper to write panel config
-async function writePanelConfig(config: { patchline: string }): Promise<void> {
+async function writePanelConfig(config: PanelConfig): Promise<void> {
   await writeFile(PANEL_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
 }
 
@@ -263,6 +277,55 @@ router.put('/patchline', authMiddleware, requirePermission('config.edit'), async
   } catch (error) {
     res.status(500).json({
       error: 'Failed to set patchline',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/server/accept-early-plugins - Get current acceptEarlyPlugins setting
+router.get('/accept-early-plugins', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  try {
+    const panelConfig = await readPanelConfig();
+    res.json({
+      acceptEarlyPlugins: panelConfig.acceptEarlyPlugins,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get accept early plugins setting',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PUT /api/server/accept-early-plugins - Set acceptEarlyPlugins setting
+router.put('/accept-early-plugins', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  try {
+    const { acceptEarlyPlugins } = req.body;
+
+    if (typeof acceptEarlyPlugins !== 'boolean') {
+      res.status(400).json({ error: 'Invalid value. Must be a boolean.' });
+      return;
+    }
+
+    const panelConfig = await readPanelConfig();
+    const oldValue = panelConfig.acceptEarlyPlugins;
+    const valueChanged = oldValue !== acceptEarlyPlugins;
+
+    // Update config
+    panelConfig.acceptEarlyPlugins = acceptEarlyPlugins;
+    await writePanelConfig(panelConfig);
+
+    res.json({
+      success: true,
+      acceptEarlyPlugins,
+      changed: valueChanged,
+      message: valueChanged
+        ? `Accept early plugins ${acceptEarlyPlugins ? 'enabled' : 'disabled'}. Restart the server to apply changes.`
+        : 'Setting unchanged.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to set accept early plugins',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
