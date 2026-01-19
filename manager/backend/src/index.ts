@@ -45,8 +45,27 @@ const wss = new WebSocketServer({ server, path: '/api/console/ws' });
 setupWebSocket(wss);
 
 // Middleware
+// SECURITY: Configure Content-Security-Policy for SPA
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for SPA
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Vue/CSS-in-JS needs unsafe-inline
+      imgSrc: ["'self'", "data:", "blob:"], // Allow data URIs for inline images
+      fontSrc: ["'self'", "data:"],
+      connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"], // Prevent clickjacking
+      upgradeInsecureRequests: [], // Upgrade HTTP to HTTPS
+    },
+  },
+  // Additional security headers
+  crossOriginEmbedderPolicy: false, // Disable for compatibility with external resources
+  crossOriginOpenerPolicy: { policy: 'same-origin' },
+  crossOriginResourcePolicy: { policy: 'same-origin' },
 }));
 app.use(compression());
 
@@ -110,7 +129,8 @@ app.use((req, res, next) => {
   res.status(403).json({ error: 'CSRF validation failed', detail: 'Origin not allowed' });
 });
 
-app.use(express.json());
+// SECURITY: Limit JSON body size to prevent memory exhaustion attacks
+app.use(express.json({ limit: '100kb' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -148,6 +168,51 @@ app.get('*', (req, res) => {
       res.status(404).json({ error: 'Frontend not found' });
     }
   });
+});
+
+// SECURITY: Global error handler - catches all unhandled errors in routes
+// Prevents stack traces from leaking to clients in production
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  // Log the full error for debugging
+  console.error('[ERROR]', err.stack || err.message || err);
+
+  // Check if headers already sent
+  if (res.headersSent) {
+    return;
+  }
+
+  // Determine if we should expose error details
+  const isDev = process.env.NODE_ENV !== 'production';
+
+  // Handle known error types
+  if (err.name === 'UnauthorizedError') {
+    res.status(401).json({ error: 'Unauthorized', detail: 'Invalid or expired token' });
+    return;
+  }
+
+  if (err.name === 'ValidationError') {
+    res.status(400).json({ error: 'Validation failed', detail: isDev ? err.message : 'Invalid input' });
+    return;
+  }
+
+  // Generic server error - don't expose internal details in production
+  res.status(500).json({
+    error: 'Internal server error',
+    detail: isDev ? err.message : 'An unexpected error occurred',
+  });
+});
+
+// SECURITY: Handle uncaught exceptions at process level
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught Exception:', err);
+  // Give time for logging then exit
+  setTimeout(() => process.exit(1), 1000);
+});
+
+// SECURITY: Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[ERROR] Unhandled Promise Rejection at:', promise, 'reason:', reason);
+  // Don't exit, just log - but this shouldn't happen in production
 });
 
 // Start server
