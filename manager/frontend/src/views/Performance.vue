@@ -202,8 +202,8 @@ onUnmounted(() => {
               {{ hasValidJvmHeap ? 'JVM Heap' : t('performance.memory') }}
             </p>
             <template v-if="hasValidJvmHeap">
-              <p class="text-2xl font-bold text-white">{{ (heapUsed / 1024 / 1024).toFixed(0) }} MB</p>
-              <p class="text-xs text-gray-500">/ {{ (heapMax / 1024 / 1024).toFixed(0) }} MB ({{ heapPercent?.toFixed(0) }}%)</p>
+              <p class="text-2xl font-bold text-white">{{ heapUsed?.toFixed(0) }} MB</p>
+              <p class="text-xs text-gray-500">/ {{ heapMax?.toFixed(0) }} MB ({{ heapPercent?.toFixed(0) }}%)</p>
             </template>
             <template v-else>
               <p class="text-2xl font-bold text-white">{{ (stats?.memory_mb || 0).toFixed(0) }} MB</p>
@@ -295,11 +295,11 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="relative h-64 bg-dark-100 rounded-lg overflow-hidden">
-          <svg class="w-full h-full" preserveAspectRatio="none">
+          <svg class="w-full h-full" viewBox="0 0 400 256" preserveAspectRatio="none">
             <!-- Grid lines -->
-            <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
-            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
-            <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="64" x2="400" y2="64" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="128" x2="400" y2="128" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="192" x2="400" y2="192" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
 
             <!-- Area -->
             <path
@@ -347,11 +347,11 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="relative h-64 bg-dark-100 rounded-lg overflow-hidden">
-          <svg class="w-full h-full" preserveAspectRatio="none">
+          <svg class="w-full h-full" viewBox="0 0 400 256" preserveAspectRatio="none">
             <!-- Grid lines -->
-            <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
-            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
-            <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="64" x2="400" y2="64" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="128" x2="400" y2="128" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="192" x2="400" y2="192" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
 
             <!-- Area -->
             <path
@@ -399,9 +399,9 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="relative h-48 bg-dark-100 rounded-lg overflow-hidden">
-          <svg class="w-full h-full" preserveAspectRatio="none">
+          <svg class="w-full h-full" viewBox="0 0 800 192" preserveAspectRatio="none">
             <!-- Grid lines -->
-            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="96" x2="800" y2="96" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
 
             <!-- Area -->
             <path
@@ -446,11 +446,11 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="relative h-48 bg-dark-100 rounded-lg overflow-hidden">
-          <svg class="w-full h-full" preserveAspectRatio="none">
+          <svg class="w-full h-full" viewBox="0 0 800 192" preserveAspectRatio="none">
             <!-- Grid lines for TPS (20 = max, 15 = warning threshold) -->
-            <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
-            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
-            <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#ef4444" stroke-width="1" stroke-dasharray="4" opacity="0.3" />
+            <line x1="0" y1="48" x2="800" y2="48" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="96" x2="800" y2="96" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
+            <line x1="0" y1="144" x2="800" y2="144" stroke="#ef4444" stroke-width="1" stroke-dasharray="4" opacity="0.3" />
 
             <!-- Area -->
             <path
