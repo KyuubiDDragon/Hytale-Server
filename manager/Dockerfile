@@ -71,7 +71,7 @@ COPY --from=frontend-builder /app/static ./static
 
 # Create data directory with proper ownership
 RUN mkdir -p /app/data && \
-    chown -R manager:manager /app
+    chown -R manager:hytale /app
 
 # Copy entrypoint script
 COPY --chmod=755 entrypoint.sh /app/entrypoint.sh
@@ -80,8 +80,8 @@ COPY --chmod=755 entrypoint.sh /app/entrypoint.sh
 ENV NODE_ENV=production
 ENV MANAGER_PORT=18080
 
-# NOTE: We start as root to fix permissions on mounted volumes,
-# then the entrypoint script drops to the manager user (1001)
+# NOTE: We start as root, then the entrypoint script drops to
+# the manager user (UID 9999, same as hytale container)
 
 # Expose port
 EXPOSE 18080
