@@ -73,6 +73,9 @@ async function fetchPlayers() {
     const allResponse = await playersApi.getAll()
     const allPlayersList = allResponse.players
 
+    // Track which player names are already in the list (for deduplication)
+    const existingPlayerNames = new Set(allPlayersList.map(p => p.name.toLowerCase()))
+
     // Get online players (source of truth for who is online)
     let onlinePlayerNames: string[] = []
 
@@ -83,17 +86,31 @@ async function fetchPlayers() {
         pluginAvailable.value = true
         onlinePlayerNames = pluginResponse.data.players.map((p: PluginPlayer) => p.name.toLowerCase())
 
-        // Update all players with plugin data for online ones
+        // Update existing players with plugin data OR add new entries for online players without JSON files
         for (const pluginPlayer of pluginResponse.data.players) {
           const player = allPlayersList.find(
             p => p.name.toLowerCase() === pluginPlayer.name.toLowerCase()
           )
           if (player) {
+            // Update existing player with live data
             player.online = true
             player.health = pluginPlayer.health
             player.position = pluginPlayer.position
             player.world = pluginPlayer.world
             player.gameMode = pluginPlayer.gameMode
+          } else {
+            // Player is online but has no JSON file - add them to the list
+            // This handles the case where player/world folders were deleted
+            allPlayersList.push({
+              name: pluginPlayer.name,
+              uuid: '',
+              online: true,
+              health: pluginPlayer.health,
+              position: pluginPlayer.position,
+              world: pluginPlayer.world,
+              gameMode: pluginPlayer.gameMode,
+            })
+            existingPlayerNames.add(pluginPlayer.name.toLowerCase())
           }
         }
       }
@@ -106,6 +123,18 @@ async function fetchPlayers() {
       try {
         const onlineResponse = await playersApi.getOnline()
         onlinePlayerNames = onlineResponse.players.map(p => p.name.toLowerCase())
+
+        // Also add any online players from standard API who aren't in the list
+        for (const onlinePlayer of onlineResponse.players) {
+          if (!existingPlayerNames.has(onlinePlayer.name.toLowerCase())) {
+            allPlayersList.push({
+              name: onlinePlayer.name,
+              uuid: '',
+              online: true,
+            })
+            existingPlayerNames.add(onlinePlayer.name.toLowerCase())
+          }
+        }
       } catch {
         // Ignore
       }

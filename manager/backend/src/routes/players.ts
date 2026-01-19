@@ -423,26 +423,25 @@ router.post('/:name/teleport', authMiddleware, requirePermission('players.telepo
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
-  let command: string;
   let teleportDetails: string;
+  let teleportOptions: { target?: string; x?: number; y?: number; z?: number };
+
   if (target) {
     // SECURITY: Validate target player name
     if (!isValidPlayerName(target)) {
       res.status(400).json({ success: false, error: 'Invalid target player name' });
       return;
     }
-    // Teleport player to another player: /tp <source> <target>
-    command = `/tp ${playerName} ${target}`;
     teleportDetails = `to player ${target}`;
+    teleportOptions = { target };
   } else if (x !== undefined && y !== undefined && z !== undefined) {
     // SECURITY: Validate coordinates
     if (!isValidCoordinate(x) || !isValidCoordinate(y) || !isValidCoordinate(z)) {
       res.status(400).json({ success: false, error: 'Invalid coordinates' });
       return;
     }
-    // Teleport to coordinates: /tp <player> <x> <y> <z>
-    command = `/tp ${playerName} ${x} ${y} ${z}`;
     teleportDetails = `to coordinates ${x}, ${y}, ${z}`;
+    teleportOptions = { x, y, z };
   } else {
     res.status(400).json({
       success: false,
@@ -450,6 +449,26 @@ router.post('/:name/teleport', authMiddleware, requirePermission('players.telepo
     });
     return;
   }
+
+  // Try plugin API first (more reliable)
+  try {
+    const pluginResult = await kyuubiApi.teleportPlayerViaPlugin(playerName, teleportOptions);
+    if (pluginResult.success) {
+      await logActivity(username, 'teleport', 'player', true, playerName, teleportDetails);
+      res.json({
+        success: true,
+        message: target ? `Teleported ${playerName} to ${target}` : `Teleported ${playerName} to ${x}, ${y}, ${z}`,
+      });
+      return;
+    }
+  } catch {
+    // Plugin not available, fall back to console command
+  }
+
+  // Fallback: Use console command
+  const command = target
+    ? `/tp ${playerName} ${target}`
+    : `/tp ${playerName} ${x} ${y} ${z}`;
 
   const result = await dockerService.execCommand(command);
 
@@ -476,6 +495,22 @@ router.post('/:name/kill', authMiddleware, requirePermission('players.kill'), as
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
+  // Try plugin API first (more reliable)
+  try {
+    const pluginResult = await kyuubiApi.killPlayerViaPlugin(playerName);
+    if (pluginResult.success) {
+      await logActivity(username, 'kill', 'player', true, playerName);
+      res.json({
+        success: true,
+        message: `Player ${playerName} killed`,
+      });
+      return;
+    }
+  } catch {
+    // Plugin not available, fall back to console command
+  }
+
+  // Fallback: Use console command
   const result = await dockerService.execCommand(`/kill ${playerName}`);
 
   if (result.success) {
@@ -500,7 +535,21 @@ router.post('/:name/respawn', authMiddleware, requirePermission('players.respawn
   // SECURITY: Validate player name
   if (!validatePlayerName(res, playerName)) return;
 
-  // Use --player flag for console commands
+  // Try plugin API first (more reliable)
+  try {
+    const pluginResult = await kyuubiApi.respawnPlayerViaPlugin(playerName);
+    if (pluginResult.success) {
+      res.json({
+        success: true,
+        message: `Player ${playerName} respawned`,
+      });
+      return;
+    }
+  } catch {
+    // Plugin not available, fall back to console command
+  }
+
+  // Fallback: Use console command
   const result = await dockerService.execCommand(`/player respawn --player ${playerName}`);
 
   if (result.success) {
@@ -542,6 +591,22 @@ router.post('/:name/gamemode', authMiddleware, requirePermission('players.gamemo
     return;
   }
 
+  // Try plugin API first (more reliable)
+  try {
+    const pluginResult = await kyuubiApi.setGamemodeViaPlugin(playerName, gamemode);
+    if (pluginResult.success) {
+      await logActivity(username, 'gamemode', 'player', true, playerName, `Changed to ${gamemode}`);
+      res.json({
+        success: true,
+        message: `Set ${playerName}'s gamemode to ${gamemode}`,
+      });
+      return;
+    }
+  } catch {
+    // Plugin not available, fall back to console command
+  }
+
+  // Fallback: Use console command
   const result = await dockerService.execCommand(`/gamemode ${gamemode} ${playerName}`);
 
   if (result.success) {

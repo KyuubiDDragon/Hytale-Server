@@ -17,13 +17,13 @@ const limit = ref(100)
 const offset = ref(0)
 const selectedDays = ref(7) // Default: 7 days
 
-// Time range options
-const timeRangeOptions = [
-  { value: 7, label: '7 Tage' },
-  { value: 14, label: '14 Tage' },
-  { value: 30, label: '30 Tage' },
-  { value: 0, label: 'Alle' },
-]
+// Time range options (computed for i18n reactivity)
+const timeRangeOptions = computed(() => [
+  { value: 7, label: t('chat.days7') },
+  { value: 14, label: t('chat.days14') },
+  { value: 30, label: t('chat.days30') },
+  { value: 0, label: t('chat.all') },
+])
 
 let pollInterval: ReturnType<typeof setInterval> | null = null
 
@@ -171,7 +171,7 @@ onUnmounted(() => {
 
       <!-- Time Range Filter -->
       <div class="flex items-center gap-2">
-        <span class="text-sm text-gray-400">Zeitraum:</span>
+        <span class="text-sm text-gray-400">{{ t('chat.timeRange') }}</span>
         <div class="flex bg-dark-100 rounded-lg p-1">
           <button
             v-for="option in timeRangeOptions"
@@ -192,7 +192,7 @@ onUnmounted(() => {
       <div class="text-sm text-gray-400">
         {{ t('chat.messageCount', { count: total }) }}
         <span v-if="availableDays > 0" class="text-gray-500">
-          ({{ availableDays }} {{ availableDays === 1 ? 'Tag' : 'Tage' }} verfügbar)
+          ({{ t('chat.daysAvailable', { count: availableDays }) }})
         </span>
       </div>
     </div>

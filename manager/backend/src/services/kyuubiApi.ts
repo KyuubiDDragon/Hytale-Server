@@ -250,6 +250,37 @@ export async function clearInventoryViaPlugin(playerName: string): Promise<Plugi
 }
 
 /**
+ * Set a player's gamemode via the plugin API
+ */
+export async function setGamemodeViaPlugin(playerName: string, gamemode: string): Promise<PluginApiResponse> {
+  return postToPlugin(`/api/players/${encodeURIComponent(playerName)}/gamemode`, { gamemode });
+}
+
+/**
+ * Kill a player via the plugin API
+ */
+export async function killPlayerViaPlugin(playerName: string): Promise<PluginApiResponse> {
+  return postToPlugin(`/api/players/${encodeURIComponent(playerName)}/kill`);
+}
+
+/**
+ * Respawn a player via the plugin API
+ */
+export async function respawnPlayerViaPlugin(playerName: string): Promise<PluginApiResponse> {
+  return postToPlugin(`/api/players/${encodeURIComponent(playerName)}/respawn`);
+}
+
+/**
+ * Teleport a player via the plugin API
+ */
+export async function teleportPlayerViaPlugin(
+  playerName: string,
+  options: { target?: string; x?: number; y?: number; z?: number }
+): Promise<PluginApiResponse> {
+  return postToPlugin(`/api/players/${encodeURIComponent(playerName)}/teleport`, options);
+}
+
+/**
  * Check if plugin update is available
  */
 export function isUpdateAvailable(): { available: boolean; currentVersion: string | null; latestVersion: string } {
