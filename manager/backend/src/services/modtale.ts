@@ -597,9 +597,10 @@ export async function installModFromModtale(
   }
 
   // Choose target directory based on classification
+  // Note: Hytale server loads all mods from /mods directory, so PLUGIN also goes there
   switch (project.classification) {
     case 'PLUGIN':
-      targetPath = config.pluginsPath; // Plugins go to plugins folder
+      targetPath = config.modsPath; // Plugins also go to mods folder - Hytale loads from /mods
       break;
     case 'DATA':
     case 'ART':
@@ -725,10 +726,11 @@ export async function uninstallModtale(projectId: string): Promise<{ success: bo
   }
 
   // Determine the file path based on classification
+  // Note: Hytale server loads all mods from /mods directory, so PLUGIN also goes there
   let basePath: string;
   switch (installed.classification) {
     case 'PLUGIN':
-      basePath = config.pluginsPath;
+      basePath = config.modsPath; // Plugins also in mods folder - Hytale loads from /mods
       break;
     case 'DATA':
     case 'ART':

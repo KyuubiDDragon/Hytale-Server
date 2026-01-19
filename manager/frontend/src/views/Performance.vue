@@ -104,6 +104,16 @@ const heapUsed = computed(() => pluginMemory.value?.heapUsed ?? null)
 const heapMax = computed(() => pluginMemory.value?.heapMax ?? null)
 const heapPercent = computed(() => pluginMemory.value?.heapUsagePercent ?? null)
 
+// Check if JVM heap data is valid (available and has real values > 0)
+// This prevents the race condition where pluginAvailable is true but heap values are still 0
+const hasValidJvmHeap = computed(() =>
+  pluginAvailable.value &&
+  heapUsed.value !== null &&
+  heapMax.value !== null &&
+  heapUsed.value > 0 &&
+  heapMax.value > 0
+)
+
 // Generate SVG path for a graph
 function generatePath(data: number[], maxValue: number, width: number, height: number): string {
   if (data.length < 2) return ''
@@ -189,9 +199,9 @@ onUnmounted(() => {
           </div>
           <div>
             <p class="text-sm text-gray-400">
-              {{ pluginAvailable && heapUsed !== null ? 'JVM Heap' : t('performance.memory') }}
+              {{ hasValidJvmHeap ? 'JVM Heap' : t('performance.memory') }}
             </p>
-            <template v-if="pluginAvailable && heapUsed !== null && heapMax !== null">
+            <template v-if="hasValidJvmHeap">
               <p class="text-2xl font-bold text-white">{{ (heapUsed / 1024 / 1024).toFixed(0) }} MB</p>
               <p class="text-xs text-gray-500">/ {{ (heapMax / 1024 / 1024).toFixed(0) }} MB ({{ heapPercent?.toFixed(0) }}%)</p>
             </template>
@@ -284,7 +294,7 @@ onUnmounted(() => {
             <span class="text-gray-400">{{ t('performance.max') }}: <span class="text-blue-400">{{ maxCpu.toFixed(1) }}%</span></span>
           </div>
         </div>
-        <div class="relative h-48 bg-dark-100 rounded-lg overflow-hidden">
+        <div class="relative h-64 bg-dark-100 rounded-lg overflow-hidden">
           <svg class="w-full h-full" preserveAspectRatio="none">
             <!-- Grid lines -->
             <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
@@ -293,14 +303,14 @@ onUnmounted(() => {
 
             <!-- Area -->
             <path
-              :d="generateAreaPath(cpuData, 100, 400, 192)"
+              :d="generateAreaPath(cpuData, 100, 400, 256)"
               fill="url(#cpuGradient)"
               class="transition-all duration-300"
             />
 
             <!-- Line -->
             <path
-              :d="generatePath(cpuData, 100, 400, 192)"
+              :d="generatePath(cpuData, 100, 400, 256)"
               fill="none"
               stroke="#3b82f6"
               stroke-width="2"
@@ -336,7 +346,7 @@ onUnmounted(() => {
             <span class="text-gray-400">{{ t('performance.max') }}: <span class="text-purple-400">{{ maxMemory.toFixed(1) }}%</span></span>
           </div>
         </div>
-        <div class="relative h-48 bg-dark-100 rounded-lg overflow-hidden">
+        <div class="relative h-64 bg-dark-100 rounded-lg overflow-hidden">
           <svg class="w-full h-full" preserveAspectRatio="none">
             <!-- Grid lines -->
             <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
@@ -345,14 +355,14 @@ onUnmounted(() => {
 
             <!-- Area -->
             <path
-              :d="generateAreaPath(memoryData, 100, 400, 192)"
+              :d="generateAreaPath(memoryData, 100, 400, 256)"
               fill="url(#memoryGradient)"
               class="transition-all duration-300"
             />
 
             <!-- Line -->
             <path
-              :d="generatePath(memoryData, 100, 400, 192)"
+              :d="generatePath(memoryData, 100, 400, 256)"
               fill="none"
               stroke="#a855f7"
               stroke-width="2"
@@ -388,21 +398,21 @@ onUnmounted(() => {
             <span class="text-gray-400">{{ t('performance.max') }}: <span class="text-hytale-orange">{{ maxPlayers }}</span></span>
           </div>
         </div>
-        <div class="relative h-32 bg-dark-100 rounded-lg overflow-hidden">
+        <div class="relative h-48 bg-dark-100 rounded-lg overflow-hidden">
           <svg class="w-full h-full" preserveAspectRatio="none">
             <!-- Grid lines -->
             <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
 
             <!-- Area -->
             <path
-              :d="generateAreaPath(playersData, maxPlayers + 1, 800, 128)"
+              :d="generateAreaPath(playersData, maxPlayers + 1, 800, 192)"
               fill="url(#playersGradient)"
               class="transition-all duration-300"
             />
 
             <!-- Line -->
             <path
-              :d="generatePath(playersData, maxPlayers + 1, 800, 128)"
+              :d="generatePath(playersData, maxPlayers + 1, 800, 192)"
               fill="none"
               stroke="#f97316"
               stroke-width="2"
@@ -435,7 +445,7 @@ onUnmounted(() => {
             <span class="text-gray-400">Min: <span class="text-green-400">{{ minTps?.toFixed(1) ?? '-' }}</span></span>
           </div>
         </div>
-        <div class="relative h-32 bg-dark-100 rounded-lg overflow-hidden">
+        <div class="relative h-48 bg-dark-100 rounded-lg overflow-hidden">
           <svg class="w-full h-full" preserveAspectRatio="none">
             <!-- Grid lines for TPS (20 = max, 15 = warning threshold) -->
             <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#374151" stroke-width="1" stroke-dasharray="4" />
@@ -444,14 +454,14 @@ onUnmounted(() => {
 
             <!-- Area -->
             <path
-              :d="generateAreaPath(tpsData, 20, 800, 128)"
+              :d="generateAreaPath(tpsData, 20, 800, 192)"
               fill="url(#tpsGradient)"
               class="transition-all duration-300"
             />
 
             <!-- Line -->
             <path
-              :d="generatePath(tpsData, 20, 800, 128)"
+              :d="generatePath(tpsData, 20, 800, 192)"
               fill="none"
               stroke="#22c55e"
               stroke-width="2"
