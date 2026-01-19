@@ -203,10 +203,10 @@
     "heal": "Heilen",
     "gamemode": "Spielmodus",
     "gamemodes": {
-      "survival": "Überleben",
       "creative": "Kreativ",
+      "creativeDesc": "Frei bauen, fliegen, unbegrenzte Ressourcen",
       "adventure": "Abenteuer",
-      "spectator": "Zuschauer"
+      "adventureDesc": "Erkunden und interagieren, keine Blöcke abbauen"
     },
     "give": "Item geben",
     "itemId": "Item ID",

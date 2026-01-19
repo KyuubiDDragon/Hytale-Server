@@ -19,8 +19,8 @@ const PATTERNS = {
   coordinate: /^~?-?\d*\.?\d*$/,
   // Effect names
   effectName: /^[a-z][a-z0-9_]*:?[a-z0-9_]*$/,
-  // Gamemode
-  gamemode: /^(survival|creative|adventure|spectator|0|1|2|3)$/i,
+  // Gamemode (Hytale only supports creative and adventure)
+  gamemode: /^(creative|adventure|c|a)$/i,
   // Backup names: alphanumeric, underscore, hyphen
   backupName: /^[a-zA-Z0-9_-]{1,64}$/,
   // File names (safe)
