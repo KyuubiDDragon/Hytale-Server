@@ -118,6 +118,7 @@ services:
       - CHOWN            # Required for changing file ownership
       - SETUID           # Required for switching to hytale user
       - SETGID           # Required for switching to hytale group
+      - DAC_OVERRIDE     # Required for chmod on bind-mounted volumes
       - NET_BIND_SERVICE # Allow binding to privileged ports if needed
 
   # ============================================================
@@ -221,6 +222,7 @@ services:
       - CHOWN            # Required for fixing permissions on mounted volumes
       - SETUID           # Required for switching to manager user
       - SETGID           # Required for switching to manager group
+      - DAC_OVERRIDE     # Required for chmod on bind-mounted volumes (files owned by other UIDs)
 
 # ============================================================
 # Networks
