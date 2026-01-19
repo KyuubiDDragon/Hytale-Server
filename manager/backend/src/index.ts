@@ -6,6 +6,8 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { access, constants, writeFile as fsWriteFile, unlink } from 'fs/promises';
+import { randomBytes } from 'crypto';
 
 import { config, checkSecurityConfig } from './config.js';
 import { setupWebSocket } from './websocket.js';
@@ -146,6 +148,79 @@ app.use('/api/roles', rolesRouter);
 // Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'hytale-manager' });
+});
+
+// Permission health check - checks if data directories are writable
+// Used to warn users about permission issues after upgrading to non-root container
+interface PermissionCheckResult {
+  path: string;
+  name: string;
+  readable: boolean;
+  writable: boolean;
+  error?: string;
+}
+
+interface PermissionHealthResponse {
+  ok: boolean;
+  issues: PermissionCheckResult[];
+  message?: string;
+}
+
+app.get('/api/health/permissions', async (_req, res) => {
+  const pathsToCheck = [
+    { path: config.serverPath, name: 'Server' },
+    { path: config.backupsPath, name: 'Backups' },
+    { path: config.dataPath, name: 'Data' },
+    { path: config.modsPath, name: 'Mods' },
+    { path: config.pluginsPath, name: 'Plugins' },
+  ];
+
+  const results: PermissionCheckResult[] = [];
+  let hasIssues = false;
+
+  for (const { path: dirPath, name } of pathsToCheck) {
+    const result: PermissionCheckResult = {
+      path: dirPath,
+      name,
+      readable: false,
+      writable: false,
+    };
+
+    try {
+      // Check if directory is readable
+      await access(dirPath, constants.R_OK);
+      result.readable = true;
+
+      // Check if directory is writable by actually trying to write a temp file
+      const testFile = path.join(dirPath, `.perm-test-${randomBytes(4).toString('hex')}`);
+      try {
+        await fsWriteFile(testFile, 'test', 'utf-8');
+        await unlink(testFile);
+        result.writable = true;
+      } catch (writeErr) {
+        result.writable = false;
+        result.error = `Cannot write: ${writeErr instanceof Error ? writeErr.message : 'Unknown error'}`;
+        hasIssues = true;
+      }
+    } catch (readErr) {
+      result.readable = false;
+      result.error = `Cannot access: ${readErr instanceof Error ? readErr.message : 'Unknown error'}`;
+      hasIssues = true;
+    }
+
+    results.push(result);
+  }
+
+  const response: PermissionHealthResponse = {
+    ok: !hasIssues,
+    issues: results.filter(r => !r.readable || !r.writable),
+  };
+
+  if (hasIssues) {
+    response.message = 'Some directories have permission issues. This may happen after upgrading to v1.8.0 which runs as non-root. Run: sudo chown -R 1001:1001 /opt/hytale';
+  }
+
+  res.json(response);
 });
 
 // Serve static frontend files

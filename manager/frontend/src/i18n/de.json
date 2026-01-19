@@ -22,7 +22,13 @@
     "clear": "Leeren",
     "previous": "Zurück",
     "next": "Weiter",
-    "noPermission": "Du hast keine Berechtigung für diese Aktion"
+    "noPermission": "Du hast keine Berechtigung für diese Aktion",
+    "dismiss": "Schließen"
+  },
+  "health": {
+    "permissionIssue": "Dateiberechtigungs-Problem erkannt",
+    "permissionIssueDesc": "Der Manager kann nicht in einige Datenverzeichnisse schreiben. Das passiert typischerweise nach dem Upgrade auf v1.8.0, welches aus Sicherheitsgründen als Nicht-Root-Benutzer (UID 1001) läuft.",
+    "fixCommand": "Führe diesen Befehl auf dem Host aus, um die Berechtigungen zu reparieren"
   },
   "auth": {
     "login": "Anmelden",

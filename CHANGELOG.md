@@ -126,6 +126,15 @@ Before deploying to production:
 - [ ] Configure reverse proxy with TLS (HTTPS)
 - [ ] Ensure `SECURITY_MODE=strict` (default)
 
+### Added
+
+- **Permission Health Check**: Automatic detection of file permission issues
+  - New `/api/health/permissions` endpoint checks if data directories are writable
+  - Frontend banner warns users only when permission issues are detected (silent when OK)
+  - Shows affected directories and provides the fix command: `sudo chown -R 1001:1001 /opt/hytale`
+  - Helps users upgrading from v1.7 to v1.8 fix permission issues from non-root container change
+  - Full localization in English, German, and Portuguese
+
 ### Known Limitations
 
 - Docker socket exposure is required for container management functionality
