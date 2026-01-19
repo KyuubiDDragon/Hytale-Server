@@ -27,7 +27,7 @@
   },
   "health": {
     "permissionIssue": "File Permission Issue Detected",
-    "permissionIssueDesc": "The manager cannot write to some data directories. This typically happens after upgrading to v1.8.0, which runs as a non-root user (UID 1001) for security.",
+    "permissionIssueDesc": "The manager cannot write to some data directories. This typically happens after upgrading to v2.0.0, which runs as a non-root user (UID 1001) for security.",
     "fixCommand": "Run this command on your host to fix permissions"
   },
   "auth": {

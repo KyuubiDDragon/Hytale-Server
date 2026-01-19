@@ -2,7 +2,7 @@
 
 All notable changes to the Hytale Server Manager will be documented in this file.
 
-## [1.8.0] - 2026-01-19 - Security Hardening Release
+## [2.0.0] - 2026-01-19 - Security Release (Production Ready)
 
 ### Security
 
@@ -132,7 +132,7 @@ Before deploying to production:
   - New `/api/health/permissions` endpoint checks if data directories are writable
   - Frontend banner warns users only when permission issues are detected (silent when OK)
   - Shows affected directories and provides the fix command: `sudo chown -R 1001:1001 /opt/hytale`
-  - Helps users upgrading from v1.7 to v1.8 fix permission issues from non-root container change
+  - Helps users upgrading from v1.x to v2.0 fix permission issues from non-root container change
   - Full localization in English, German, and Portuguese
 
 ### Known Limitations

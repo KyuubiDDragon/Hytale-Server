@@ -27,7 +27,7 @@
   },
   "health": {
     "permissionIssue": "Problema de Permissão de Arquivo Detectado",
-    "permissionIssueDesc": "O gerenciador não consegue escrever em alguns diretórios de dados. Isso geralmente acontece após atualizar para v1.8.0, que roda como usuário não-root (UID 1001) por segurança.",
+    "permissionIssueDesc": "O gerenciador não consegue escrever em alguns diretórios de dados. Isso geralmente acontece após atualizar para v2.0.0, que roda como usuário não-root (UID 1001) por segurança.",
     "fixCommand": "Execute este comando no host para corrigir as permissões"
   },
   "auth": {

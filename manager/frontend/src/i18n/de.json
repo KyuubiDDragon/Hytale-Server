@@ -27,7 +27,7 @@
   },
   "health": {
     "permissionIssue": "Dateiberechtigungs-Problem erkannt",
-    "permissionIssueDesc": "Der Manager kann nicht in einige Datenverzeichnisse schreiben. Das passiert typischerweise nach dem Upgrade auf v1.8.0, welches aus Sicherheitsgründen als Nicht-Root-Benutzer (UID 1001) läuft.",
+    "permissionIssueDesc": "Der Manager kann nicht in einige Datenverzeichnisse schreiben. Das passiert typischerweise nach dem Upgrade auf v2.0.0, welches aus Sicherheitsgründen als Nicht-Root-Benutzer (UID 1001) läuft.",
     "fixCommand": "Führe diesen Befehl auf dem Host aus, um die Berechtigungen zu reparieren"
   },
   "auth": {

@@ -217,7 +217,7 @@ app.get('/api/health/permissions', async (_req, res) => {
   };
 
   if (hasIssues) {
-    response.message = 'Some directories have permission issues. This may happen after upgrading to v1.8.0 which runs as non-root. Run: sudo chown -R 1001:1001 /opt/hytale';
+    response.message = 'Some directories have permission issues. This may happen after upgrading to v2.0.0 which runs as non-root. Run: sudo chown -R 1001:1001 /opt/hytale';
   }
 
   res.json(response);
@@ -294,7 +294,7 @@ process.on('unhandledRejection', (reason, promise) => {
 server.listen(config.port, '0.0.0.0', async () => {
   console.log(`
 ╔═══════════════════════════════════════════════════╗
-║         KyuubiSoft Panel v1.0.0                   ║
+║         KyuubiSoft Panel v2.0.0                   ║
 ║         Hytale Server Management                  ║
 ╠═══════════════════════════════════════════════════╣
 ║  Panel running on http://0.0.0.0:${config.port}          ║
