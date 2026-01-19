@@ -203,10 +203,10 @@
     "heal": "Heal",
     "gamemode": "Gamemode",
     "gamemodes": {
-      "survival": "Survival",
       "creative": "Creative",
+      "creativeDesc": "Build freely, fly, unlimited resources",
       "adventure": "Adventure",
-      "spectator": "Spectator"
+      "adventureDesc": "Explore and interact, can't break blocks"
     },
     "give": "Give Item",
     "itemId": "Item ID",
