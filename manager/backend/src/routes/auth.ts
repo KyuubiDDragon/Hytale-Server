@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { verifyCredentials, createAccessToken, createRefreshToken, verifyToken, createWsTicket } from '../services/auth.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
-import { getAllUsers, createUser, updateUser, deleteUser, getUser } from '../services/users.js';
+import { getAllUsers, createUser, updateUser, deleteUser, getUser, invalidateUserTokens } from '../services/users.js';
 import { getUserPermissions, hasPermission } from '../services/roles.js';
 import { initiateDeviceLogin, checkAuthCompletion, getAuthStatus, resetAuth, setPersistence, listAuthFiles, inspectDownloaderCredentials } from '../services/hytaleAuth.js';
 import type { AuthenticatedRequest, LoginRequest } from '../types/index.js';
@@ -84,7 +84,12 @@ router.post('/refresh', refreshLimiter, async (req: Request, res: Response) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', authMiddleware, (_req: Request, res: Response) => {
+// SECURITY: Invalidate tokens on logout to prevent token reuse
+router.post('/logout', authMiddleware, async (req: Request, res: Response) => {
+  const authReq = req as AuthenticatedRequest;
+  if (authReq.user?.username) {
+    await invalidateUserTokens(authReq.user.username);
+  }
   res.json({ message: 'Logged out successfully' });
 });
 
