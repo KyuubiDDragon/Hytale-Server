@@ -7,16 +7,19 @@ const { t } = useI18n()
 
 const loading = ref(true)
 const error = ref('')
-const webMapPort = ref(18081)
 const webMapInstalled = ref(false)
+
+// WebMap ports - HTTP port from plugin config, HTTPS port = HTTP + 1 (for nginx SSL proxy)
+const webMapHttpPort = ref(18081)
+const webMapHttpsPort = computed(() => webMapHttpPort.value + 1) // 18082 for SSL termination
 
 const mapUrl = computed(() => {
   // Use same protocol as current page to avoid mixed content blocking
-  // Note: If using HTTPS, the webmap port must also support HTTPS
-  // (either directly or via reverse proxy)
+  // HTTPS requires reverse proxy with SSL termination on httpsPort (httpPort + 1)
   const protocol = window.location.protocol
   const host = window.location.hostname
-  return `${protocol}//${host}:${webMapPort.value}`
+  const port = protocol === 'https:' ? webMapHttpsPort.value : webMapHttpPort.value
+  return `${protocol}//${host}:${port}`
 })
 
 async function checkWebMapStatus() {
@@ -26,7 +29,7 @@ async function checkWebMapStatus() {
     if (webMap && webMap.installed) {
       webMapInstalled.value = true
       if (webMap.ports && webMap.ports.length > 0) {
-        webMapPort.value = webMap.ports[0].default
+        webMapHttpPort.value = webMap.ports[0].default
       }
     }
   } catch (e) {
