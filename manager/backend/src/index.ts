@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { createServer, IncomingMessage, ServerResponse } from 'http';
+import { createGunzip, createInflate } from 'zlib';
 import { WebSocketServer } from 'ws';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -116,24 +117,40 @@ const webMapProxy = createProxyMiddleware({
       delete proxyRes.headers['x-frame-options'];
 
       const contentType = (proxyRes.headers['content-type'] as string) || '';
+      const contentEncoding = (proxyRes.headers['content-encoding'] as string) || '';
       const isHtml = contentType.includes('text/html');
 
       if (isHtml) {
-        // Collect response body and inject script
+        // Collect response body, decompress if needed, and inject script
         const chunks: Buffer[] = [];
-        proxyRes.on('data', (chunk: Buffer) => chunks.push(chunk));
-        proxyRes.on('end', () => {
+
+        // Create decompression stream if content is compressed
+        let stream: NodeJS.ReadableStream = proxyRes;
+        if (contentEncoding === 'gzip') {
+          stream = proxyRes.pipe(createGunzip());
+        } else if (contentEncoding === 'deflate') {
+          stream = proxyRes.pipe(createInflate());
+        }
+
+        stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+        stream.on('end', () => {
           let body = Buffer.concat(chunks).toString('utf-8');
           // Inject our WebSocket rewrite script after <head>
           body = body.replace(/<head>/i, '<head>' + webMapWsRewriteScript);
 
-          // Update content-length header
+          // Update headers - remove encoding since we send uncompressed
           const newHeaders = { ...proxyRes.headers };
           delete newHeaders['content-length'];
-          delete newHeaders['content-encoding']; // Remove encoding since we modified content
+          delete newHeaders['content-encoding'];
+          delete newHeaders['transfer-encoding'];
 
           res.writeHead(proxyRes.statusCode || 200, newHeaders);
           res.end(body);
+        });
+        stream.on('error', (err) => {
+          console.error('[WebMap Proxy] Decompression error:', err.message);
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'WebMap proxy error', detail: err.message }));
         });
       } else {
         // For non-HTML, just pipe through
