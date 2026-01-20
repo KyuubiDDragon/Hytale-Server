@@ -100,6 +100,10 @@ const webMapProxy = createProxyMiddleware({
     '^/api/webmap': '', // Remove /api/webmap prefix when forwarding
   },
   on: {
+    // Request the uncompressed version to simplify HTML injection
+    proxyReq: (proxyReq) => {
+      proxyReq.setHeader('Accept-Encoding', 'identity');
+    },
     error: (err: Error, _req: unknown, res: unknown) => {
       console.error('[WebMap Proxy] Error:', err.message);
       if (res && typeof res === 'object' && 'writeHead' in res && typeof (res as { writeHead: unknown }).writeHead === 'function') {
@@ -117,24 +121,47 @@ const webMapProxy = createProxyMiddleware({
       delete proxyRes.headers['x-frame-options'];
 
       const contentType = (proxyRes.headers['content-type'] as string) || '';
-      const contentEncoding = (proxyRes.headers['content-encoding'] as string) || '';
-      const isHtml = contentType.includes('text/html');
+      const contentEncoding = ((proxyRes.headers['content-encoding'] as string) || '').toLowerCase();
+      const isHtml = contentType.toLowerCase().includes('text/html');
+
+      console.log(`[WebMap Proxy] Content-Type: ${contentType}, Content-Encoding: ${contentEncoding}, isHtml: ${isHtml}`);
 
       if (isHtml) {
         // Collect response body, decompress if needed, and inject script
         const chunks: Buffer[] = [];
+        let decompressionFailed = false;
 
         // Create decompression stream if content is compressed
         let stream: NodeJS.ReadableStream = proxyRes;
         if (contentEncoding === 'gzip') {
-          stream = proxyRes.pipe(createGunzip());
+          console.log('[WebMap Proxy] Decompressing gzip content');
+          const gunzip = createGunzip();
+          gunzip.on('error', (err) => {
+            console.error('[WebMap Proxy] Gunzip stream error:', err.message);
+            decompressionFailed = true;
+          });
+          stream = proxyRes.pipe(gunzip);
         } else if (contentEncoding === 'deflate') {
-          stream = proxyRes.pipe(createInflate());
+          console.log('[WebMap Proxy] Decompressing deflate content');
+          const inflate = createInflate();
+          inflate.on('error', (err) => {
+            console.error('[WebMap Proxy] Inflate stream error:', err.message);
+            decompressionFailed = true;
+          });
+          stream = proxyRes.pipe(inflate);
         }
 
         stream.on('data', (chunk: Buffer) => chunks.push(chunk));
         stream.on('end', () => {
-          let body = Buffer.concat(chunks).toString('utf-8');
+          const rawBody = Buffer.concat(chunks);
+          let body = rawBody.toString('utf-8');
+
+          // Check if decompression worked (body should start with < for HTML)
+          if (body.length > 0 && !body.trimStart().startsWith('<') && !decompressionFailed) {
+            console.log('[WebMap Proxy] Warning: Decompressed content does not look like HTML, first bytes:', rawBody.slice(0, 20).toString('hex'));
+          }
+
+          console.log(`[WebMap Proxy] Body length: ${body.length}, starts with: ${body.substring(0, 100).replace(/\n/g, '\\n')}`);
           // Inject our WebSocket rewrite script after <head>
           body = body.replace(/<head>/i, '<head>' + webMapWsRewriteScript);
 
@@ -148,7 +175,7 @@ const webMapProxy = createProxyMiddleware({
           res.end(body);
         });
         stream.on('error', (err) => {
-          console.error('[WebMap Proxy] Decompression error:', err.message);
+          console.error('[WebMap Proxy] Stream error:', err.message);
           res.writeHead(502, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'WebMap proxy error', detail: err.message }));
         });
