@@ -233,7 +233,7 @@ const webMapProxy = createProxyMiddleware({
   pathRewrite: {
     '^/api/webmap': '', // Remove /api/webmap prefix when forwarding
   },
-  // Handle errors gracefully
+  // Handle errors and modify responses
   on: {
     error: (err, _req, res) => {
       console.error('[WebMap Proxy] Error:', err.message);
@@ -241,6 +241,12 @@ const webMapProxy = createProxyMiddleware({
         res.writeHead(502, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'WebMap unavailable', detail: err.message }));
       }
+    },
+    // Remove CSP headers from WebMap response to allow iframe embedding
+    proxyRes: (proxyRes) => {
+      // Remove frame-ancestors restriction so WebMap can be embedded in iframe
+      delete proxyRes.headers['content-security-policy'];
+      delete proxyRes.headers['x-frame-options'];
     },
   },
 });
