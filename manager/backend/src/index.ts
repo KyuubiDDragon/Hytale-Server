@@ -96,10 +96,13 @@ app.use('/api/tiles', createProxyMiddleware({
 }));
 
 // WebMap WebSocket proxy at /ws (WebMap uses this for live updates)
+// Use ws:// protocol for WebSocket and restore /ws path like other proxies
+const webMapWsTarget = webMapTarget.replace('http://', 'ws://');
 const webMapWsProxy = createProxyMiddleware({
-  target: webMapTarget,
+  target: webMapWsTarget,
   changeOrigin: true,
   ws: true,
+  pathRewrite: (path) => path === '/' || path === '' ? '/ws' : `/ws${path}`,
   on: createWebMapProxyErrorHandler(),
 });
 app.use('/ws', webMapWsProxy);
@@ -107,11 +110,10 @@ app.use('/ws', webMapWsProxy);
 // Handle WebSocket upgrade for /ws path
 server.on('upgrade', (request, socket, head) => {
   const pathname = request.url || '';
+  // Only handle /ws path - /api/console/ws is handled by our own WebSocketServer
   if (pathname === '/ws' || pathname.startsWith('/ws?')) {
-    // Cast Duplex to Socket for http-proxy-middleware compatibility
     webMapWsProxy.upgrade?.(request, socket as import('net').Socket, head);
   }
-  // Note: /api/console/ws is handled by our own WebSocketServer
 });
 
 // Middleware
