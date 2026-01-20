@@ -55,6 +55,11 @@ export interface HytaleAuthCheckResponse {
   error?: string
 }
 
+export interface WsTicketResponse {
+  ticket: string
+  expiresIn: number
+}
+
 export const authApi = {
   async login(credentials: LoginRequest): Promise<TokenResponse> {
     const response = await api.post<TokenResponse>('/auth/login', credentials)
@@ -111,6 +116,13 @@ export const authApi = {
 
   async demoLogin(): Promise<TokenResponse> {
     const response = await api.post<TokenResponse>('/auth/demo/login')
+    return response.data
+  },
+
+  // WebSocket Authentication
+  // Get a single-use ticket for WebSocket connection (more secure than token in URL)
+  async getWsTicket(): Promise<WsTicketResponse> {
+    const response = await api.post<WsTicketResponse>('/auth/ws-ticket')
     return response.data
   },
 }
