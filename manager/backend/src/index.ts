@@ -57,6 +57,7 @@ app.use(helmet({
       imgSrc: ["'self'", "data:", "blob:", "https://cdn.modtale.net", "https://stackmart.org"], // Allow data URIs, Modtale CDN and StackMart
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts
       connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
+      frameSrc: ["'self'", "https:", "http:"], // Allow embedding web map iframe from external sources
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
