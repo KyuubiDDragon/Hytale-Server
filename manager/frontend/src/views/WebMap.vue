@@ -8,18 +8,13 @@ const { t } = useI18n()
 const loading = ref(true)
 const error = ref('')
 const webMapInstalled = ref(false)
-
-// WebMap ports - HTTP port from plugin config, HTTPS port = HTTP + 1 (for nginx SSL proxy)
 const webMapHttpPort = ref(18081)
-const webMapHttpsPort = computed(() => webMapHttpPort.value + 1) // 18082 for SSL termination
 
 const mapUrl = computed(() => {
-  // Use same protocol as current page to avoid mixed content blocking
-  // HTTPS requires reverse proxy with SSL termination on httpsPort (httpPort + 1)
-  const protocol = window.location.protocol
-  const host = window.location.hostname
-  const port = protocol === 'https:' ? webMapHttpsPort.value : webMapHttpPort.value
-  return `${protocol}//${host}:${port}`
+  // Use the panel's built-in proxy for WebMap access
+  // This avoids HTTPS/mixed-content issues by routing through /api/webmap/
+  // The backend proxies to http://hytale:18081 internally
+  return '/api/webmap/'
 })
 
 async function checkWebMapStatus() {
@@ -40,7 +35,8 @@ async function checkWebMapStatus() {
 }
 
 function openInNewTab() {
-  window.open(mapUrl.value, '_blank')
+  // Open WebMap via proxy in new tab (works with HTTPS)
+  window.open('/api/webmap/', '_blank')
 }
 
 function refreshMap() {
