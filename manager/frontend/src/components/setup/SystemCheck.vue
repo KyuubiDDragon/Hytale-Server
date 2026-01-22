@@ -14,7 +14,7 @@ const emit = defineEmits<{
 const isChecking = ref(false)
 
 // Icons for different check statuses
-const statusIcons = {
+const statusIcons: Record<string, { svg: string; class: string; bg: string }> = {
   pass: {
     svg: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />`,
     class: 'text-status-success',
@@ -35,6 +35,28 @@ const statusIcons = {
     class: 'text-gray-400 animate-spin',
     bg: 'bg-gray-500/20',
   },
+}
+
+// Map backend status to frontend status
+// Backend uses: 'ok' | 'warning' | 'error'
+// Frontend uses: 'pass' | 'warning' | 'fail' | 'checking'
+function mapStatus(status: string): string {
+  switch (status) {
+    case 'ok':
+      return 'pass'
+    case 'error':
+      return 'fail'
+    case 'warning':
+      return 'warning'
+    default:
+      return 'checking'
+  }
+}
+
+// Safe getter for status icons with fallback
+function getStatusIcon(status: string) {
+  const mappedStatus = mapStatus(status)
+  return statusIcons[mappedStatus] || statusIcons.checking
 }
 
 const checks = computed(() => setupStore.setupData.systemCheck?.checks || [])
@@ -99,15 +121,15 @@ onMounted(() => {
             <!-- Status Icon -->
             <div
               class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
-              :class="statusIcons[check.status].bg"
+              :class="getStatusIcon(check.status).bg"
             >
               <svg
                 class="w-5 h-5"
-                :class="statusIcons[check.status].class"
+                :class="getStatusIcon(check.status).class"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                v-html="statusIcons[check.status].svg"
+                v-html="getStatusIcon(check.status).svg"
               />
             </div>
 
@@ -136,8 +158,8 @@ onMounted(() => {
               <p
                 class="text-sm font-medium"
                 :class="{
-                  'text-status-success': check.status === 'pass',
-                  'text-status-error': check.status === 'fail',
+                  'text-status-success': check.status === 'ok' || check.status === 'pass',
+                  'text-status-error': check.status === 'error' || check.status === 'fail',
                   'text-status-warning': check.status === 'warning',
                   'text-gray-400': check.status === 'checking',
                 }"
