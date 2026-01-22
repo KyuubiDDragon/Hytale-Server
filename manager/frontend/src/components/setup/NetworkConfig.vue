@@ -21,19 +21,21 @@ const accessMode = ref<AccessMode>('localhost')
 const customDomain = ref('')
 const trustProxy = ref(false)
 const detectedIp = ref<string | null>(null)
+const detectedPort = ref<number>(18080)
 const isDetectingIp = ref(false)
 
 // Computed panel URL based on access mode
 const panelUrl = computed(() => {
+  const port = detectedPort.value
   switch (accessMode.value) {
     case 'localhost':
-      return 'http://localhost:18080'
+      return `http://localhost:${port}`
     case 'lan':
-      return detectedIp.value ? `http://${detectedIp.value}:18080` : 'http://[detecting...]:18080'
+      return detectedIp.value ? `http://${detectedIp.value}:${port}` : `http://[detecting...]:${port}`
     case 'custom':
       return customDomain.value || 'https://your-domain.com'
     default:
-      return 'http://localhost:18080'
+      return `http://localhost:${port}`
   }
 })
 
@@ -61,16 +63,15 @@ const canProceed = computed(() => {
   return true
 })
 
-// Auto-detect local IP
+// Auto-detect local IP and port
 async function detectLocalIp() {
   isDetectingIp.value = true
   try {
-    // In a real implementation, this would call the backend API
-    // For now, simulate detection
     const response = await fetch('/api/setup/detect-ip')
     if (response.ok) {
       const data = await response.json()
       detectedIp.value = data.ip
+      detectedPort.value = data.port || 18080
     } else {
       // Fallback - try to detect via WebRTC or use a default
       detectedIp.value = '192.168.1.100'
@@ -86,16 +87,17 @@ async function detectLocalIp() {
 async function handleContinue() {
   if (!canProceed.value) return
 
+  const port = detectedPort.value
   let corsOrigins: string[] = []
 
   switch (accessMode.value) {
     case 'localhost':
-      corsOrigins = ['http://localhost:18080']
+      corsOrigins = [`http://localhost:${port}`]
       break
     case 'lan':
       corsOrigins = [
-        'http://localhost:18080',
-        detectedIp.value ? `http://${detectedIp.value}:18080` : '',
+        `http://localhost:${port}`,
+        detectedIp.value ? `http://${detectedIp.value}:${port}` : '',
       ].filter(Boolean)
       break
     case 'custom':
@@ -108,6 +110,7 @@ async function handleContinue() {
     customDomain: accessMode.value === 'custom' ? customDomain.value : null,
     trustProxy: trustProxy.value,
     detectedIp: detectedIp.value,
+    panelPort: port,
     corsOrigins,
   })
 
@@ -172,7 +175,7 @@ onMounted(() => {
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
               </svg>
-              <span>http://localhost:18080</span>
+              <span>http://localhost:{{ detectedPort }}</span>
             </div>
           </div>
         </div>
