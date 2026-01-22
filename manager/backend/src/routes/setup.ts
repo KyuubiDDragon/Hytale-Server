@@ -378,6 +378,96 @@ router.get('/assets/status', (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/setup/detect-ip
+ * Detect the server's local IP address for LAN access
+ *
+ * Response:
+ * { ip: string | null, port: number, panelUrl: string }
+ */
+router.get('/detect-ip', async (req: Request, res: Response) => {
+  try {
+    const os = await import('os');
+    const { config } = await import('../config.js');
+
+    // Get all network interfaces
+    const interfaces = os.networkInterfaces();
+    let detectedIp: string | null = null;
+
+    // Find the first non-internal IPv4 address
+    for (const name of Object.keys(interfaces)) {
+      const nets = interfaces[name];
+      if (!nets) continue;
+
+      for (const net of nets) {
+        // Skip internal and non-IPv4 addresses
+        if (net.internal || net.family !== 'IPv4') continue;
+
+        // Prefer addresses in common private ranges
+        if (net.address.startsWith('192.168.') ||
+            net.address.startsWith('10.') ||
+            net.address.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) {
+          detectedIp = net.address;
+          break;
+        }
+      }
+      if (detectedIp) break;
+    }
+
+    // Fallback: use the x-forwarded-for header if behind proxy
+    if (!detectedIp && req.headers['x-forwarded-for']) {
+      const forwarded = req.headers['x-forwarded-for'];
+      const ip = Array.isArray(forwarded) ? forwarded[0] : forwarded.split(',')[0];
+      if (ip && !ip.startsWith('127.') && !ip.startsWith('::')) {
+        detectedIp = ip.trim();
+      }
+    }
+
+    const port = config.port;
+    const panelUrl = detectedIp ? `http://${detectedIp}:${port}` : `http://localhost:${port}`;
+
+    res.json({
+      ip: detectedIp,
+      port,
+      panelUrl,
+      interfaces: Object.keys(interfaces),
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to detect IP:', error);
+    res.status(500).json({
+      error: 'Failed to detect IP address',
+      ip: null,
+      port: 18080,
+    });
+  }
+});
+
+/**
+ * GET /api/setup/server-info
+ * Get server configuration info for the setup wizard
+ *
+ * Response:
+ * { port: number, serverPort: number, gameContainerName: string }
+ */
+router.get('/server-info', async (_req: Request, res: Response) => {
+  try {
+    const { config } = await import('../config.js');
+
+    res.json({
+      managerPort: config.port,
+      gameContainerName: config.gameContainerName,
+      serverPath: config.serverPath,
+      dataPath: config.dataPath,
+      hostDataPath: config.hostDataPath,
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to get server info:', error);
+    res.status(500).json({
+      error: 'Failed to get server info',
+    });
+  }
+});
+
+/**
  * POST /api/setup/reset
  * Reset setup (development only)
  * This endpoint is protected and only works in development mode

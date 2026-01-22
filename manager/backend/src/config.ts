@@ -204,10 +204,35 @@ export function reloadConfigFromFile(): void {
  * In strict mode (default), critical issues will prevent startup.
  * In warn mode, only warnings are logged (for development/closed networks).
  *
+ * If no config.json exists, we're in setup mode - skip security check.
  * If setup is complete (config.json exists with setupComplete: true),
  * security validation is skipped as credentials are managed differently.
  */
 export function checkSecurityConfig(): void {
+  // Check if config.json exists (regardless of setupComplete status)
+  const configJsonExists = fs.existsSync(CONFIG_FILE_PATH);
+
+  // If no config.json exists, we're in SETUP MODE - skip security check
+  // The setup wizard will handle initial configuration
+  if (!configJsonExists) {
+    console.log('\n');
+    console.log('╔══════════════════════════════════════════════════════════════╗');
+    console.log('║                   🚀 SETUP MODE 🚀                           ║');
+    console.log('╠══════════════════════════════════════════════════════════════╣');
+    console.log('║  No configuration found. Starting in setup mode.             ║');
+    console.log('║                                                              ║');
+    console.log('║  Open the panel in your browser to complete the setup:       ║');
+    console.log(`║  → http://localhost:${config.port.toString().padEnd(38)}║`);
+    console.log('║                                                              ║');
+    console.log('║  The setup wizard will guide you through:                    ║');
+    console.log('║    • Creating an admin account                               ║');
+    console.log('║    • Downloading server files                                ║');
+    console.log('║    • Configuring your server                                 ║');
+    console.log('╚══════════════════════════════════════════════════════════════╝');
+    console.log('\n');
+    return;
+  }
+
   // Skip security check if setup is complete
   // After setup, credentials are stored in config.json (hashed) and users.json
   if (config.setupComplete) {
