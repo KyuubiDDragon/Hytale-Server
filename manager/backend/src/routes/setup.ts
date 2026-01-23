@@ -157,6 +157,7 @@ router.post('/step/:stepId', async (req: Request, res: Response) => {
       'admin-account',
       'download-method',
       'download',
+      'server-download',
       'assets-extract',
       'server-auth',
       'server-config',
@@ -776,6 +777,81 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+// Parse download progress from container logs
+function parseDownloadProgress(logs: string): {
+  currentFile?: string;
+  percent?: number;
+  bytesDone?: number;
+  bytesTotal?: number;
+  bytesPerSecond?: number;
+} {
+  const result: {
+    currentFile?: string;
+    percent?: number;
+    bytesDone?: number;
+    bytesTotal?: number;
+    bytesPerSecond?: number;
+  } = {};
+
+  // Try to detect which file is being downloaded
+  if (logs.includes('Downloading server') || logs.includes('HytaleServer')) {
+    result.currentFile = 'HytaleServer.jar';
+  } else if (logs.includes('Downloading assets') || logs.includes('Assets.zip') || logs.includes('assets')) {
+    result.currentFile = 'Assets.zip';
+  }
+
+  // Parse percentage - look for patterns like "50%", "50.5%", "Progress: 50%"
+  const percentPatterns = [
+    /(\d+(?:\.\d+)?)\s*%/,
+    /Progress[:\s]+(\d+(?:\.\d+)?)/i,
+    /Downloading[^\d]*(\d+(?:\.\d+)?)\s*%/i,
+  ];
+
+  for (const pattern of percentPatterns) {
+    const match = logs.match(pattern);
+    if (match) {
+      result.percent = parseFloat(match[1]);
+      break;
+    }
+  }
+
+  // Parse byte progress - patterns like "50MB/100MB", "50 MB / 100 MB", "50MB of 100MB"
+  const bytePatterns = [
+    /(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)\s*[\/of]+\s*(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)/i,
+    /Downloaded[:\s]+(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)/i,
+  ];
+
+  const unitMultipliers: Record<string, number> = {
+    'B': 1,
+    'KB': 1024,
+    'MB': 1024 * 1024,
+    'GB': 1024 * 1024 * 1024,
+  };
+
+  for (const pattern of bytePatterns) {
+    const match = logs.match(pattern);
+    if (match) {
+      if (match[3] && match[4]) {
+        // Pattern with both done and total (e.g., "50MB/100MB")
+        result.bytesDone = parseFloat(match[1]) * (unitMultipliers[match[2].toUpperCase()] || 1);
+        result.bytesTotal = parseFloat(match[3]) * (unitMultipliers[match[4].toUpperCase()] || 1);
+      } else {
+        // Pattern with only done
+        result.bytesDone = parseFloat(match[1]) * (unitMultipliers[match[2].toUpperCase()] || 1);
+      }
+      break;
+    }
+  }
+
+  // Parse speed - patterns like "10MB/s", "10 MB/s"
+  const speedMatch = logs.match(/(\d+(?:\.\d+)?)\s*(B|KB|MB|GB)\/s/i);
+  if (speedMatch) {
+    result.bytesPerSecond = parseFloat(speedMatch[1]) * (unitMultipliers[speedMatch[2].toUpperCase()] || 1);
+  }
+
+  return result;
+}
+
 /**
  * GET /api/setup/download/progress
  * Server-Sent Events endpoint for download progress (monitors container logs)
@@ -789,14 +865,15 @@ router.get('/download/progress', (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
+  // Estimated file sizes for progress calculation
+  const ESTIMATED_SERVER_JAR_SIZE = 80 * 1024 * 1024; // ~80MB
+  const ESTIMATED_ASSETS_SIZE = 3.3 * 1024 * 1024 * 1024; // ~3.3GB
+
   const sendProgress = async () => {
     try {
       const logs = await getLogs(100);
       const oauthInfo = parseOAuthFromLogs(logs);
-
-      // Parse download progress from logs if available
-      const progressMatch = logs.match(/(\d+(?:\.\d+)?)\s*%/);
-      const percent = progressMatch ? parseFloat(progressMatch[1]) : 0;
+      const downloadInfo = parseDownloadProgress(logs);
 
       if (oauthInfo.downloadComplete) {
         res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
@@ -805,10 +882,30 @@ router.get('/download/progress', (req: Request, res: Response) => {
         return;
       }
 
+      // Determine current file and estimate bytes if not available from logs
+      let currentFile = downloadInfo.currentFile || (oauthInfo.authenticated ? 'Downloading...' : 'Waiting for authentication...');
+      let bytesDone = downloadInfo.bytesDone || 0;
+      let bytesTotal = downloadInfo.bytesTotal || 0;
+      let percent = downloadInfo.percent || 0;
+
+      // If we have percentage but not bytes, estimate bytes
+      if (percent > 0 && bytesTotal === 0) {
+        if (currentFile === 'HytaleServer.jar') {
+          bytesTotal = ESTIMATED_SERVER_JAR_SIZE;
+          bytesDone = Math.floor(bytesTotal * (percent / 100));
+        } else if (currentFile === 'Assets.zip') {
+          bytesTotal = ESTIMATED_ASSETS_SIZE;
+          bytesDone = Math.floor(bytesTotal * (percent / 100));
+        }
+      }
+
       res.write(`data: ${JSON.stringify({
         type: 'progress',
-        currentFile: oauthInfo.authenticated ? 'Downloading...' : 'Waiting for authentication...',
-        percent: percent,
+        currentFile,
+        percent,
+        bytesDone,
+        bytesTotal,
+        bytesPerSecond: downloadInfo.bytesPerSecond || 0,
         authenticated: oauthInfo.authenticated,
         verificationUrl: oauthInfo.verificationUrl,
         verificationUrlDirect: oauthInfo.verificationUrlDirect,
