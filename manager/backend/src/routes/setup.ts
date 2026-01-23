@@ -1414,9 +1414,11 @@ router.post('/auth/server/start', async (_req: Request, res: Response) => {
 
     res.json({
       success: true,
-      authCode: serverAuthState.authCode,
-      authUrl: serverAuthState.authUrl,
+      deviceCode: serverAuthState.authCode, // Frontend expects deviceCode to be truthy
+      userCode: serverAuthState.authCode,
+      verificationUrl: serverAuthState.authUrl,
       expiresIn: 900,
+      pollInterval: 5,
     });
   } catch (error) {
     console.error('[Setup] Failed to start server auth:', error);
