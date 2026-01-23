@@ -12,6 +12,11 @@ import {
   resetSetup,
 } from '../services/setupService.js';
 import { runSystemChecks, runSingleCheck } from '../services/systemCheck.js';
+import {
+  getStatus as getDockerStatus,
+  getLogs,
+  startContainer
+} from '../services/docker.js';
 
 const router = Router();
 
@@ -334,13 +339,6 @@ router.post('/complete', async (_req: Request, res: Response) => {
 // ==========================================
 // Download Flow Endpoints
 // ==========================================
-
-import {
-  getStatus as getDockerStatus,
-  getLogs,
-  restartContainer,
-  startContainer
-} from '../services/docker.js';
 
 // In-memory state for OAuth device code flow (parsed from container logs)
 let downloaderAuthState: {
