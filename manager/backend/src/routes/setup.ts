@@ -750,59 +750,6 @@ router.get('/download/progress', (req: Request, res: Response) => {
  * GET /api/setup/download/status
  * Server-Sent Events endpoint for download progress (legacy)
  *
- * Response: SSE stream with download progress objects
- */
-router.get('/download/progress', (req: Request, res: Response) => {
-  // Set headers for SSE
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-
-  const sendProgress = () => {
-    if (downloadState.serverJar.percent < 100) {
-      res.write(`data: ${JSON.stringify({
-        type: 'progress',
-        currentFile: 'HytaleServer.jar',
-        percent: downloadState.serverJar.percent,
-        bytesDone: downloadState.serverJar.downloaded,
-        bytesTotal: downloadState.serverJar.total,
-      })}\n\n`);
-    } else if (downloadState.assetsZip.percent < 100) {
-      res.write(`data: ${JSON.stringify({
-        type: 'progress',
-        currentFile: 'Assets.zip',
-        percent: downloadState.assetsZip.percent,
-        bytesDone: downloadState.assetsZip.downloaded,
-        bytesTotal: downloadState.assetsZip.total,
-        bytesPerSecond: downloadState.assetsZip.speed,
-        estimatedSeconds: downloadState.assetsZip.eta,
-      })}\n\n`);
-    } else if (downloadState.status === 'complete') {
-      res.write(`data: ${JSON.stringify({ type: 'complete' })}\n\n`);
-      clearInterval(interval);
-      res.end();
-      return;
-    } else if (downloadState.status === 'error') {
-      res.write(`data: ${JSON.stringify({ type: 'error', error: downloadState.error })}\n\n`);
-      clearInterval(interval);
-      res.end();
-      return;
-    }
-  };
-
-  sendProgress();
-  const interval = setInterval(sendProgress, 500);
-
-  req.on('close', () => {
-    clearInterval(interval);
-  });
-});
-
-/**
- * GET /api/setup/download/status
- * Server-Sent Events endpoint for download progress (legacy)
- *
  * Response: SSE stream with DownloadProgress objects
  */
 router.get('/download/status', (req: Request, res: Response) => {
