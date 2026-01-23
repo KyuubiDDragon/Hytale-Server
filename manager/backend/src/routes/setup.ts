@@ -1732,13 +1732,13 @@ router.post('/auth/verify', async (_req: Request, res: Response) => {
 
 /**
  * POST /api/setup/auth/persistence
- * Setup token persistence by sending /auth persistent command
+ * Setup token persistence by sending /auth persistence Encrypted command
  */
 router.post('/auth/persistence', async (_req: Request, res: Response) => {
   try {
-    // Send the /auth persistent command to make tokens persistent
-    console.log('[Setup] Sending /auth persistent command...');
-    const cmdResult = await execCommand('/auth persistent');
+    // Send the /auth persistence Encrypted command to make tokens persistent
+    console.log('[Setup] Sending /auth persistence Encrypted command...');
+    const cmdResult = await execCommand('/auth persistence Encrypted');
 
     if (!cmdResult.success) {
       console.error('[Setup] Failed to send persistence command:', cmdResult.error);
