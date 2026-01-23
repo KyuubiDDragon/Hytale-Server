@@ -127,6 +127,7 @@ const SETUP_STEPS = [
   'assets-extract',
   'server-auth',
   'server-config',
+  'security-settings',
   'automation',
   'performance',
   'plugin',
@@ -388,6 +389,11 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         // Server auth is handled by hytaleAuth service
         break;
 
+      case 'security-settings':
+        // Security settings step - stores auth configuration status
+        // The actual auth is handled by the setup routes, this just saves the step data
+        break;
+
       case 'summary':
         // Summary doesn't store data
         break;
@@ -636,23 +642,72 @@ export function setDownloadProgress(progress: Partial<DownloadProgress>): void {
 }
 
 /**
- * Get auth status for setup
+ * Get auth status for setup by checking server logs
  */
 export async function getAuthStatusForSetup(): Promise<{
   downloaderAuth: { authenticated: boolean; username?: string };
   serverAuth: { authenticated: boolean; persistent: boolean };
+  machineId: { generated: boolean };
 }> {
-  // This would integrate with hytaleAuth service
-  // For now, return placeholder
-  return {
-    downloaderAuth: {
-      authenticated: false,
-    },
-    serverAuth: {
-      authenticated: false,
-      persistent: false,
-    },
-  };
+  try {
+    // Get recent logs from the server container
+    const logs = await dockerService.getLogs(500);
+
+    // Check for downloader authentication
+    const downloaderAuthenticated = logs.includes('Credentials saved') ||
+      logs.includes('Download successful') ||
+      logs.includes('AUTHENTICATION REQUIRED') === false && logs.includes('Hytale Server Booted');
+
+    // Check for server authentication
+    // Look for specific Hytale server auth success messages
+    const serverAuthenticated =
+      logs.includes('Authentication successful! Mode:') ||
+      logs.includes('Authentication successful! Use') ||
+      logs.includes('Connection Auth: Authenticated') ||
+      logs.includes('Successfully created game session') ||
+      logs.includes('Token Source: OAuth');
+
+    // Check for persistence
+    // Look for specific persistence confirmation messages
+    const persistenceConfigured =
+      logs.includes('Credential storage changed to: Encrypted') ||
+      logs.includes('Swapped credential store to: EncryptedAuthCredentialStoreProvider') ||
+      logs.includes('credential store to: Encrypted');
+
+    // Check for machine ID (usually auto-generated)
+    const machineIdGenerated = logs.includes('Machine ID') ||
+      logs.includes('machine-id') ||
+      logs.includes('MachineId') ||
+      // If server authenticated, machine ID is typically present
+      serverAuthenticated;
+
+    return {
+      downloaderAuth: {
+        authenticated: downloaderAuthenticated,
+      },
+      serverAuth: {
+        authenticated: serverAuthenticated,
+        persistent: persistenceConfigured,
+      },
+      machineId: {
+        generated: machineIdGenerated,
+      },
+    };
+  } catch (error) {
+    console.error('[Setup] Failed to get auth status:', error);
+    return {
+      downloaderAuth: {
+        authenticated: false,
+      },
+      serverAuth: {
+        authenticated: false,
+        persistent: false,
+      },
+      machineId: {
+        generated: false,
+      },
+    };
+  }
 }
 
 /**

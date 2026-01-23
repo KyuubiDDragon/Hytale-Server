@@ -162,6 +162,7 @@ router.post('/step/:stepId', async (req: Request, res: Response) => {
       'assets-extract',
       'server-auth',
       'server-config',
+      'security-settings',
       'automation',
       'performance',
       'plugin',
@@ -369,6 +370,20 @@ function parseOAuthFromLogs(logs: string): {
     downloadComplete?: boolean;
   } = {};
 
+  // Helper to clean ANSI escape codes from strings
+  const cleanAnsi = (str: string): string => {
+    return str
+      .replace(/\x1b\[[0-9;]*m/g, '')  // Standard ANSI escapes
+      .replace(/\[m/g, '')              // Standalone [m
+      .replace(/\[\d+;\d+m/g, '')       // Color codes like [0;32m without ESC
+      .replace(/\[0m/g, '')             // Reset codes
+      .replace(/%1B\[m/gi, '')          // URL-encoded ANSI escapes
+      .trim();
+  };
+
+  // Clean the logs first
+  const cleanedLogs = cleanAnsi(logs);
+
   // Look for user code first - alphanumeric code (case insensitive)
   // Hytale server format: "Enter code: NumvJGgq"
   // IMPORTANT: Code must be alphanumeric only, 4-12 chars, and not match common words
@@ -383,7 +398,7 @@ function parseOAuthFromLogs(logs: string): {
   const excludeWords = ['waiting', 'loading', 'checking', 'starting', 'authenticating', 'connecting', 'initializing'];
 
   for (const pattern of codePatterns) {
-    const codeMatch = logs.match(pattern);
+    const codeMatch = cleanedLogs.match(pattern);
     if (codeMatch) {
       const potentialCode = codeMatch[1];
       // Verify it's not a common word
@@ -400,17 +415,17 @@ function parseOAuthFromLogs(logs: string): {
   // And: "Or visit: https://oauth.accounts.hytale.com/oauth2/device/verify?user_code=NumvJGgq"
 
   // Look for direct URL with user_code parameter
-  const directUrlMatch = logs.match(/Or\s+visit:\s*(https:\/\/[^\s\n]+user_code=[^\s\n]+)/i);
+  const directUrlMatch = cleanedLogs.match(/Or\s+visit:\s*(https:\/\/[^\s\n]+user_code=[^\s\n]+)/i);
   if (directUrlMatch) {
-    result.verificationUrlDirect = directUrlMatch[1];
-    console.log('[Setup] Found direct URL:', directUrlMatch[1]);
+    result.verificationUrlDirect = cleanAnsi(directUrlMatch[1]);
+    console.log('[Setup] Found direct URL:', result.verificationUrlDirect);
   }
 
   // Look for base verification URL
-  const baseUrlMatch = logs.match(/Visit:\s*(https:\/\/oauth\.accounts\.hytale\.com\/[^\s\n?]+)/i);
+  const baseUrlMatch = cleanedLogs.match(/Visit:\s*(https:\/\/oauth\.accounts\.hytale\.com\/[^\s\n?]+)/i);
   if (baseUrlMatch) {
-    result.verificationUrl = baseUrlMatch[1];
-    console.log('[Setup] Found base URL:', baseUrlMatch[1]);
+    result.verificationUrl = cleanAnsi(baseUrlMatch[1]);
+    console.log('[Setup] Found base URL:', result.verificationUrl);
   }
 
   // Fallback: If we only found direct URL, extract base URL from it
@@ -458,12 +473,16 @@ function parseOAuthFromLogs(logs: string): {
   }
 
   // Check if authentication succeeded
-  if (logs.includes('Download successful') ||
-      logs.includes('Authentication successful') ||
-      logs.includes('Credentials saved') ||
-      logs.includes('Authorization successful') ||
-      logs.includes('Token saved')) {
+  // Look for specific Hytale server auth success messages
+  if (cleanedLogs.includes('Authentication successful! Mode:') ||
+      cleanedLogs.includes('Authentication successful! Use') ||
+      cleanedLogs.includes('Connection Auth: Authenticated') ||
+      cleanedLogs.includes('Successfully created game session') ||
+      cleanedLogs.includes('Token Source: OAuth') ||
+      cleanedLogs.includes('Download successful') ||
+      cleanedLogs.includes('Credentials saved')) {
     result.authenticated = true;
+    console.log('[Setup] Authentication success detected in logs');
   }
 
   // Check if download completed
@@ -1242,6 +1261,7 @@ let serverAuthState: {
   authCode: string;
   authUrl: string;
   authenticated: boolean;
+  persistenceConfigured: boolean;
   expiresAt: Date;
 } | null = null;
 
@@ -1576,6 +1596,7 @@ router.post('/auth/server/start', async (_req: Request, res: Response) => {
       authCode: '',
       authUrl: '',
       authenticated: false,
+      persistenceConfigured: false,
       expiresAt: new Date(Date.now() + 15 * 60 * 1000),
     };
 
@@ -1657,6 +1678,7 @@ router.post('/auth/server/start', async (_req: Request, res: Response) => {
 /**
  * GET /api/setup/auth/server/status
  * Check server authentication status
+ * Automatically sends /auth persistence Encrypted when auth is detected
  */
 router.get('/auth/server/status', async (_req: Request, res: Response) => {
   try {
@@ -1682,8 +1704,21 @@ router.get('/auth/server/status', async (_req: Request, res: Response) => {
       serverAuthState.authUrl = oauthInfo.verificationUrl;
     }
 
+    // Auto-send persistence command when auth is detected and not yet configured
+    if (serverAuthState.authenticated && !serverAuthState.persistenceConfigured) {
+      console.log('[Setup] Auth detected, automatically sending /auth persistence Encrypted...');
+      const cmdResult = await execCommand('/auth persistence Encrypted');
+      if (cmdResult.success) {
+        serverAuthState.persistenceConfigured = true;
+        console.log('[Setup] Persistence command sent automatically');
+      } else {
+        console.error('[Setup] Failed to auto-send persistence command:', cmdResult.error);
+      }
+    }
+
     res.json({
       authenticated: serverAuthState.authenticated,
+      persistenceConfigured: serverAuthState.persistenceConfigured,
       authCode: serverAuthState.authCode,
       authUrl: serverAuthState.authUrl,
       expired: new Date() > serverAuthState.expiresAt,
