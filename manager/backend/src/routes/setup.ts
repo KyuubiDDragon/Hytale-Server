@@ -201,6 +201,93 @@ router.post('/step/:stepId', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/setup/admin
+ * Create admin account (Phase 2)
+ *
+ * Request body:
+ * { username: string, password: string }
+ *
+ * Response:
+ * { success: boolean, error?: string }
+ */
+router.post('/admin', async (req: Request, res: Response) => {
+  try {
+    const { username, password } = req.body;
+
+    // Validate username
+    if (!username || typeof username !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'Username is required',
+      });
+      return;
+    }
+
+    if (username.length < 3 || username.length > 32) {
+      res.status(400).json({
+        success: false,
+        error: 'Username must be between 3 and 32 characters',
+      });
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      res.status(400).json({
+        success: false,
+        error: 'Username can only contain letters, numbers, and underscores',
+      });
+      return;
+    }
+
+    // Validate password
+    if (!password || typeof password !== 'string') {
+      res.status(400).json({
+        success: false,
+        error: 'Password is required',
+      });
+      return;
+    }
+
+    if (password.length < 12) {
+      res.status(400).json({
+        success: false,
+        error: 'Password must be at least 12 characters',
+      });
+      return;
+    }
+
+    // Check if setup is already complete
+    const complete = await isSetupComplete();
+    if (complete) {
+      res.status(400).json({
+        success: false,
+        error: 'Setup is already complete',
+      });
+      return;
+    }
+
+    // Save admin account data (password will be hashed during finalization)
+    const result = await saveStepData('admin-account', { username, password });
+
+    if (!result.success) {
+      res.status(400).json(result);
+      return;
+    }
+
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to create admin account:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create admin account',
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * POST /api/setup/complete
  * Finalize setup - creates admin user, generates JWT secret, writes final config
  *
