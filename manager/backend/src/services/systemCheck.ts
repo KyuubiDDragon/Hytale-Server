@@ -169,13 +169,27 @@ async function checkUdpPort(port: number): Promise<{ free: boolean; process?: st
 
 /**
  * Check if required ports are available
+ * Uses external ports from config for user-facing display
+ *
+ * Note: Manager port check is informational only since:
+ * - It's used by our own Node process (will always show "in use")
+ * - When using a reverse proxy (domain), the port doesn't matter
  */
 async function checkPorts(): Promise<SystemCheck[]> {
+  // Use ports from config - these are the external (host) ports
+  const serverPort = config.serverPort;
+  const managerPort = config.externalPort;
+  // WebMap ports - read from env or use defaults
+  const webMapPort = parseInt(process.env.WEBMAP_PORT || '18081', 10);
+  const webMapWsPort = parseInt(process.env.WEBMAP_WS_PORT || '18082', 10);
+
+  // Manager port is NOT required because:
+  // 1. It's already in use by this Node process
+  // 2. If using reverse proxy, the external port doesn't matter
   const portChecks = [
-    { port: 5520, protocol: 'UDP', name: 'Game Server', required: true },
-    { port: 18080, protocol: 'TCP', name: 'Manager', required: true },
-    { port: 18081, protocol: 'TCP', name: 'WebMap HTTP', required: false },
-    { port: 18082, protocol: 'TCP', name: 'WebMap WebSocket', required: false },
+    { port: serverPort, protocol: 'UDP', name: 'Game Server', required: true },
+    { port: webMapPort, protocol: 'TCP', name: 'WebMap HTTP', required: false },
+    { port: webMapWsPort, protocol: 'TCP', name: 'WebMap WebSocket', required: false },
   ];
 
   const results: SystemCheck[] = [];
@@ -207,6 +221,16 @@ async function checkPorts(): Promise<SystemCheck[]> {
 
     results.push(check);
   }
+
+  // Add manager port as informational (always OK since we're running)
+  results.unshift({
+    id: `port_${managerPort}`,
+    name: `Port ${managerPort} (TCP)`,
+    status: 'ok',
+    message: 'Active',
+    required: false,
+    details: `Panel is running on this port. If using a domain/reverse proxy, this port only needs to be accessible internally.`,
+  });
 
   return results;
 }
@@ -514,30 +538,36 @@ export async function runSingleCheck(checkId: string): Promise<SystemCheck | nul
       if (checkId.startsWith('port_')) {
         const port = parseInt(checkId.replace('port_', ''), 10);
         if (!isNaN(port)) {
+          // Use dynamic ports from config
+          const serverPort = config.serverPort;
+          const managerPort = config.externalPort;
+          const webMapPort = parseInt(process.env.WEBMAP_PORT || '18081', 10);
+          const webMapWsPort = parseInt(process.env.WEBMAP_WS_PORT || '18082', 10);
+
           const portConfigs = [
-            { port: 5520, protocol: 'UDP', name: 'Game Server', required: true },
-            { port: 18080, protocol: 'TCP', name: 'Manager', required: true },
-            { port: 18081, protocol: 'TCP', name: 'WebMap HTTP', required: false },
-            { port: 18082, protocol: 'TCP', name: 'WebMap WebSocket', required: false },
+            { port: serverPort, protocol: 'UDP', name: 'Game Server', required: true },
+            { port: managerPort, protocol: 'TCP', name: 'Manager', required: true },
+            { port: webMapPort, protocol: 'TCP', name: 'WebMap HTTP', required: false },
+            { port: webMapWsPort, protocol: 'TCP', name: 'WebMap WebSocket', required: false },
           ];
 
-          const config = portConfigs.find((p) => p.port === port);
-          if (config) {
-            const result = config.protocol === 'UDP'
+          const portConfig = portConfigs.find((p) => p.port === port);
+          if (portConfig) {
+            const result = portConfig.protocol === 'UDP'
               ? await checkUdpPort(port)
               : await checkTcpPort(port);
 
             return {
               id: checkId,
-              name: `Port ${port} (${config.protocol})`,
-              status: result.free ? 'ok' : (config.required ? 'error' : 'warning'),
+              name: `Port ${port} (${portConfig.protocol})`,
+              status: result.free ? 'ok' : (portConfig.required ? 'error' : 'warning'),
               message: result.free ? 'Available' : (result.process ? `In use by ${result.process}` : 'In use'),
-              required: config.required,
+              required: portConfig.required,
               details: result.free
-                ? `${config.name} port is free`
-                : config.required
-                  ? `Port ${port}/${config.protocol} must be free for ${config.name}`
-                  : `${config.name} will be disabled if port is not available`,
+                ? `${portConfig.name} port is free`
+                : portConfig.required
+                  ? `Port ${port}/${portConfig.protocol} must be free for ${portConfig.name}`
+                  : `${portConfig.name} will be disabled if port is not available`,
             };
           }
         }
