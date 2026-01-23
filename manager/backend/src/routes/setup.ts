@@ -1373,6 +1373,52 @@ router.get('/server/console', async (req: Request, res: Response) => {
   let statusEventSent = false;
   const seenLines = new Set<string>();
 
+  // Helper to check logs for boot/auth messages
+  const checkLogsForStatus = (logs: string): { booted: boolean; authRequired: boolean } => {
+    const result = { booted: false, authRequired: false };
+
+    // Check for server booted
+    if (logs.includes('Server Booted') || logs.includes('Hytale Server Booted')) {
+      result.booted = true;
+    }
+
+    // Check for auth required
+    if (logs.includes('No server tokens configured') ||
+        logs.includes('/auth login') ||
+        logs.includes('AUTHENTICATION REQUIRED')) {
+      result.authRequired = true;
+    }
+
+    return result;
+  };
+
+  // FIRST: Check ALL logs (up to 500 lines) to see if server already booted
+  // This handles the case where server started a while ago and boot messages
+  // are no longer in the recent logs
+  try {
+    const allLogs = await getLogs(500);
+    const initialStatus = checkLogsForStatus(allLogs);
+
+    if (initialStatus.booted) {
+      serverBootedDetected = true;
+      console.log('[Setup] Server already booted (detected from historical logs)');
+    }
+    if (initialStatus.authRequired) {
+      authRequiredDetected = true;
+      console.log('[Setup] Auth already required (detected from historical logs)');
+    }
+
+    // If both conditions are already met, send status events immediately
+    if (serverBootedDetected && authRequiredDetected && !statusEventSent) {
+      statusEventSent = true;
+      console.log('[Setup] Server already started and needs auth - sending events immediately');
+      res.write(`data: ${JSON.stringify({ type: 'started', authenticated: false })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'auth_required' })}\n\n`);
+    }
+  } catch (error) {
+    console.error('[Setup] Error checking initial logs:', error);
+  }
+
   const sendLogs = async () => {
     try {
       const logs = await getLogs(50);
@@ -1385,8 +1431,12 @@ router.get('/server/console', async (req: Request, res: Response) => {
         const trimmedLine = line.trim();
         if (!trimmedLine) continue;
 
-        // Clean ANSI escape codes for display
-        const cleanLine = trimmedLine.replace(/\x1b\[[0-9;]*m/g, '').replace(/\[m/g, '');
+        // Clean ANSI escape codes for display - be more aggressive
+        let cleanLine = trimmedLine
+          .replace(/\x1b\[[0-9;]*m/g, '')  // Standard ANSI escapes
+          .replace(/\[m/g, '')              // Standalone [m
+          .replace(/\[\d+;\d+m/g, '')       // Color codes like [0;32m without ESC
+          .replace(/\[0m/g, '');            // Reset codes
 
         // Skip if we've already sent this line (use hash of content)
         const lineHash = cleanLine.substring(0, 100);
@@ -1416,7 +1466,7 @@ router.get('/server/console', async (req: Request, res: Response) => {
           cleanLine.includes('Hytale Server Booted')
         )) {
           serverBootedDetected = true;
-          console.log('[Setup] Server boot detected');
+          console.log('[Setup] Server boot detected from live logs');
         }
 
         // Check for authentication required
@@ -1426,7 +1476,7 @@ router.get('/server/console', async (req: Request, res: Response) => {
           cleanLine.includes('AUTHENTICATION REQUIRED')
         )) {
           authRequiredDetected = true;
-          console.log('[Setup] Auth required detected');
+          console.log('[Setup] Auth required detected from live logs');
         }
       }
 
@@ -1434,13 +1484,11 @@ router.get('/server/console', async (req: Request, res: Response) => {
       if (serverBootedDetected && authRequiredDetected && !statusEventSent) {
         statusEventSent = true;
         console.log('[Setup] Sending server started + auth required events');
-        // Server is booted and needs auth
         res.write(`data: ${JSON.stringify({ type: 'started', authenticated: false })}\n\n`);
         res.write(`data: ${JSON.stringify({ type: 'auth_required' })}\n\n`);
       } else if (serverBootedDetected && serverAuthState?.authenticated && !statusEventSent) {
         statusEventSent = true;
         console.log('[Setup] Sending server started (authenticated) event');
-        // Server is booted and authenticated
         res.write(`data: ${JSON.stringify({ type: 'started', authenticated: true })}\n\n`);
       }
     } catch (error) {

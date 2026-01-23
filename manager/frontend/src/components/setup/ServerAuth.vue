@@ -169,6 +169,45 @@ function connectConsoleSSE() {
   }
 }
 
+// Fallback status check interval
+let statusCheckInterval: ReturnType<typeof setInterval> | null = null
+
+// Check server status via REST API (fallback for SSE issues)
+async function checkServerStatusFallback() {
+  try {
+    const response = await fetch('/api/setup/server/status')
+    const status = await response.json()
+
+    // If server is running, check logs for boot/auth status
+    if (status.running) {
+      // Fetch recent logs to check status
+      const logsResponse = await fetch('/api/server/logs?lines=200')
+      if (logsResponse.ok) {
+        const logsData = await logsResponse.json()
+        const logsText = Array.isArray(logsData.logs) ? logsData.logs.join('\n') : (logsData.logs || '')
+
+        const isBooted = logsText.includes('Server Booted') || logsText.includes('Hytale Server Booted')
+        const needsAuth = logsText.includes('No server tokens configured') || logsText.includes('/auth login')
+
+        if (isBooted && needsAuth) {
+          console.log('[Setup] Server status detected via fallback check')
+          serverStarted.value = true
+          serverNeedsAuth.value = true
+          isServerStarting.value = false
+
+          // Stop fallback checking
+          if (statusCheckInterval) {
+            clearInterval(statusCheckInterval)
+            statusCheckInterval = null
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.log('[Setup] Fallback status check failed:', err)
+  }
+}
+
 // Start the server for the first time (Step 4.1)
 async function startServer() {
   isServerStarting.value = true
@@ -177,6 +216,10 @@ async function startServer() {
 
   // Subscribe to console output via SSE
   connectConsoleSSE()
+
+  // Start fallback status checking (in case SSE fails or misses events)
+  // Check every 5 seconds
+  statusCheckInterval = setInterval(checkServerStatusFallback, 5000)
 
   // Trigger server start
   try {
@@ -191,8 +234,11 @@ async function startServer() {
     const errorMessage = err instanceof Error ? err.message : String(err)
     if (errorMessage.includes('timeout') || errorMessage.includes('504') || errorMessage.includes('Gateway')) {
       // Don't show error for timeout - the server might still be starting
-      // The SSE connection will update us when the server is ready
+      // The SSE connection and fallback check will update us when the server is ready
       addConsoleLine('Server start request sent, waiting for server to boot...', 'info')
+
+      // Do an immediate fallback check
+      setTimeout(checkServerStatusFallback, 2000)
     } else {
       setupStore.setError(errorMessage || t('setup.serverStartFailed'))
       isServerStarting.value = false
@@ -205,6 +251,10 @@ function proceedToServerAuth() {
   if (consoleEventSource) {
     consoleEventSource.close()
     consoleEventSource = null
+  }
+  if (statusCheckInterval) {
+    clearInterval(statusCheckInterval)
+    statusCheckInterval = null
   }
   currentAuthStep.value = 'server-auth'
   startServerDeviceCodeFlow()
@@ -480,6 +530,10 @@ onUnmounted(() => {
   if (expiryCountdownInterval) {
     clearInterval(expiryCountdownInterval)
     expiryCountdownInterval = null
+  }
+  if (statusCheckInterval) {
+    clearInterval(statusCheckInterval)
+    statusCheckInterval = null
   }
 })
 </script>
