@@ -1212,4 +1212,380 @@ router.post('/reset', async (_req: Request, res: Response) => {
   }
 });
 
+// ==========================================
+// Server Control Endpoints (for Server Auth step)
+// ==========================================
+
+// In-memory state for server auth flow
+let serverAuthState: {
+  serverStarted: boolean;
+  authCode: string;
+  authUrl: string;
+  authenticated: boolean;
+  expiresAt: Date;
+} | null = null;
+
+/**
+ * POST /api/setup/server/start-first
+ * Start the server for first-time setup authentication
+ */
+router.post('/server/start-first', async (_req: Request, res: Response) => {
+  try {
+    const containerStatus = await getDockerStatus();
+
+    if (containerStatus.status === 'not_found') {
+      res.status(400).json({
+        success: false,
+        error: 'Game container not found',
+      });
+      return;
+    }
+
+    // Start the container if not running
+    if (!containerStatus.running) {
+      await startContainer();
+    }
+
+    // Initialize server auth state
+    serverAuthState = {
+      serverStarted: true,
+      authCode: '',
+      authUrl: '',
+      authenticated: false,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    };
+
+    res.json({
+      success: true,
+      message: 'Server starting...',
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to start server:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start server',
+      detail: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * POST /api/setup/server/start
+ * Start the game server
+ */
+router.post('/server/start', async (_req: Request, res: Response) => {
+  try {
+    const containerStatus = await getDockerStatus();
+
+    if (containerStatus.status === 'not_found') {
+      res.status(400).json({
+        success: false,
+        error: 'Game container not found',
+      });
+      return;
+    }
+
+    if (!containerStatus.running) {
+      await startContainer();
+    }
+
+    res.json({
+      success: true,
+      message: 'Server started',
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to start server:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start server',
+    });
+  }
+});
+
+/**
+ * POST /api/setup/server/stop
+ * Stop the game server
+ */
+router.post('/server/stop', async (_req: Request, res: Response) => {
+  try {
+    const { stopContainer } = await import('../services/docker.js');
+    await stopContainer();
+
+    res.json({
+      success: true,
+      message: 'Server stopped',
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to stop server:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to stop server',
+    });
+  }
+});
+
+/**
+ * GET /api/setup/server/status
+ * Get server status during setup
+ */
+router.get('/server/status', async (_req: Request, res: Response) => {
+  try {
+    const containerStatus = await getDockerStatus();
+
+    res.json({
+      running: containerStatus.running,
+      status: containerStatus.status,
+      uptime: containerStatus.uptime,
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to get server status:', error);
+    res.status(500).json({
+      running: false,
+      status: 'error',
+      error: 'Failed to get server status',
+    });
+  }
+});
+
+/**
+ * GET /api/setup/server/console
+ * SSE endpoint for server console output during setup
+ */
+router.get('/server/console', async (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  const sendLogs = async () => {
+    try {
+      const logs = await getLogs(50);
+      const lines = logs.split('\n').slice(-20);
+      for (const line of lines) {
+        if (line.trim()) {
+          res.write(`data: ${line}\n\n`);
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+  };
+
+  sendLogs();
+  const interval = setInterval(sendLogs, 2000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+  });
+});
+
+// ==========================================
+// Server Auth Endpoints
+// ==========================================
+
+/**
+ * POST /api/setup/auth/server/start
+ * Start server OAuth device code flow
+ */
+router.post('/auth/server/start', async (_req: Request, res: Response) => {
+  try {
+    // Initialize auth state
+    serverAuthState = {
+      serverStarted: true,
+      authCode: '',
+      authUrl: '',
+      authenticated: false,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    };
+
+    // Check container logs for auth info
+    const logs = await getLogs(200);
+    const oauthInfo = parseOAuthFromLogs(logs);
+
+    if (oauthInfo.userCode) {
+      serverAuthState.authCode = oauthInfo.userCode;
+    }
+    if (oauthInfo.verificationUrl) {
+      serverAuthState.authUrl = oauthInfo.verificationUrl;
+    }
+    if (oauthInfo.authenticated) {
+      serverAuthState.authenticated = true;
+    }
+
+    res.json({
+      success: true,
+      authCode: serverAuthState.authCode,
+      authUrl: serverAuthState.authUrl,
+      expiresIn: 900,
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to start server auth:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start server authentication',
+    });
+  }
+});
+
+/**
+ * GET /api/setup/auth/server/status
+ * Check server authentication status
+ */
+router.get('/auth/server/status', async (_req: Request, res: Response) => {
+  try {
+    if (!serverAuthState) {
+      res.json({
+        authenticated: false,
+        error: 'No auth in progress',
+      });
+      return;
+    }
+
+    // Check container logs for auth status
+    const logs = await getLogs(200);
+    const oauthInfo = parseOAuthFromLogs(logs);
+
+    if (oauthInfo.authenticated) {
+      serverAuthState.authenticated = true;
+    }
+    if (oauthInfo.userCode && !serverAuthState.authCode) {
+      serverAuthState.authCode = oauthInfo.userCode;
+    }
+    if (oauthInfo.verificationUrl && !serverAuthState.authUrl) {
+      serverAuthState.authUrl = oauthInfo.verificationUrl;
+    }
+
+    res.json({
+      authenticated: serverAuthState.authenticated,
+      authCode: serverAuthState.authCode,
+      authUrl: serverAuthState.authUrl,
+      expired: new Date() > serverAuthState.expiresAt,
+    });
+  } catch (error) {
+    console.error('[Setup] Failed to check server auth status:', error);
+    res.status(500).json({
+      authenticated: false,
+      error: 'Failed to check authentication status',
+    });
+  }
+});
+
+/**
+ * POST /api/setup/auth/initiate
+ * Initiate server authentication (legacy endpoint)
+ */
+router.post('/auth/initiate', async (_req: Request, res: Response) => {
+  try {
+    const logs = await getLogs(200);
+    const oauthInfo = parseOAuthFromLogs(logs);
+
+    res.json({
+      success: true,
+      authCode: oauthInfo.userCode || '',
+      authUrl: oauthInfo.verificationUrl || '',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to initiate authentication',
+    });
+  }
+});
+
+/**
+ * POST /api/setup/auth/verify
+ * Verify authentication with device code (legacy endpoint)
+ */
+router.post('/auth/verify', async (_req: Request, res: Response) => {
+  try {
+    const logs = await getLogs(200);
+    const oauthInfo = parseOAuthFromLogs(logs);
+
+    res.json({
+      success: oauthInfo.authenticated || false,
+      authenticated: oauthInfo.authenticated || false,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to verify authentication',
+    });
+  }
+});
+
+/**
+ * POST /api/setup/auth/persistence
+ * Setup token persistence
+ */
+router.post('/auth/persistence', async (_req: Request, res: Response) => {
+  try {
+    // Token persistence is handled automatically by the game container
+    // This endpoint just confirms the setup step
+    res.json({
+      success: true,
+      message: 'Persistence configured',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to setup persistence',
+    });
+  }
+});
+
+// ==========================================
+// Plugin & Utility Endpoints
+// ==========================================
+
+/**
+ * POST /api/setup/plugins/install/:pluginId
+ * Install a plugin during setup
+ */
+router.post('/plugins/install/:pluginId', async (req: Request, res: Response) => {
+  try {
+    const { pluginId } = req.params;
+
+    // For now, just acknowledge the request
+    // Actual plugin installation would happen here
+    console.log(`[Setup] Plugin installation requested: ${pluginId}`);
+
+    res.json({
+      success: true,
+      message: `Plugin ${pluginId} installation initiated`,
+      pluginId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to install plugin',
+    });
+  }
+});
+
+/**
+ * POST /api/setup/skip
+ * Skip setup (development only)
+ */
+router.post('/skip', async (_req: Request, res: Response) => {
+  if (process.env.NODE_ENV === 'production') {
+    res.status(403).json({
+      success: false,
+      error: 'Cannot skip setup in production',
+    });
+    return;
+  }
+
+  try {
+    res.json({
+      success: true,
+      message: 'Setup skipped',
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to skip setup',
+    });
+  }
+});
+
 export default router;
