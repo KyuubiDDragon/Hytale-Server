@@ -896,3 +896,169 @@ export function getDemoUsers() {
     },
   ];
 }
+
+// ============================================================
+// Whitelist
+// ============================================================
+
+export function getDemoWhitelist() {
+  return {
+    enabled: true,
+    list: ['KyuubiDDragon', 'DragonSlayer', 'ShadowMage', 'IronForge', 'StormBringer'],
+  };
+}
+
+// ============================================================
+// Bans
+// ============================================================
+
+export function getDemoBans() {
+  return {
+    bans: [
+      {
+        player: 'GrieferX',
+        target: 'demo-uuid-grieferx',
+        reason: 'Griefing and harassment',
+        bannedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+        bannedBy: 'admin',
+      },
+      {
+        player: 'HackerPro',
+        target: 'demo-uuid-hackerpro',
+        reason: 'Using exploits',
+        bannedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        bannedBy: 'Console',
+      },
+    ],
+  };
+}
+
+// ============================================================
+// Permissions (Hytale server permissions)
+// ============================================================
+
+export function getDemoPermissions() {
+  return {
+    users: [
+      { identifier: 'KyuubiDDragon', type: 'op', addedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() },
+      { identifier: 'DragonSlayer', type: 'moderator', addedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString() },
+    ],
+    groups: [
+      { name: 'admins', permissions: ['*'], description: 'Full server access' },
+      { name: 'moderators', permissions: ['kick', 'ban', 'mute', 'teleport'], description: 'Moderation permissions' },
+      { name: 'builders', permissions: ['build', 'tp'], description: 'Building permissions' },
+    ],
+  };
+}
+
+// ============================================================
+// ModStore
+// ============================================================
+
+export function getDemoModStore() {
+  return [
+    {
+      id: 'better-hud',
+      name: 'Better HUD',
+      description: 'Improved heads-up display with customizable elements',
+      author: 'HUDMaster',
+      version: '2.1.0',
+      downloads: 15420,
+      rating: 4.8,
+      category: 'UI',
+      installed: false,
+    },
+    {
+      id: 'world-edit',
+      name: 'World Edit Tools',
+      description: 'Powerful world editing and building utilities',
+      author: 'BuilderPro',
+      version: '1.5.2',
+      downloads: 28340,
+      rating: 4.9,
+      category: 'Tools',
+      installed: true,
+    },
+    {
+      id: 'custom-npcs',
+      name: 'Custom NPCs',
+      description: 'Create and customize NPCs with advanced AI',
+      author: 'NPCCreator',
+      version: '3.0.1',
+      downloads: 12100,
+      rating: 4.6,
+      category: 'Gameplay',
+      installed: false,
+    },
+  ];
+}
+
+// ============================================================
+// Modtale Search Results
+// ============================================================
+
+export function getDemoModtaleResults() {
+  return {
+    results: [
+      {
+        id: 'modtale-1',
+        name: 'Enhanced Graphics',
+        slug: 'enhanced-graphics',
+        description: 'High-quality textures and shader improvements',
+        author: 'GraphicsTeam',
+        downloads: 45000,
+        followers: 1200,
+        classification: 'Mod',
+        featured: true,
+      },
+      {
+        id: 'modtale-2',
+        name: 'Combat Overhaul',
+        slug: 'combat-overhaul',
+        description: 'New combat mechanics and animations',
+        author: 'CombatDev',
+        downloads: 32000,
+        followers: 890,
+        classification: 'Mod',
+        featured: false,
+      },
+    ],
+    total: 2,
+    page: 1,
+    pageSize: 20,
+  };
+}
+
+// ============================================================
+// StackMart Search Results
+// ============================================================
+
+export function getDemoStackMartResults() {
+  return {
+    results: [
+      {
+        id: 'stackmart-1',
+        name: 'Medieval Castle Pack',
+        description: 'Pre-built medieval structures and decorations',
+        author: 'CastleBuilder',
+        downloads: 8500,
+        rating: 4.7,
+        category: 'Structures',
+        price: 0,
+      },
+      {
+        id: 'stackmart-2',
+        name: 'Fantasy Creatures',
+        description: 'New fantasy creature models and behaviors',
+        author: 'CreatureStudio',
+        downloads: 12300,
+        rating: 4.5,
+        category: 'Creatures',
+        price: 0,
+      },
+    ],
+    total: 2,
+    page: 1,
+    pageSize: 20,
+  };
+}

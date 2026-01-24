@@ -93,6 +93,25 @@ router.post(
   authMiddleware,
   requirePermission('roles.manage'),
   async (req: AuthenticatedRequest, res: Response) => {
+    // Demo mode: simulate role creation
+    if (isDemoMode()) {
+      const { name, description, permissions, color } = req.body;
+      res.status(201).json({
+        success: true,
+        message: '[DEMO] Role created (simulated)',
+        role: {
+          id: `demo-${Date.now()}`,
+          name,
+          description,
+          permissions: permissions || [],
+          color,
+          isDefault: false,
+          isSystem: false,
+        },
+      });
+      return;
+    }
+
     try {
       const { name, description, permissions, color } = req.body;
 
@@ -143,6 +162,19 @@ router.put(
   authMiddleware,
   requirePermission('roles.manage'),
   async (req: AuthenticatedRequest, res: Response) => {
+    // Demo mode: simulate role update
+    if (isDemoMode()) {
+      const { id } = req.params;
+      const demoRoles = getDemoRoles();
+      const existingRole = demoRoles.find(r => r.id === id);
+      res.json({
+        success: true,
+        message: '[DEMO] Role updated (simulated)',
+        role: existingRole || { id, ...req.body },
+      });
+      return;
+    }
+
     try {
       const { id } = req.params;
       const { name, description, permissions, color } = req.body;
@@ -186,6 +218,21 @@ router.delete(
   authMiddleware,
   requirePermission('roles.manage'),
   async (req: AuthenticatedRequest, res: Response) => {
+    // Demo mode: simulate role deletion
+    if (isDemoMode()) {
+      const { id } = req.params;
+      const demoRoles = getDemoRoles();
+      const role = demoRoles.find(r => r.id === id);
+
+      if (role?.isSystem) {
+        res.status(400).json({ error: 'Cannot delete system roles' });
+        return;
+      }
+
+      res.json({ success: true, message: '[DEMO] Role deleted (simulated)' });
+      return;
+    }
+
     try {
       const { id } = req.params;
 
