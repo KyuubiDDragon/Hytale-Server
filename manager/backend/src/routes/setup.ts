@@ -18,6 +18,7 @@ import {
   startContainer,
   execCommand
 } from '../services/docker.js';
+import { config } from '../config.js';
 
 const router = Router();
 
@@ -131,6 +132,27 @@ router.get('/system-check/:checkId', async (req: Request, res: Response) => {
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
+});
+
+/**
+ * GET /api/setup/ports
+ * Get port configuration for display in setup wizard
+ *
+ * Response:
+ * {
+ *   webMapPort: number,
+ *   webMapWsPort: number,
+ *   serverPort: number,
+ *   managerPort: number
+ * }
+ */
+router.get('/ports', async (_req: Request, res: Response) => {
+  res.json({
+    webMapPort: config.webMapPort,
+    webMapWsPort: config.webMapWsPort,
+    serverPort: config.serverPort,
+    managerPort: config.externalPort,
+  })
 });
 
 /**

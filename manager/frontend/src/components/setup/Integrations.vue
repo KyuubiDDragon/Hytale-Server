@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSetupStore } from '@/stores/setup'
+import { setupApi } from '@/api/setup'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 
@@ -22,11 +23,11 @@ const webmapEnabled = ref(false)
 const showModtaleKey = ref(false)
 const showStackmartKey = ref(false)
 
-// WebMap port information
-const webmapPorts = {
+// WebMap port information (loaded from backend)
+const webmapPorts = ref({
   http: 18081,
   websocket: 18082,
-}
+})
 
 async function handleContinue() {
   const success = await setupStore.saveStep('integrations', {
@@ -57,13 +58,25 @@ function handleBack() {
   emit('back')
 }
 
-// Load saved data on mount
-onMounted(() => {
+// Load saved data and port configuration on mount
+onMounted(async () => {
+  // Load saved form data
   const savedData = setupStore.setupData.integrations as Record<string, unknown> | null
   if (savedData) {
     if (savedData.modtaleApiKey) modtaleApiKey.value = savedData.modtaleApiKey as string
     if (savedData.stackmartApiKey) stackmartApiKey.value = savedData.stackmartApiKey as string
     if (typeof savedData.webmapEnabled === 'boolean') webmapEnabled.value = savedData.webmapEnabled
+  }
+
+  // Load port configuration from backend
+  try {
+    const ports = await setupApi.getPorts()
+    webmapPorts.value = {
+      http: ports.webMapPort,
+      websocket: ports.webMapWsPort,
+    }
+  } catch (error) {
+    console.error('Failed to load port configuration:', error)
   }
 })
 </script>

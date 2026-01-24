@@ -271,6 +271,14 @@ export interface AuthVerifyResponse {
   error?: string
 }
 
+// Types for port configuration
+export interface PortsConfigResponse {
+  webMapPort: number
+  webMapWsPort: number
+  serverPort: number
+  managerPort: number
+}
+
 // Setup API client
 export const setupApi = {
   /**
@@ -552,6 +560,14 @@ export const setupApi = {
    */
   async skipSetup(): Promise<CompleteSetupResponse> {
     const response = await api.post<CompleteSetupResponse>('/setup/skip')
+    return response.data
+  },
+
+  /**
+   * Get port configuration for display in setup wizard
+   */
+  async getPorts(): Promise<PortsConfigResponse> {
+    const response = await api.get<PortsConfigResponse>('/setup/ports')
     return response.data
   },
 }
