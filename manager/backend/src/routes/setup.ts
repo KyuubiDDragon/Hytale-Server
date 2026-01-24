@@ -997,17 +997,26 @@ router.get('/download/status', (req: Request, res: Response) => {
 /**
  * GET /api/setup/auth/status
  * Get Hytale authentication status (downloader + server)
+ * Returns flattened structure for frontend compatibility
  *
  * Response:
  * {
- *   downloaderAuth: { authenticated: boolean, username?: string },
- *   serverAuth: { authenticated: boolean, persistent: boolean }
+ *   downloaderCredentials: boolean,
+ *   serverToken: boolean,
+ *   tokenPersistence: boolean,
+ *   machineId: boolean
  * }
  */
 router.get('/auth/status', async (_req: Request, res: Response) => {
   try {
     const status = await getAuthStatusForSetup();
-    res.json(status);
+    // Map to flattened structure expected by frontend
+    res.json({
+      downloaderCredentials: status.downloaderAuth.authenticated,
+      serverToken: status.serverAuth.authenticated,
+      tokenPersistence: status.serverAuth.persistent,
+      machineId: status.machineId.generated,
+    });
   } catch (error) {
     console.error('[Setup] Failed to get auth status:', error);
     res.status(500).json({

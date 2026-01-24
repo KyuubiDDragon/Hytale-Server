@@ -1265,6 +1265,7 @@
     "openLinkInBrowser": "Oeffne diesen Link im Browser zur Authentifizierung:",
     "verificationUrl": "Verifizierungs-URL",
     "copyLink": "Link kopieren",
+    "openInBrowser": "Im Browser öffnen",
     "quickAuthOption": "Schnelle Authentifizierung (Empfohlen)",
     "openAuthPage": "Auth-Seite oeffnen",
     "directLinkHint": "Oeffnet direkt mit vorausgefuelltem Code",
