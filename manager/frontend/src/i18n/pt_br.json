@@ -1,4 +1,8 @@
 {
+  "demo": {
+    "banner": "MODO DEMO",
+    "description": "Todos os dados sao simulados. Nenhum servidor real conectado."
+  },
   "common": {
     "loading": "Carregando...",
     "save": "Salvar",

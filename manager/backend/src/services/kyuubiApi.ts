@@ -9,6 +9,14 @@ import { config } from '../config.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  isDemoMode,
+  getDemoPerformanceMetrics,
+  getDemoJvmMetrics,
+  getDemoOnlinePlayers,
+  getDemoPlayerDetails,
+  getDemoPlayerInventory,
+} from './demoData.js';
 
 // Get directory name in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -37,6 +45,11 @@ export interface PluginApiResponse {
  * Check if the KyuubiSoft API plugin is installed in the mods folder
  */
 export function isPluginInstalled(): boolean {
+  // Demo mode: always report plugin as installed
+  if (isDemoMode()) {
+    return true;
+  }
+
   try {
     const modsPath = config.modsPath;
     const files = fs.readdirSync(modsPath);
@@ -56,6 +69,11 @@ export function isPluginInstalled(): boolean {
  * Get the installed plugin version
  */
 export function getInstalledVersion(): string | null {
+  // Demo mode: return current plugin version
+  if (isDemoMode()) {
+    return PLUGIN_VERSION;
+  }
+
   try {
     const modsPath = config.modsPath;
     const files = fs.readdirSync(modsPath);
@@ -93,6 +111,11 @@ function getPluginHost(): string {
  * Check if the KyuubiSoft API plugin is running and responding
  */
 export async function isPluginRunning(): Promise<boolean> {
+  // Demo mode: always report plugin as running
+  if (isDemoMode()) {
+    return true;
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000);
@@ -139,6 +162,11 @@ export async function getPluginStatus(): Promise<PluginStatus> {
  * Get data from the KyuubiSoft API plugin
  */
 export async function fetchFromPlugin<T>(endpoint: string): Promise<PluginApiResponse & { data?: T }> {
+  // Demo mode: return mock data based on endpoint
+  if (isDemoMode()) {
+    return getDemoPluginResponse<T>(endpoint);
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -165,9 +193,87 @@ export async function fetchFromPlugin<T>(endpoint: string): Promise<PluginApiRes
 }
 
 /**
+ * Demo mode: Generate mock plugin responses
+ */
+function getDemoPluginResponse<T>(endpoint: string): PluginApiResponse & { data?: T } {
+  if (endpoint === '/api/server/info') {
+    const metrics = getDemoPerformanceMetrics();
+    return {
+      success: true,
+      data: {
+        serverName: 'KyuubiSoft Demo Server',
+        version: '1.0.0',
+        tps: metrics.tps,
+        mspt: metrics.mspt,
+        playerCount: metrics.playerCount,
+        maxPlayers: 100,
+        uptime: metrics.uptime,
+        worldTime: metrics.worldTime,
+        weather: metrics.weather,
+      } as T,
+    };
+  }
+
+  if (endpoint === '/api/server/memory') {
+    const jvm = getDemoJvmMetrics();
+    return {
+      success: true,
+      data: {
+        heapUsed: jvm.heapUsed,
+        heapMax: jvm.heapMax,
+        heapPercent: jvm.heapPercent,
+        gcCount: jvm.gcCount,
+        gcTime: jvm.gcTime,
+        threads: jvm.threads,
+        cpuLoad: jvm.cpuLoad,
+      } as T,
+    };
+  }
+
+  if (endpoint === '/api/players') {
+    const players = getDemoOnlinePlayers();
+    return {
+      success: true,
+      data: players.map(p => ({
+        name: p.name,
+        uuid: `demo-uuid-${p.name}`,
+        world: 'Orbis',
+        online: true,
+        joinedAt: p.joined_at,
+      })) as T,
+    };
+  }
+
+  if (endpoint.startsWith('/api/players/') && endpoint.endsWith('/details')) {
+    const playerName = endpoint.split('/')[3];
+    const details = getDemoPlayerDetails(playerName);
+    return {
+      success: true,
+      data: details as T,
+    };
+  }
+
+  if (endpoint.startsWith('/api/players/') && endpoint.endsWith('/inventory')) {
+    const playerName = endpoint.split('/')[3];
+    const inventory = getDemoPlayerInventory(playerName);
+    return {
+      success: true,
+      data: inventory as T,
+    };
+  }
+
+  return { success: true, data: {} as T };
+}
+
+/**
  * POST to the KyuubiSoft API plugin (for actions)
  */
 export async function postToPlugin<T>(endpoint: string, body?: unknown): Promise<PluginApiResponse & { data?: T }> {
+  // Demo mode: simulate successful actions
+  if (isDemoMode()) {
+    return { success: true, data: { message: '[DEMO] Action executed successfully' } as T };
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -222,6 +328,35 @@ export async function getMemoryFromPlugin(): Promise<PluginApiResponse> {
  * Returns raw Prometheus text format
  */
 export async function getPrometheusMetrics(): Promise<{ success: boolean; data?: string; error?: string }> {
+  // Demo mode: return mock Prometheus metrics
+  if (isDemoMode()) {
+    const metrics = getDemoPerformanceMetrics();
+    const jvm = getDemoJvmMetrics();
+    const prometheusData = `# HELP hytale_tps Server TPS
+# TYPE hytale_tps gauge
+hytale_tps ${metrics.tps.toFixed(2)}
+# HELP hytale_mspt Server MSPT
+# TYPE hytale_mspt gauge
+hytale_mspt ${metrics.mspt.toFixed(2)}
+# HELP hytale_player_count Online player count
+# TYPE hytale_player_count gauge
+hytale_player_count ${metrics.playerCount}
+# HELP hytale_uptime_seconds Server uptime in seconds
+# TYPE hytale_uptime_seconds counter
+hytale_uptime_seconds ${metrics.uptime}
+# HELP jvm_memory_used_bytes JVM memory used
+# TYPE jvm_memory_used_bytes gauge
+jvm_memory_used_bytes ${jvm.heapUsed * 1024 * 1024}
+# HELP jvm_memory_max_bytes JVM memory max
+# TYPE jvm_memory_max_bytes gauge
+jvm_memory_max_bytes ${jvm.heapMax * 1024 * 1024}
+# HELP jvm_threads_current Current thread count
+# TYPE jvm_threads_current gauge
+jvm_threads_current ${jvm.threads}
+`;
+    return { success: true, data: prometheusData };
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);

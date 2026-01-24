@@ -79,6 +79,10 @@ const INSECURE_DEFAULTS = {
 // Security mode: 'strict' blocks startup with insecure config, 'warn' only logs warnings
 const securityMode = process.env.SECURITY_MODE || 'strict';
 
+// Demo mode: enables the panel to run without a real Hytale server
+// All data is mocked for demonstration purposes
+const demoMode = process.env.DEMO_MODE === 'true' || process.env.DEMO_MODE === '1';
+
 // ============================================================
 // Configuration Object
 // ============================================================
@@ -181,6 +185,13 @@ export const config = {
 
   // Security mode: 'strict' (default) or 'warn'
   securityMode,
+
+  // ============================================================
+  // Demo Mode
+  // ============================================================
+
+  // Demo mode: run panel without real Hytale server (all data mocked)
+  demoMode,
 
   // ============================================================
   // Setup state

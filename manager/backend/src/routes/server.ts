@@ -8,6 +8,7 @@ import * as kyuubiApiService from '../services/kyuubiApi.js';
 import { getPlayerInventoryFromFile, getPlayerDetailsFromFile } from '../services/players.js';
 import { config } from '../config.js';
 import { dismissNewFeaturesBanner } from '../services/migration.js';
+import { isDemoMode, getDemoQuickSettings, getDemoMemoryStats } from '../services/demoData.js';
 
 const router = Router();
 
@@ -24,6 +25,14 @@ interface QuickSettings {
   defaultGameMode: string;
 }
 
+// GET /api/server/demo - Check if demo mode is enabled (no auth required for login page)
+router.get('/demo', (_req: Request, res: Response) => {
+  res.json({
+    demoMode: isDemoMode(),
+    message: isDemoMode() ? 'Panel is running in demo mode. All data is simulated.' : undefined,
+  });
+});
+
 // GET /api/server/status
 router.get('/status', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   const status = await dockerService.getStatus();
@@ -38,6 +47,12 @@ router.get('/stats', authMiddleware, requirePermission('server.view_status'), as
 
 // GET /api/server/memory - Get detailed memory stats from server command
 router.get('/memory', authMiddleware, requirePermission('performance.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock memory stats
+  if (isDemoMode()) {
+    res.json(getDemoMemoryStats());
+    return;
+  }
+
   try {
     const result = await dockerService.execCommand('/server stats memory');
 
@@ -100,6 +115,12 @@ router.get('/memory', authMiddleware, requirePermission('performance.view'), asy
 
 // GET /api/server/quick-settings - Get quick settings from config.json
 router.get('/quick-settings', authMiddleware, requirePermission('config.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock settings
+  if (isDemoMode()) {
+    res.json(getDemoQuickSettings());
+    return;
+  }
+
   try {
     const configPath = path.join(config.serverPath, 'config.json');
     const content = await readFile(configPath, 'utf-8');
@@ -125,6 +146,12 @@ router.get('/quick-settings', authMiddleware, requirePermission('config.view'), 
 
 // PUT /api/server/quick-settings - Save quick settings to config.json
 router.put('/quick-settings', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  // Demo mode: simulate save
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Quick settings saved (simulated)' });
+    return;
+  }
+
   try {
     const { serverName, motd, password, maxPlayers, maxViewRadius, defaultGameMode } = req.body;
 
