@@ -1,20 +1,27 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'com.kyuubisoft'
-version = '1.1.6'
+version = '1.2.0'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
 
-// No external repositories needed - all dependencies are in HytaleServer.jar
+repositories {
+    mavenCentral()
+}
 
 dependencies {
     // Hytale Server API (includes Netty, Gson, etc.)
     compileOnly files('../lib/HytaleServer.jar')
+
+    // Prometheus client libraries for metrics export
+    implementation 'io.prometheus:prometheus-metrics-core:1.3.1'
+    implementation 'io.prometheus:prometheus-metrics-exposition-formats:1.3.1'
 }
 
 jar {
@@ -29,3 +36,23 @@ jar {
         )
     }
 }
+
+shadowJar {
+    archiveBaseName.set('KyuubiSoftAPI')
+    archiveVersion.set(version)
+    archiveClassifier.set('')
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
+    // Relocate prometheus to avoid conflicts with other plugins
+    relocate 'io.prometheus', 'com.kyuubisoft.libs.prometheus'
+
+    manifest {
+        attributes(
+            'Implementation-Title': 'KyuubiSoft API',
+            'Implementation-Version': version
+        )
+    }
+}
+
+// Use shadowJar as default build artifact
+build.dependsOn shadowJar
