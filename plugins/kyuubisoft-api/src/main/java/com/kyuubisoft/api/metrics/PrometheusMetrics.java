@@ -3,10 +3,6 @@ package com.kyuubisoft.api.metrics;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
-import io.prometheus.metrics.core.metrics.Counter;
-import io.prometheus.metrics.core.metrics.Gauge;
-import io.prometheus.metrics.core.metrics.Info;
-import io.prometheus.metrics.model.registry.PrometheusRegistry;
 
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
@@ -15,296 +11,60 @@ import java.lang.management.MemoryPoolMXBean;
 import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadMXBean;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Logger;
 
 /**
  * Prometheus metrics collector for Hytale server.
- * Provides comprehensive server metrics in Prometheus format.
+ * Outputs metrics in Prometheus text exposition format without external dependencies.
  */
 public class PrometheusMetrics {
 
     private static final Logger LOGGER = Logger.getLogger("KyuubiSoftAPI");
     private static PrometheusMetrics instance;
 
-    private final PrometheusRegistry registry;
     private final TpsTracker tpsTracker;
     private final long serverStartTime;
 
-    // Server metrics
-    private final Gauge tpsCurrent;
-    private final Gauge tpsAverage;
-    private final Gauge tpsMin;
-    private final Gauge tpsMax;
-    private final Gauge tpsTarget;
-    private final Gauge msptCurrent;
-    private final Gauge msptAverage;
-
-    // Player metrics
-    private final Gauge playersOnline;
-    private final Gauge playersMax;
-    private final Gauge playersPerWorld;
-    private final Counter playerJoins;
-    private final Counter playerLeaves;
-
-    // World metrics
-    private final Gauge worldsLoaded;
-    private final Gauge chunksLoaded;
-    private final Gauge entitiesCount;
-
-    // JVM Memory metrics
-    private final Gauge memoryHeapUsed;
-    private final Gauge memoryHeapMax;
-    private final Gauge memoryHeapCommitted;
-    private final Gauge memoryNonHeapUsed;
-    private final Gauge memoryNonHeapCommitted;
-    private final Gauge memoryPoolUsed;
-    private final Gauge memoryPoolMax;
-
-    // JVM GC metrics
-    private final Counter gcCollectionCount;
-    private final Counter gcCollectionTime;
-
-    // JVM Thread metrics
-    private final Gauge threadsCount;
-    private final Gauge threadsDaemon;
-    private final Gauge threadsPeak;
-
-    // CPU metrics
-    private final Gauge cpuProcess;
-    private final Gauge cpuSystem;
-
-    // Uptime
-    private final Gauge uptimeSeconds;
-
-    // Server info
-    private final Info serverInfo;
+    // Counters for player events
+    private final AtomicLong playerJoins = new AtomicLong(0);
+    private final AtomicLong playerLeaves = new AtomicLong(0);
 
     public PrometheusMetrics(TpsTracker tpsTracker) {
         instance = this;
-        this.registry = new PrometheusRegistry();
         this.tpsTracker = tpsTracker;
         this.serverStartTime = System.currentTimeMillis();
-
-        // Initialize TPS metrics
-        tpsCurrent = Gauge.builder()
-            .name("hytale_tps_current")
-            .help("Current server TPS (ticks per second)")
-            .register(registry);
-
-        tpsAverage = Gauge.builder()
-            .name("hytale_tps_average")
-            .help("Average TPS over the last minute")
-            .register(registry);
-
-        tpsMin = Gauge.builder()
-            .name("hytale_tps_min")
-            .help("Minimum TPS over the last minute")
-            .register(registry);
-
-        tpsMax = Gauge.builder()
-            .name("hytale_tps_max")
-            .help("Maximum TPS over the last minute")
-            .register(registry);
-
-        tpsTarget = Gauge.builder()
-            .name("hytale_tps_target")
-            .help("Target TPS (usually 20)")
-            .register(registry);
-
-        msptCurrent = Gauge.builder()
-            .name("hytale_mspt_current")
-            .help("Current milliseconds per tick")
-            .register(registry);
-
-        msptAverage = Gauge.builder()
-            .name("hytale_mspt_average")
-            .help("Average milliseconds per tick over the last minute")
-            .register(registry);
-
-        // Initialize player metrics
-        playersOnline = Gauge.builder()
-            .name("hytale_players_online")
-            .help("Number of players currently online")
-            .register(registry);
-
-        playersMax = Gauge.builder()
-            .name("hytale_players_max")
-            .help("Maximum number of players allowed")
-            .register(registry);
-
-        playersPerWorld = Gauge.builder()
-            .name("hytale_players_world")
-            .help("Number of players per world")
-            .labelNames("world")
-            .register(registry);
-
-        playerJoins = Counter.builder()
-            .name("hytale_player_joins_total")
-            .help("Total number of player joins since server start")
-            .register(registry);
-
-        playerLeaves = Counter.builder()
-            .name("hytale_player_leaves_total")
-            .help("Total number of player leaves since server start")
-            .register(registry);
-
-        // Initialize world metrics
-        worldsLoaded = Gauge.builder()
-            .name("hytale_worlds_loaded")
-            .help("Number of worlds currently loaded")
-            .register(registry);
-
-        chunksLoaded = Gauge.builder()
-            .name("hytale_chunks_loaded")
-            .help("Number of chunks loaded per world")
-            .labelNames("world")
-            .register(registry);
-
-        entitiesCount = Gauge.builder()
-            .name("hytale_entities_count")
-            .help("Number of entities per world")
-            .labelNames("world")
-            .register(registry);
-
-        // Initialize JVM memory metrics
-        memoryHeapUsed = Gauge.builder()
-            .name("jvm_memory_heap_used_bytes")
-            .help("Current heap memory used in bytes")
-            .register(registry);
-
-        memoryHeapMax = Gauge.builder()
-            .name("jvm_memory_heap_max_bytes")
-            .help("Maximum heap memory in bytes")
-            .register(registry);
-
-        memoryHeapCommitted = Gauge.builder()
-            .name("jvm_memory_heap_committed_bytes")
-            .help("Committed heap memory in bytes")
-            .register(registry);
-
-        memoryNonHeapUsed = Gauge.builder()
-            .name("jvm_memory_nonheap_used_bytes")
-            .help("Current non-heap memory used in bytes")
-            .register(registry);
-
-        memoryNonHeapCommitted = Gauge.builder()
-            .name("jvm_memory_nonheap_committed_bytes")
-            .help("Committed non-heap memory in bytes")
-            .register(registry);
-
-        memoryPoolUsed = Gauge.builder()
-            .name("jvm_memory_pool_used_bytes")
-            .help("Memory pool usage in bytes")
-            .labelNames("pool")
-            .register(registry);
-
-        memoryPoolMax = Gauge.builder()
-            .name("jvm_memory_pool_max_bytes")
-            .help("Memory pool maximum in bytes")
-            .labelNames("pool")
-            .register(registry);
-
-        // Initialize GC metrics
-        gcCollectionCount = Counter.builder()
-            .name("jvm_gc_collection_count_total")
-            .help("Total number of garbage collections")
-            .labelNames("gc")
-            .register(registry);
-
-        gcCollectionTime = Counter.builder()
-            .name("jvm_gc_collection_time_seconds_total")
-            .help("Total time spent in garbage collection in seconds")
-            .labelNames("gc")
-            .register(registry);
-
-        // Initialize thread metrics
-        threadsCount = Gauge.builder()
-            .name("jvm_threads_current")
-            .help("Current number of threads")
-            .register(registry);
-
-        threadsDaemon = Gauge.builder()
-            .name("jvm_threads_daemon")
-            .help("Number of daemon threads")
-            .register(registry);
-
-        threadsPeak = Gauge.builder()
-            .name("jvm_threads_peak")
-            .help("Peak number of threads")
-            .register(registry);
-
-        // Initialize CPU metrics
-        cpuProcess = Gauge.builder()
-            .name("process_cpu_usage")
-            .help("Process CPU usage (0-1)")
-            .register(registry);
-
-        cpuSystem = Gauge.builder()
-            .name("system_cpu_usage")
-            .help("System CPU usage (0-1)")
-            .register(registry);
-
-        // Uptime
-        uptimeSeconds = Gauge.builder()
-            .name("hytale_uptime_seconds")
-            .help("Server uptime in seconds")
-            .register(registry);
-
-        // Server info
-        serverInfo = Info.builder()
-            .name("hytale_server")
-            .help("Hytale server information")
-            .register(registry);
-
-        // Set static info
-        tpsTarget.set(20.0);
-        playersMax.set(100); // TODO: Get from server config
-
-        LOGGER.info("Prometheus metrics initialized");
+        LOGGER.info("Prometheus metrics initialized (native implementation)");
     }
 
     public static PrometheusMetrics getInstance() {
         return instance;
     }
 
-    public PrometheusRegistry getRegistry() {
-        return registry;
-    }
-
     /**
-     * Update all metrics. Called before scraping.
+     * Generate Prometheus text format metrics output.
      */
-    public void updateMetrics() {
-        try {
-            updateTpsMetrics();
-            updatePlayerMetrics();
-            updateWorldMetrics();
-            updateJvmMetrics();
-            updateCpuMetrics();
-            updateUptime();
-        } catch (Exception e) {
-            LOGGER.warning("Error updating Prometheus metrics: " + e.getMessage());
-        }
-    }
+    public String generateMetrics() {
+        StringBuilder sb = new StringBuilder();
 
-    private void updateTpsMetrics() {
-        TpsTracker.TpsSnapshot snapshot = tpsTracker.getSnapshot();
-        tpsCurrent.set(snapshot.current());
-        tpsAverage.set(snapshot.average());
-        tpsMin.set(snapshot.min());
-        tpsMax.set(snapshot.max());
-        msptCurrent.set(snapshot.msptCurrent());
-        msptAverage.set(snapshot.msptAverage());
-    }
+        // TPS metrics
+        TpsTracker.TpsSnapshot tps = tpsTracker.getSnapshot();
+        appendGauge(sb, "hytale_tps_current", "Current server TPS", tps.current());
+        appendGauge(sb, "hytale_tps_average", "Average TPS over last minute", tps.average());
+        appendGauge(sb, "hytale_tps_min", "Minimum TPS over last minute", tps.min());
+        appendGauge(sb, "hytale_tps_max", "Maximum TPS over last minute", tps.max());
+        appendGauge(sb, "hytale_tps_target", "Target TPS", tps.target());
+        appendGauge(sb, "hytale_mspt_current", "Current milliseconds per tick", tps.msptCurrent());
+        appendGauge(sb, "hytale_mspt_average", "Average milliseconds per tick", tps.msptAverage());
 
-    private void updatePlayerMetrics() {
+        // Player metrics
+        int onlinePlayers = 0;
+        Map<String, Integer> playersPerWorld = new HashMap<>();
         try {
             Universe universe = Universe.get();
             List<PlayerRef> players = universe.getPlayers();
-            playersOnline.set(players.size());
+            onlinePlayers = players.size();
 
-            // Count players per world
-            Map<String, Integer> worldPlayerCounts = new HashMap<>();
             for (PlayerRef player : players) {
                 try {
                     UUID worldUuid = player.getWorldUuid();
@@ -312,123 +72,181 @@ public class PrometheusMetrics {
                         World world = universe.getWorld(worldUuid);
                         if (world != null) {
                             String worldName = world.getName();
-                            worldPlayerCounts.merge(worldName, 1, Integer::sum);
+                            playersPerWorld.merge(worldName, 1, Integer::sum);
                         }
                     }
                 } catch (Exception ignored) {}
             }
+        } catch (Exception ignored) {}
 
-            for (Map.Entry<String, Integer> entry : worldPlayerCounts.entrySet()) {
-                playersPerWorld.labelValues(entry.getKey()).set(entry.getValue());
+        appendGauge(sb, "hytale_players_online", "Number of players online", onlinePlayers);
+        appendGauge(sb, "hytale_players_max", "Maximum players allowed", 100); // TODO: Get from config
+
+        // Players per world
+        if (!playersPerWorld.isEmpty()) {
+            sb.append("# HELP hytale_players_world Number of players per world\n");
+            sb.append("# TYPE hytale_players_world gauge\n");
+            for (Map.Entry<String, Integer> entry : playersPerWorld.entrySet()) {
+                sb.append("hytale_players_world{world=\"")
+                  .append(escapeLabel(entry.getKey()))
+                  .append("\"} ")
+                  .append(entry.getValue())
+                  .append("\n");
             }
-        } catch (Exception e) {
-            playersOnline.set(0);
         }
-    }
 
-    private void updateWorldMetrics() {
+        // Player join/leave counters
+        appendCounter(sb, "hytale_player_joins_total", "Total player joins since start", playerJoins.get());
+        appendCounter(sb, "hytale_player_leaves_total", "Total player leaves since start", playerLeaves.get());
+
+        // World metrics
+        int worldsLoaded = 0;
         try {
             Universe universe = Universe.get();
-            Map<String, World> worlds = universe.getWorlds();
-            worldsLoaded.set(worlds.size());
+            worldsLoaded = universe.getWorlds().size();
+        } catch (Exception ignored) {}
+        appendGauge(sb, "hytale_worlds_loaded", "Number of worlds loaded", worldsLoaded);
 
-            // Per-world metrics
-            for (World world : worlds.values()) {
-                String worldName = world.getName();
-
-                // Chunks loaded - placeholder, actual API may vary
-                // chunksLoaded.labelValues(worldName).set(getWorldChunkCount(world));
-
-                // Entities count - placeholder
-                // entitiesCount.labelValues(worldName).set(getWorldEntityCount(world));
-            }
-        } catch (Exception e) {
-            worldsLoaded.set(0);
-        }
-    }
-
-    private void updateJvmMetrics() {
-        // Memory metrics
+        // JVM Memory metrics
         MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
         MemoryUsage heapUsage = memoryBean.getHeapMemoryUsage();
         MemoryUsage nonHeapUsage = memoryBean.getNonHeapMemoryUsage();
 
-        memoryHeapUsed.set(heapUsage.getUsed());
-        memoryHeapMax.set(heapUsage.getMax() > 0 ? heapUsage.getMax() : heapUsage.getCommitted());
-        memoryHeapCommitted.set(heapUsage.getCommitted());
-        memoryNonHeapUsed.set(nonHeapUsage.getUsed());
-        memoryNonHeapCommitted.set(nonHeapUsage.getCommitted());
+        appendGauge(sb, "jvm_memory_heap_used_bytes", "Heap memory used", heapUsage.getUsed());
+        appendGauge(sb, "jvm_memory_heap_max_bytes", "Heap memory max",
+            heapUsage.getMax() > 0 ? heapUsage.getMax() : heapUsage.getCommitted());
+        appendGauge(sb, "jvm_memory_heap_committed_bytes", "Heap memory committed", heapUsage.getCommitted());
+        appendGauge(sb, "jvm_memory_nonheap_used_bytes", "Non-heap memory used", nonHeapUsage.getUsed());
+        appendGauge(sb, "jvm_memory_nonheap_committed_bytes", "Non-heap memory committed", nonHeapUsage.getCommitted());
 
         // Memory pools
-        for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
-            String poolName = pool.getName();
-            MemoryUsage usage = pool.getUsage();
-            if (usage != null) {
-                memoryPoolUsed.labelValues(poolName).set(usage.getUsed());
-                long max = usage.getMax();
-                if (max > 0) {
-                    memoryPoolMax.labelValues(poolName).set(max);
+        List<MemoryPoolMXBean> memoryPools = ManagementFactory.getMemoryPoolMXBeans();
+        if (!memoryPools.isEmpty()) {
+            sb.append("# HELP jvm_memory_pool_used_bytes Memory pool usage\n");
+            sb.append("# TYPE jvm_memory_pool_used_bytes gauge\n");
+            for (MemoryPoolMXBean pool : memoryPools) {
+                MemoryUsage usage = pool.getUsage();
+                if (usage != null) {
+                    sb.append("jvm_memory_pool_used_bytes{pool=\"")
+                      .append(escapeLabel(pool.getName()))
+                      .append("\"} ")
+                      .append(usage.getUsed())
+                      .append("\n");
+                }
+            }
+
+            sb.append("# HELP jvm_memory_pool_max_bytes Memory pool maximum\n");
+            sb.append("# TYPE jvm_memory_pool_max_bytes gauge\n");
+            for (MemoryPoolMXBean pool : memoryPools) {
+                MemoryUsage usage = pool.getUsage();
+                if (usage != null && usage.getMax() > 0) {
+                    sb.append("jvm_memory_pool_max_bytes{pool=\"")
+                      .append(escapeLabel(pool.getName()))
+                      .append("\"} ")
+                      .append(usage.getMax())
+                      .append("\n");
                 }
             }
         }
 
         // GC metrics
-        for (GarbageCollectorMXBean gc : ManagementFactory.getGarbageCollectorMXBeans()) {
-            String gcName = gc.getName();
-            long count = gc.getCollectionCount();
-            long time = gc.getCollectionTime();
-            if (count >= 0) {
-                // Note: Counter.inc() adds to current value, but we need absolute values
-                // For proper implementation, track deltas
-                gcCollectionCount.labelValues(gcName).inc(0); // Initialize
+        List<GarbageCollectorMXBean> gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+        if (!gcBeans.isEmpty()) {
+            sb.append("# HELP jvm_gc_collection_count_total GC collection count\n");
+            sb.append("# TYPE jvm_gc_collection_count_total counter\n");
+            for (GarbageCollectorMXBean gc : gcBeans) {
+                if (gc.getCollectionCount() >= 0) {
+                    sb.append("jvm_gc_collection_count_total{gc=\"")
+                      .append(escapeLabel(gc.getName()))
+                      .append("\"} ")
+                      .append(gc.getCollectionCount())
+                      .append("\n");
+                }
             }
-            if (time >= 0) {
-                gcCollectionTime.labelValues(gcName).inc(0); // Initialize
+
+            sb.append("# HELP jvm_gc_collection_time_seconds_total GC collection time\n");
+            sb.append("# TYPE jvm_gc_collection_time_seconds_total counter\n");
+            for (GarbageCollectorMXBean gc : gcBeans) {
+                if (gc.getCollectionTime() >= 0) {
+                    sb.append("jvm_gc_collection_time_seconds_total{gc=\"")
+                      .append(escapeLabel(gc.getName()))
+                      .append("\"} ")
+                      .append(gc.getCollectionTime() / 1000.0)
+                      .append("\n");
+                }
             }
         }
 
         // Thread metrics
         ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
-        threadsCount.set(threadBean.getThreadCount());
-        threadsDaemon.set(threadBean.getDaemonThreadCount());
-        threadsPeak.set(threadBean.getPeakThreadCount());
-    }
+        appendGauge(sb, "jvm_threads_current", "Current thread count", threadBean.getThreadCount());
+        appendGauge(sb, "jvm_threads_daemon", "Daemon thread count", threadBean.getDaemonThreadCount());
+        appendGauge(sb, "jvm_threads_peak", "Peak thread count", threadBean.getPeakThreadCount());
 
-    private void updateCpuMetrics() {
+        // CPU metrics
         try {
             com.sun.management.OperatingSystemMXBean osBean =
                 (com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
-            cpuProcess.set(osBean.getProcessCpuLoad());
-            cpuSystem.set(osBean.getCpuLoad());
+            appendGauge(sb, "process_cpu_usage", "Process CPU usage (0-1)", osBean.getProcessCpuLoad());
+            appendGauge(sb, "system_cpu_usage", "System CPU usage (0-1)", osBean.getCpuLoad());
         } catch (Exception e) {
-            cpuProcess.set(-1);
-            cpuSystem.set(-1);
+            appendGauge(sb, "process_cpu_usage", "Process CPU usage (0-1)", -1);
+            appendGauge(sb, "system_cpu_usage", "System CPU usage (0-1)", -1);
         }
+
+        // Uptime
+        long uptimeSeconds = (System.currentTimeMillis() - serverStartTime) / 1000;
+        appendGauge(sb, "hytale_uptime_seconds", "Server uptime in seconds", uptimeSeconds);
+
+        return sb.toString();
     }
 
-    private void updateUptime() {
-        long uptime = (System.currentTimeMillis() - serverStartTime) / 1000;
-        uptimeSeconds.set(uptime);
+    private void appendGauge(StringBuilder sb, String name, String help, double value) {
+        sb.append("# HELP ").append(name).append(" ").append(help).append("\n");
+        sb.append("# TYPE ").append(name).append(" gauge\n");
+        sb.append(name).append(" ").append(formatValue(value)).append("\n");
+    }
+
+    private void appendGauge(StringBuilder sb, String name, String help, long value) {
+        sb.append("# HELP ").append(name).append(" ").append(help).append("\n");
+        sb.append("# TYPE ").append(name).append(" gauge\n");
+        sb.append(name).append(" ").append(value).append("\n");
+    }
+
+    private void appendCounter(StringBuilder sb, String name, String help, long value) {
+        sb.append("# HELP ").append(name).append(" ").append(help).append("\n");
+        sb.append("# TYPE ").append(name).append(" counter\n");
+        sb.append(name).append(" ").append(value).append("\n");
+    }
+
+    private String formatValue(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return "0";
+        }
+        // Format to avoid scientific notation for small numbers
+        if (value == (long) value) {
+            return String.valueOf((long) value);
+        }
+        return String.format("%.6f", value).replaceAll("0+$", "").replaceAll("\\.$", "");
+    }
+
+    private String escapeLabel(String value) {
+        return value.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n");
     }
 
     /**
      * Increment player join counter.
      */
     public void incrementPlayerJoins() {
-        playerJoins.inc();
+        playerJoins.incrementAndGet();
     }
 
     /**
      * Increment player leave counter.
      */
     public void incrementPlayerLeaves() {
-        playerLeaves.inc();
-    }
-
-    /**
-     * Set server info labels.
-     */
-    public void setServerInfo(String version, String patchline) {
-        serverInfo.setLabelValues(version, patchline);
+        playerLeaves.incrementAndGet();
     }
 }
