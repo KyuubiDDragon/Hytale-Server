@@ -120,11 +120,11 @@ onMounted(() => {
   const systemCheck = setupStore.setupData.systemCheck
   if (systemCheck) {
     const ramCheck = systemCheck.checks.find(c => c.id === 'ram')
-    if (ramCheck?.details) {
-      // Try to extract RAM value from details (e.g., "16 GB available")
-      const match = ramCheck.details.match(/(\d+)\s*GB/i)
+    if (ramCheck?.message) {
+      // Try to extract total RAM value from message (e.g., "16.5 GB total")
+      const match = ramCheck.message.match(/(\d+(?:\.\d+)?)\s*GB/i)
       if (match) {
-        detectedRam.value = parseInt(match[1])
+        detectedRam.value = Math.round(parseFloat(match[1]))
       }
     }
   }

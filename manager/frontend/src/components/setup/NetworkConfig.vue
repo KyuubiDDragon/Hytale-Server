@@ -105,9 +105,13 @@ async function handleContinue() {
       break
   }
 
+  // Map frontend access mode to backend format
+  const backendAccessMode = accessMode.value === 'localhost' ? 'local' :
+                            accessMode.value === 'custom' ? 'domain' : 'lan'
+
   const success = await setupStore.saveStep('network', {
-    accessMode: accessMode.value,
-    customDomain: accessMode.value === 'custom' ? customDomain.value : null,
+    accessMode: backendAccessMode,
+    domain: accessMode.value === 'custom' ? customDomain.value : null,
     trustProxy: trustProxy.value,
     detectedIp: detectedIp.value,
     panelPort: port,
