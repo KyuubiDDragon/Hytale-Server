@@ -3,7 +3,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useServerStats } from '@/composables/useServerStats'
-import { serverApi, type ServerMemoryStats, type UpdateCheckResponse, type PatchlineResponse } from '@/api/server'
+import { serverApi, type ServerMemoryStats, type UpdateCheckResponse, type PatchlineResponse, type DownloaderAuthStatus } from '@/api/server'
 import { authApi, type HytaleAuthStatus } from '@/api/auth'
 import { schedulerApi, type SchedulerStatus } from '@/api/scheduler'
 import StatusCard from '@/components/dashboard/StatusCard.vue'
@@ -31,6 +31,10 @@ const hytaleAuthStatus = ref<HytaleAuthStatus>({ authenticated: false })
 const showAuthBanner = ref(false)
 const showMemoryOnlyWarning = ref(false)
 const enablingPersistence = ref(false)
+
+// Downloader Auth status (for auto-updates)
+const downloaderAuthStatus = ref<DownloaderAuthStatus | null>(null)
+const showDownloaderAuthWarning = ref(false)
 
 // Scheduler status
 const schedulerStatus = ref<SchedulerStatus | null>(null)
@@ -200,6 +204,18 @@ async function fetchPanelPatchline() {
   }
 }
 
+async function checkDownloaderAuth() {
+  try {
+    const status = await serverApi.getDownloaderAuthStatus()
+    downloaderAuthStatus.value = status
+    // Show warning if auth is required (credentials missing or expired)
+    showDownloaderAuthWarning.value = status.authRequired || !status.authenticated
+  } catch {
+    // Silently fail - don't show warning if we can't check
+    showDownloaderAuthWarning.value = false
+  }
+}
+
 // Computed: Always use panel patchline setting (that's what the user configured)
 // The plugin patchline shows what's currently running, but panel setting is the source of truth
 const displayPatchline = computed(() => panelPatchline.value || patchline.value)
@@ -209,6 +225,7 @@ onMounted(() => {
   checkHytaleAuth()
   fetchSchedulerStatus()
   fetchPanelPatchline()
+  checkDownloaderAuth()
   memoryInterval = setInterval(() => {
     fetchServerMemory()
     checkHytaleAuth()
@@ -334,6 +351,62 @@ function refreshAll() {
 
 <template>
   <div class="space-y-6">
+    <!-- Downloader Auth Warning Banner (for auto-updates) -->
+    <div
+      v-if="showDownloaderAuthWarning"
+      class="bg-gradient-to-r from-status-error/20 to-status-warning/20 border-2 border-status-error rounded-lg p-4"
+    >
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0">
+          <svg class="w-8 h-8 text-status-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-white mb-1">
+            {{ t('dashboard.downloaderAuthExpired') }}
+          </h3>
+          <p class="text-gray-300 text-sm mb-3">
+            {{ t('dashboard.downloaderAuthExpiredDesc') }}
+          </p>
+
+          <!-- Show auth code when authenticating -->
+          <div v-if="reAuthenticating && reAuthCode" class="mb-3 p-3 bg-dark-300 rounded-lg border border-dark-50">
+            <p class="text-xs text-gray-400 mb-1">{{ t('dashboard.enterCodeOnHytale') }}:</p>
+            <p class="text-xl font-mono text-white tracking-wider">{{ reAuthCode }}</p>
+            <a
+              v-if="reAuthUrl"
+              :href="reAuthUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-sm text-hytale-orange hover:underline mt-2 inline-block"
+            >
+              {{ t('dashboard.openAuthPage') }} →
+            </a>
+          </div>
+
+          <button
+            @click="initiateDownloaderReAuth"
+            :disabled="reAuthenticating"
+            class="btn btn-primary inline-flex items-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ reAuthenticating ? t('dashboard.waitingForAuth') : t('dashboard.reAuthenticateDownloader') }}
+          </button>
+        </div>
+        <button
+          @click="showDownloaderAuthWarning = false"
+          class="flex-shrink-0 text-gray-400 hover:text-white"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Server Authentication Required Banner (after download complete) -->
     <div
       v-if="showAuthBanner && status?.running && hytaleAuthStatus.serverAuthRequired && hytaleAuthStatus.authType === 'downloader'"

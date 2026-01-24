@@ -963,32 +963,44 @@ router.post('/downloader/initiate-auth', authMiddleware, requirePermission('serv
   try {
     console.log('[Server] Initiating downloader OAuth flow...');
 
-    // Start the downloader in auth mode
-    // The downloader will output OAuth URLs to stdout
-    const authResult = await dockerService.execInContainer(
-      `cd /opt/hytale/downloader && timeout 30 ./hytale-downloader-linux-amd64 -auth-only 2>&1 || true`
+    // First, delete existing credentials to force re-authentication
+    await dockerService.execInContainer(
+      `rm -f /opt/hytale/downloader/.hytale-downloader-credentials.json 2>/dev/null || true`
     );
 
-    if (!authResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: 'Failed to start downloader auth',
-        message: authResult.error,
-      });
-    }
+    // Run the downloader - it will start OAuth flow when credentials are missing
+    // Use a timeout since it will wait for user input
+    const authResult = await dockerService.execInContainer(
+      `cd /opt/hytale/downloader && timeout 60 ./hytale-downloader-linux-amd64 2>&1 || true`
+    );
 
     const output = authResult.output || '';
-    console.log('[Server] Downloader auth output:', output.substring(0, 500));
+    console.log('[Server] Downloader auth output:', output.substring(0, 1000));
 
     // Parse OAuth URLs from output
-    // Format: "Visit: https://oauth.accounts.hytale.com/oauth2/device/verify"
-    // And: "Enter code: XXXXXXXX" or "user_code=XXXXXXXX"
-    const urlMatch = output.match(/(https:\/\/oauth\.accounts\.hytale\.com\/[^\s\n]+)/i);
-    const codeMatch = output.match(/(?:enter\s+code|user_code)[:\s=]+([A-Za-z0-9]{4,12})/i);
+    // The downloader outputs: "Visit: https://oauth.accounts.hytale.com/oauth2/device/verify"
+    // And a user code like: "Enter code: fHmkjxFE" or the code might be in the URL
+    const urlMatch = output.match(/(https:\/\/oauth\.accounts\.hytale\.com\/[^\s\n\]]+)/i);
+
+    // Try multiple patterns for the user code
+    let userCode: string | null = null;
+    const codePatterns = [
+      /(?:enter\s+code|user_code|code)[:\s=]+([A-Za-z0-9]{6,12})/i,
+      /user_code=([A-Za-z0-9]{6,12})/i,
+      /\[([A-Za-z0-9]{8})\]/,  // Code might be in brackets
+    ];
+
+    for (const pattern of codePatterns) {
+      const match = output.match(pattern);
+      if (match) {
+        userCode = match[1].trim();
+        break;
+      }
+    }
 
     if (!urlMatch) {
-      // Maybe already authenticated?
-      if (output.includes('already') && output.includes('authenticated')) {
+      // Check if already authenticated or if download started
+      if (output.includes('Downloading') || output.includes('already') || output.includes('authenticated') || output.includes('success')) {
         return res.json({
           success: true,
           alreadyAuthenticated: true,
@@ -996,15 +1008,18 @@ router.post('/downloader/initiate-auth', authMiddleware, requirePermission('serv
         });
       }
 
+      // Maybe the downloader isn't installed or there's another issue
       return res.status(400).json({
         success: false,
-        error: 'Could not parse OAuth URL from downloader output',
-        output: output.substring(0, 500),
+        error: 'Could not parse OAuth URL from downloader output. The downloader may need to be reinstalled.',
+        output: output.substring(0, 800),
       });
     }
 
     let verificationUrl = urlMatch[1].trim();
-    const userCode = codeMatch ? codeMatch[1].trim() : null;
+
+    // Clean up URL - remove any trailing characters that might have been captured
+    verificationUrl = verificationUrl.replace(/[\]\)\}\s]+$/, '');
 
     // If URL doesn't have user_code, add it
     if (userCode && !verificationUrl.includes('user_code=')) {

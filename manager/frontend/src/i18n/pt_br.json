@@ -122,7 +122,13 @@
       "updating": "Atualizando...",
       "updateSuccess": "Plugin atualizado com sucesso. Reinicie o servidor para ativar.",
       "updateFailed": "Falha na atualização"
-    }
+    },
+    "downloaderAuthExpired": "Autenticação do Downloader Hytale Expirada",
+    "downloaderAuthExpiredDesc": "A autenticação do downloader expirou ou está faltando. Atualizações automáticas do servidor não podem ser realizadas até você autenticar novamente.",
+    "enterCodeOnHytale": "Digite este código na página de autenticação do Hytale",
+    "openAuthPage": "Abrir página de autenticação",
+    "reAuthenticateDownloader": "Reautenticar Downloader",
+    "waitingForAuth": "Aguardando autenticação..."
   },
   "console": {
     "title": "Console do Servidor",
