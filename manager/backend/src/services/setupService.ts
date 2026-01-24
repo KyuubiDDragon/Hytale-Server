@@ -5,6 +5,9 @@ import bcrypt from 'bcryptjs';
 import { config, reloadConfigFromFile } from '../config.js';
 import * as dockerService from './docker.js';
 import { runSystemChecks as runSystemChecksFromService, type SystemCheck, type SystemCheckResult } from './systemCheck.js';
+import { installPlugin as installKyuubiApiPlugin } from './kyuubiApi.js';
+import { saveConfig as saveSchedulerConfig } from './scheduler.js';
+import { installMod } from './modStore.js';
 
 // Re-export system check types and function
 export type { SystemCheck, SystemCheckResult };
@@ -66,6 +69,9 @@ export interface SetupConfig {
   };
   downloadMethod?: 'official' | 'custom' | 'manual';
   autoUpdate?: boolean;
+  patchline?: 'release' | 'pre-release';
+  acceptEarlyPlugins?: boolean;
+  disableSentry?: boolean;
 }
 
 // Partial setup data for step-by-step saving
@@ -297,15 +303,23 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'server-config':
+        // Frontend sends 'name' and 'gameMode', support both naming conventions
         setupConfig.server = {
-          name: (data.serverName as string) || 'Hytale Server',
+          name: (data.name as string) || (data.serverName as string) || 'Hytale Server',
           motd: (data.motd as string) || 'Welcome to Hytale!',
           maxPlayers: (data.maxPlayers as number) || 20,
-          gameMode: (data.gameMode as string) || 'Adventure',
+          gameMode: (data.gameMode as string) || (data.defaultGamemode as string) || 'Adventure',
           password: (data.password as string) || '',
           whitelist: data.whitelist === true,
           allowOp: data.allowOp === true,
         };
+        // Advanced settings
+        if (data.acceptEarlyPlugins !== undefined) {
+          setupConfig.acceptEarlyPlugins = data.acceptEarlyPlugins === true;
+        }
+        if (data.disableSentry !== undefined) {
+          setupConfig.disableSentry = data.disableSentry === true;
+        }
         break;
 
       case 'performance':
@@ -317,16 +331,19 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'automation':
+        // Frontend sends nested objects: { backups: {...}, restart: {...} }
+        const backupsData = data.backups as Record<string, unknown> | undefined;
+        const restartData = data.restart as Record<string, unknown> | undefined;
         setupConfig.automation = {
           backups: {
-            enabled: data.backupsEnabled !== false,
-            interval: (data.backupInterval as string) || '6h',
-            retention: (data.backupRetention as number) || 7,
+            enabled: backupsData?.enabled !== false,
+            interval: (backupsData?.interval as string) || '6h',
+            retention: (backupsData?.retention as number) || 7,
           },
           restart: {
-            enabled: data.restartEnabled === true,
-            schedule: (data.restartSchedule as string) || '0 4 * * *',
-            warnMinutes: (data.restartWarnMinutes as number) || 5,
+            enabled: restartData?.enabled === true,
+            schedule: (restartData?.schedule as string) || '0 4 * * *',
+            warnMinutes: (restartData?.warnMinutes as number) || 5,
           },
         };
         break;
@@ -347,10 +364,11 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'integrations':
+        // Frontend sends 'webmapEnabled', support both naming conventions
         setupConfig.integrations = {
           modtaleApiKey: (data.modtaleApiKey as string) || '',
           stackmartApiKey: (data.stackmartApiKey as string) || '',
-          webmap: data.webmap === true,
+          webmap: data.webmapEnabled === true || data.webmap === true,
         };
         break;
 
@@ -374,9 +392,12 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'server-download':
-        // Server download step - stores download method and auto-update preference
+        // Server download step - stores download method, patchline and auto-update preference
         if (data.method) {
           setupConfig.downloadMethod = data.method as 'official' | 'custom' | 'manual';
+        }
+        if (data.patchline) {
+          setupConfig.patchline = data.patchline as 'release' | 'pre-release';
         }
         if (data.autoUpdate !== undefined) {
           setupConfig.autoUpdate = data.autoUpdate === true;
@@ -391,8 +412,28 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'security-settings':
-        // Security settings step - stores auth configuration status
-        // The actual auth is handled by the setup routes, this just saves the step data
+        // Update server config with security settings
+        if (!setupConfig.server) {
+          setupConfig.server = {
+            name: 'Hytale Server',
+            motd: 'Welcome to Hytale!',
+            maxPlayers: 20,
+            gameMode: 'Adventure',
+            password: '',
+            whitelist: false,
+            allowOp: true,
+          };
+        }
+        // Apply security settings from frontend
+        if (data.password !== undefined) {
+          setupConfig.server.password = (data.password as string) || '';
+        }
+        if (data.whitelist !== undefined) {
+          setupConfig.server.whitelist = data.whitelist === true;
+        }
+        if (data.allowOp !== undefined) {
+          setupConfig.server.allowOp = data.allowOp === true;
+        }
         break;
 
       case 'summary':
@@ -419,6 +460,61 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
       error: error instanceof Error ? error.message : 'Failed to save step data'
     };
   }
+}
+
+/**
+ * Convert setup automation settings to scheduler config format
+ * Setup uses interval format ("6h") and cron format ("0 4 * * *")
+ * Scheduler uses time format ("HH:MM") and time arrays
+ */
+function convertAutomationToSchedulerConfig(automation: SetupConfig['automation']) {
+  if (!automation) return {};
+
+  // Helper to extract time from cron format "minute hour * * *"
+  const extractTimeFromCron = (cron: string): string => {
+    const parts = cron.split(' ');
+    if (parts.length >= 2) {
+      const minute = parts[0].padStart(2, '0');
+      const hour = parts[1].padStart(2, '0');
+      return `${hour}:${minute}`;
+    }
+    return '04:00'; // Default to 4 AM
+  };
+
+  // Helper to calculate backup time from interval
+  // For simplicity, we schedule backups at fixed times based on interval
+  const intervalToBackupTime = (interval: string): string => {
+    // For now, just use 3 AM as default backup time
+    // In a more complex implementation, this could schedule multiple times per day
+    return '03:00';
+  };
+
+  const result: Record<string, unknown> = {};
+
+  // Convert backup settings
+  if (automation.backups) {
+    result.backups = {
+      enabled: automation.backups.enabled,
+      schedule: intervalToBackupTime(automation.backups.interval),
+      retentionDays: automation.backups.retention,
+      beforeRestart: true,
+    };
+  }
+
+  // Convert restart settings
+  if (automation.restart) {
+    const restartTime = extractTimeFromCron(automation.restart.schedule);
+    result.scheduledRestarts = {
+      enabled: automation.restart.enabled,
+      times: automation.restart.enabled ? [restartTime] : [],
+      warningMinutes: [30, 15, 5, 1],
+      warningMessage: 'Server restart in {minutes} minute(s)!',
+      restartMessage: 'Server is restarting now!',
+      createBackup: true,
+    };
+  }
+
+  return result;
 }
 
 /**
@@ -463,12 +559,13 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
 
     // Write panel config
     const panelConfig = {
-      patchline: 'release',
-      acceptEarlyPlugins: false,
-      disableSentry: false,
+      patchline: setupConfig.patchline ?? 'release',
+      acceptEarlyPlugins: setupConfig.acceptEarlyPlugins ?? false,
+      disableSentry: setupConfig.disableSentry ?? false,
       allowOp: setupConfig.server?.allowOp ?? false,
     };
     await writeFile(PANEL_CONFIG_FILE, JSON.stringify(panelConfig, null, 2), 'utf-8');
+    console.log('[Setup] Wrote panel config with patchline:', panelConfig.patchline);
 
     // Write server config.json if server path exists
     if (setupConfig.server) {
@@ -491,10 +588,13 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
         serverConfig.MOTD = setupConfig.server.motd;
         serverConfig.MaxPlayers = setupConfig.server.maxPlayers;
         serverConfig.Password = setupConfig.server.password;
+        serverConfig.Whitelist = setupConfig.server.whitelist ?? false;
+        serverConfig.AllowOp = setupConfig.server.allowOp ?? true;
         if (!serverConfig.Defaults) serverConfig.Defaults = {};
         serverConfig.Defaults.GameMode = setupConfig.server.gameMode;
 
         await writeFile(serverConfigPath, JSON.stringify(serverConfig, null, 2), 'utf-8');
+        console.log('[Setup] Wrote server config.json with all settings');
       } catch {
         // Server directory might not exist yet, skip
         console.log('Note: Server config not written (server directory not ready)');
@@ -525,13 +625,84 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
       integrations: {
         modtaleApiKey: setupConfig.integrations?.modtaleApiKey ?? '',
         stackmartApiKey: setupConfig.integrations?.stackmartApiKey ?? '',
+        webmap: setupConfig.integrations?.webmap ?? false,
       },
+      automation: setupConfig.automation ?? null,
+      plugin: setupConfig.plugin ?? null,
     };
     await writeFile(CONFIG_JSON_FILE, JSON.stringify(mainConfig, null, 2), 'utf-8');
-    console.log('[Setup] Wrote config.json with JWT secret');
+    console.log('[Setup] Wrote config.json with all settings');
+
+    // Install KyuubiAPI plugin if user selected it
+    if (setupConfig.plugin?.kyuubiApiInstalled) {
+      console.log('[Setup] Installing KyuubiAPI plugin...');
+      try {
+        const pluginResult = await installKyuubiApiPlugin();
+        if (pluginResult.success) {
+          console.log('[Setup] KyuubiAPI plugin installed successfully');
+        } else {
+          console.error('[Setup] Failed to install KyuubiAPI plugin:', pluginResult.error);
+        }
+      } catch (pluginError) {
+        console.error('[Setup] Error installing KyuubiAPI plugin:', pluginError);
+      }
+    }
+
+    // Install EasyWebMap plugin if user enabled webmap
+    if (setupConfig.integrations?.webmap) {
+      console.log('[Setup] Installing EasyWebMap plugin...');
+      try {
+        const webmapResult = await installMod('easywebmap');
+        if (webmapResult.success) {
+          console.log('[Setup] EasyWebMap plugin installed successfully:', webmapResult.filename);
+          if (webmapResult.configCreated) {
+            console.log('[Setup] EasyWebMap config created');
+          }
+        } else {
+          // "already installed" is not an error, just info
+          if (webmapResult.error?.includes('already installed')) {
+            console.log('[Setup] EasyWebMap already installed:', webmapResult.error);
+          } else {
+            console.error('[Setup] Failed to install EasyWebMap:', webmapResult.error);
+          }
+        }
+      } catch (webmapError) {
+        console.error('[Setup] Error installing EasyWebMap:', webmapError);
+      }
+    }
+
+    // Apply automation settings to scheduler
+    if (setupConfig.automation) {
+      console.log('[Setup] Applying automation settings to scheduler...');
+      try {
+        // Convert setup automation format to scheduler format
+        const schedulerConfig = convertAutomationToSchedulerConfig(setupConfig.automation);
+        const saved = saveSchedulerConfig(schedulerConfig);
+        if (saved) {
+          console.log('[Setup] Scheduler configuration applied successfully');
+        } else {
+          console.error('[Setup] Failed to save scheduler configuration');
+        }
+      } catch (schedulerError) {
+        console.error('[Setup] Error applying scheduler config:', schedulerError);
+      }
+    }
 
     // Reload config in memory so auth service can use the new JWT secret immediately
     reloadConfigFromFile();
+
+    // Restart server container so newly installed mods get loaded
+    console.log('[Setup] Restarting server to load installed mods...');
+    try {
+      const restartResult = await dockerService.restartContainer();
+      if (restartResult.success) {
+        console.log('[Setup] Server restart initiated successfully');
+      } else {
+        console.error('[Setup] Failed to restart server:', restartResult.error);
+      }
+    } catch (restartError) {
+      console.error('[Setup] Error restarting server:', restartError);
+    }
 
     return { success: true, jwtSecret };
   } catch (error) {

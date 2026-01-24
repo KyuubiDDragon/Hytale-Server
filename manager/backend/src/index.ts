@@ -33,6 +33,7 @@ import { initializePlayerTracking } from './services/players.js';
 import { initializePluginEvents, disconnectFromPluginWebSocket } from './services/pluginEvents.js';
 import { initializeRoles } from './services/roles.js';
 import { isSetupComplete } from './services/setupService.js';
+import { checkAndRunMigration } from './services/migration.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -575,6 +576,10 @@ server.listen(config.port, '0.0.0.0', async () => {
 ║  Server Port: ${config.serverPort.toString().padEnd(32)}║
 ╚═══════════════════════════════════════════════════╝
   `);
+
+  // Check for existing installation and run migration if needed
+  // This must happen BEFORE security check as it may create config files
+  await checkAndRunMigration();
 
   // SECURITY: Check for insecure default credentials
   checkSecurityConfig();

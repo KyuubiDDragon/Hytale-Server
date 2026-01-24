@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useSetupStore } from '@/stores/setup'
+import { setupApi } from '@/api/setup'
 import Button from '@/components/ui/Button.vue'
 
 const { t } = useI18n()
@@ -23,6 +24,21 @@ const completionError = ref<string | null>(null)
 const finalPanelUrl = ref('')
 const finalServerAddress = ref('')
 
+// Port configuration from backend
+const serverPort = ref(5520)
+const panelPort = ref(18080)
+
+// Load port configuration on mount
+onMounted(async () => {
+  try {
+    const ports = await setupApi.getPorts()
+    serverPort.value = ports.serverPort
+    panelPort.value = ports.managerPort
+  } catch (error) {
+    console.error('Failed to load port configuration:', error)
+  }
+})
+
 // Computed configuration summary from setup data
 const configSummary = computed(() => {
   const data = setupStore.setupData
@@ -31,23 +47,19 @@ const configSummary = computed(() => {
   const networkData = data.network as Record<string, unknown> | null
   const accessMode = networkData?.accessMode as string || 'local'
   const domain = networkData?.domain as string | null
-  const panelPort = networkData?.panelPort as number || 18080
   const detectedIp = networkData?.detectedIp as string || 'localhost'
 
-  // Build URLs based on access mode
-  let panelUrl = 'http://localhost:18080'
-  let serverAddress = 'localhost:5520'
+  // Build URLs based on access mode (use ports from backend config)
+  let panelUrl = `http://localhost:${panelPort.value}`
+  let serverAddress = `localhost:${serverPort.value}`
 
   if (accessMode === 'domain' && domain) {
     // Use custom domain
     panelUrl = domain.replace(/\/$/, '') // Remove trailing slash
-    serverAddress = new URL(domain).hostname + ':5520'
+    serverAddress = new URL(domain).hostname + ':' + serverPort.value
   } else if (accessMode === 'lan' && detectedIp) {
-    panelUrl = `http://${detectedIp}:${panelPort}`
-    serverAddress = `${detectedIp}:5520`
-  } else {
-    panelUrl = `http://localhost:${panelPort}`
-    serverAddress = 'localhost:5520'
+    panelUrl = `http://${detectedIp}:${panelPort.value}`
+    serverAddress = `${detectedIp}:${serverPort.value}`
   }
 
   // Get integrations config
