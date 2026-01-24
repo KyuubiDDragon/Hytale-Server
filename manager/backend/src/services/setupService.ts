@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, access, constants } from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { config } from '../config.js';
+import { config, reloadConfigFromFile } from '../config.js';
 import * as dockerService from './docker.js';
 import { runSystemChecks as runSystemChecksFromService, type SystemCheck, type SystemCheckResult } from './systemCheck.js';
 
@@ -529,6 +529,9 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
     };
     await writeFile(CONFIG_JSON_FILE, JSON.stringify(mainConfig, null, 2), 'utf-8');
     console.log('[Setup] Wrote config.json with JWT secret');
+
+    // Reload config in memory so auth service can use the new JWT secret immediately
+    reloadConfigFromFile();
 
     return { success: true, jwtSecret };
   } catch (error) {
