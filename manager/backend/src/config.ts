@@ -148,6 +148,9 @@ export const config = {
   // Game Server Container name (Docker-only, cannot change via UI)
   gameContainerName: process.env.GAME_CONTAINER_NAME || 'hytale',
 
+  // Host data path (base path for all data directories)
+  hostDataPath: process.env.HOST_DATA_PATH || '/opt/hytale',
+
   // Paths (inside manager container - Docker volume mounts)
   // IMPORTANT: These are CONTAINER paths, not host paths!
   // Docker mounts: ${HOST_DATA_PATH}/mods (host) → /opt/hytale/mods (container)
