@@ -1668,11 +1668,24 @@ router.post('/auth/server/start', async (_req: Request, res: Response) => {
       return;
     }
 
+    // Construct direct URL with user_code if we have base URL and code
+    let verificationUrlDirect = oauthInfo.verificationUrlDirect || '';
+    if (!verificationUrlDirect && serverAuthState.authUrl && serverAuthState.authCode) {
+      try {
+        const url = new URL(serverAuthState.authUrl);
+        url.searchParams.set('user_code', serverAuthState.authCode);
+        verificationUrlDirect = url.toString();
+      } catch {
+        // URL parsing failed
+      }
+    }
+
     res.json({
       success: true,
       deviceCode: serverAuthState.authCode, // Frontend expects deviceCode to be truthy
       userCode: serverAuthState.authCode,
       verificationUrl: serverAuthState.authUrl,
+      verificationUrlDirect: verificationUrlDirect,
       expiresIn: 900,
       pollInterval: 5,
     });
