@@ -3,18 +3,18 @@ plugins {
 }
 
 group = 'com.kyuubisoft'
-version = '1.1.6'
+version = '1.2.1'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
 
-// No external repositories needed - all dependencies are in HytaleServer.jar
+// No external repositories needed - Prometheus format is implemented manually
 
 dependencies {
     // Hytale Server API (includes Netty, Gson, etc.)
-    compileOnly files('../lib/HytaleServer.jar')
+    compileOnly files('lib/HytaleServer.jar')
 }
 
 jar {

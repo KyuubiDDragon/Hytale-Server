@@ -25,12 +25,15 @@ import managementRoutes from './routes/management.js';
 import schedulerRoutes from './routes/scheduler.js';
 import assetsRoutes from './routes/assets.js';
 import rolesRouter from './routes/roles.js';
+import setupRoutes from './routes/setup.js';
 
 // Services
 import { startSchedulers } from './services/scheduler.js';
 import { initializePlayerTracking } from './services/players.js';
 import { initializePluginEvents, disconnectFromPluginWebSocket } from './services/pluginEvents.js';
 import { initializeRoles } from './services/roles.js';
+import { isSetupComplete } from './services/setupService.js';
+import { checkAndRunMigration, migrateUpdateConfig, checkPanelVersionAndFeatures } from './services/migration.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -51,7 +54,8 @@ setupWebSocket(wss);
 
 // WebMap Proxy - MUST be mounted BEFORE helmet so our CSP doesn't affect WebMap content
 // The WebMap loads Leaflet from unpkg.com CDN which would be blocked by our CSP
-const webMapTarget = `http://${config.gameContainerName}:18081`;
+const webMapTarget = `http://${config.gameContainerName}:${config.webMapPort}`;
+console.log(`[WebMap] Proxy configured for: ${webMapTarget}`);
 
 const createWebMapProxyErrorHandler = () => ({
   error: (err: Error, _req: unknown, res: unknown) => {
@@ -344,7 +348,68 @@ app.use((req, res, next) => {
 // SECURITY: Limit JSON body size to prevent memory exhaustion attacks
 app.use(express.json({ limit: '100kb' }));
 
-// API Routes
+// ============================================================
+// Setup Routes - MUST be BEFORE auth middleware and other routes
+// These routes work without authentication during first-run setup
+// ============================================================
+app.use('/api/setup', setupRoutes);
+
+// ============================================================
+// Setup Redirect Middleware
+// If setup is not complete, redirect non-setup API requests
+// and frontend routes to the setup wizard
+// ============================================================
+app.use(async (req, res, next) => {
+  // Skip for setup routes (already handled above)
+  if (req.path.startsWith('/api/setup')) {
+    return next();
+  }
+
+  // Skip for health check
+  if (req.path === '/api/health') {
+    return next();
+  }
+
+  // Skip for WebMap proxy routes
+  if (req.path.startsWith('/api/webmap') || req.path.startsWith('/api/worlds') || req.path.startsWith('/api/tiles')) {
+    return next();
+  }
+
+  // Skip for static assets
+  if (req.path.startsWith('/assets') || req.path.endsWith('.js') || req.path.endsWith('.css') ||
+      req.path.endsWith('.png') || req.path.endsWith('.svg') || req.path.endsWith('.ico')) {
+    return next();
+  }
+
+  try {
+    const setupComplete = await isSetupComplete();
+
+    if (!setupComplete) {
+      // For API requests, return 503 with setup required message
+      if (req.path.startsWith('/api/')) {
+        res.status(503).json({
+          error: 'Setup required',
+          message: 'The panel setup has not been completed. Please complete the setup wizard first.',
+          setupRequired: true,
+          redirectUrl: '/setup',
+        });
+        return;
+      }
+
+      // For frontend routes (except /setup), the SPA will handle the redirect
+      // based on the /api/setup/status response
+    }
+  } catch (error) {
+    // On error checking setup status, continue normally
+    console.error('[Setup Check] Error checking setup status:', error);
+  }
+
+  next();
+});
+
+// ============================================================
+// API Routes (require setup to be complete)
+// ============================================================
 app.use('/api/auth', authRoutes);
 app.use('/api/server', serverRoutes);
 app.use('/api/console', consoleRoutes);
@@ -507,10 +572,27 @@ server.listen(config.port, '0.0.0.0', async () => {
 ║         KyuubiSoft Panel v2.0.0                   ║
 ║         Hytale Server Management                  ║
 ╠═══════════════════════════════════════════════════╣
-║  Panel running on http://0.0.0.0:${config.port}          ║
-║  Target container: ${config.gameContainerName.padEnd(28)}║
+║  Panel: http://localhost:${config.externalPort.toString().padEnd(23)}║
+║  Container: ${config.gameContainerName.padEnd(34)}║
+║  Server Port: ${config.serverPort.toString().padEnd(32)}║
 ╚═══════════════════════════════════════════════════╝
   `);
+
+  // Check for existing installation and run migration if needed
+  // This must happen BEFORE security check as it may create config files
+  await checkAndRunMigration();
+
+  // Migrate UpdateConfig for native update system (Hytale 24.01.2026+)
+  const updateMigration = await migrateUpdateConfig();
+  if (updateMigration.migrated) {
+    console.log('[Startup] Migrated to native update system');
+  }
+
+  // Check panel version and new features
+  const versionCheck = await checkPanelVersionAndFeatures();
+  if (versionCheck.newFeatures.length > 0) {
+    console.log('[Startup] New features available:', versionCheck.newFeatures);
+  }
 
   // SECURITY: Check for insecure default credentials
   checkSecurityConfig();

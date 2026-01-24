@@ -75,11 +75,67 @@ export interface UpdateCheckResponse {
   latestVersion: string
   updateAvailable: boolean
   patchline?: string
+  authRequired?: boolean // NEW: indicates if downloader needs re-authentication
   versions?: {
     release: string
     preRelease: string
   }
   message: string
+}
+
+export interface DownloaderAuthStatus {
+  authenticated: boolean
+  credentialsExist: boolean
+  authRequired: boolean
+  error?: string
+}
+
+export interface DownloaderAuthInitResponse {
+  success: boolean
+  alreadyAuthenticated?: boolean
+  verificationUrl?: string
+  userCode?: string
+  expiresIn?: number
+  error?: string
+  message?: string
+}
+
+export interface DownloaderAuthPollResponse {
+  completed: boolean
+  expired?: boolean
+  version?: string
+  verificationUrl?: string
+  userCode?: string
+  error?: string
+}
+
+// Native Update System Types (Hytale 24.01.2026+)
+export interface UpdateConfig {
+  enabled: boolean
+  checkIntervalSeconds: number
+  notifyPlayersOnAvailable: boolean
+  patchline: 'release' | 'pre-release'
+  runBackupBeforeUpdate: boolean
+  backupConfigBeforeUpdate: boolean
+  autoApplyMode: 'DISABLED' | 'WHEN_EMPTY' | 'SCHEDULED'
+  autoApplyDelayMinutes: number
+}
+
+export interface NativeUpdateStatus {
+  available: boolean
+  currentVersion: string
+  latestVersion: string
+  state: 'IDLE' | 'CHECKING' | 'DOWNLOADING' | 'READY' | 'APPLYING' | 'ERROR'
+  progress?: number
+  message?: string
+  error?: string
+}
+
+export interface NewFeaturesStatus {
+  hasNewFeatures: boolean
+  features: string[]
+  dismissed: boolean
+  panelVersion: string
 }
 
 export interface PatchlineResponse {
@@ -160,6 +216,77 @@ export interface PluginServerInfo {
   startedAt: string
   tps: number
   mspt: number
+}
+
+// Extended TPS metrics from Prometheus endpoint
+export interface PluginTpsMetrics {
+  current: number
+  average: number
+  min: number
+  max: number
+  target: number
+  msptCurrent: number
+  msptAverage: number
+}
+
+// Memory pool info
+export interface MemoryPool {
+  name: string
+  used: number
+  max: number
+  percent: number
+}
+
+// GC stats
+export interface GcStats {
+  name: string
+  count: number
+  timeSeconds: number
+}
+
+// Thread metrics
+export interface ThreadMetrics {
+  current: number
+  daemon: number
+  peak: number
+}
+
+// Extended memory metrics
+export interface ExtendedMemoryMetrics {
+  heapUsed: number
+  heapMax: number
+  heapCommitted: number
+  heapPercent: number
+  nonHeapUsed: number
+  nonHeapCommitted: number
+  pools: MemoryPool[]
+}
+
+// Extended player metrics
+export interface ExtendedPlayerMetrics {
+  online: number
+  max: number
+  joins: number
+  leaves: number
+  perWorld: Record<string, number>
+}
+
+// Prometheus metrics response
+export interface PrometheusMetrics {
+  raw: string
+  parsed?: {
+    tps: PluginTpsMetrics
+    players: ExtendedPlayerMetrics
+    memory: ExtendedMemoryMetrics
+    threads: ThreadMetrics
+    gc: GcStats[]
+    cpu: {
+      process: number
+      system: number
+    }
+    uptime: number
+    worlds: number
+  }
 }
 
 export interface PluginPlayer {
@@ -429,6 +556,16 @@ export const serverApi = {
     return response.data
   },
 
+  async getPluginPrometheusMetrics(): Promise<PluginApiResponse<PrometheusMetrics>> {
+    const response = await api.get<PluginApiResponse<PrometheusMetrics>>('/server/plugin/metrics')
+    return response.data
+  },
+
+  async getPluginTpsMetrics(): Promise<PluginApiResponse<PluginTpsMetrics>> {
+    const response = await api.get<PluginApiResponse<PluginTpsMetrics>>('/server/plugin/tps')
+    return response.data
+  },
+
   // Player detail methods
   async getPluginPlayerDetails(playerName: string): Promise<PluginApiResponse<PluginPlayerDetails>> {
     const response = await api.get<PluginApiResponse<PluginPlayerDetails>>(`/server/plugin/players/${encodeURIComponent(playerName)}/details`)
@@ -453,6 +590,69 @@ export const serverApi = {
 
   async getFilePlayerInventory(playerName: string): Promise<PluginApiResponse<FilePlayerInventory>> {
     const response = await api.get<PluginApiResponse<FilePlayerInventory>>(`/server/players/${encodeURIComponent(playerName)}/file/inventory`)
+    return response.data
+  },
+
+  // Downloader authentication methods
+  async getDownloaderAuthStatus(): Promise<DownloaderAuthStatus> {
+    const response = await api.get<DownloaderAuthStatus>('/server/downloader/auth-status')
+    return response.data
+  },
+
+  async initiateDownloaderAuth(): Promise<DownloaderAuthInitResponse> {
+    const response = await api.post<DownloaderAuthInitResponse>('/server/downloader/initiate-auth')
+    return response.data
+  },
+
+  async pollDownloaderAuth(): Promise<DownloaderAuthPollResponse> {
+    const response = await api.get<DownloaderAuthPollResponse>('/server/downloader/auth-poll')
+    return response.data
+  },
+
+  // Native Update System Methods (Hytale 24.01.2026+)
+  async getUpdateConfig(): Promise<UpdateConfig> {
+    const response = await api.get<UpdateConfig>('/server/update-config')
+    return response.data
+  },
+
+  async saveUpdateConfig(config: Partial<UpdateConfig>): Promise<{ success: boolean; message?: string; data?: UpdateConfig }> {
+    const response = await api.put<{ success: boolean; message?: string; data?: UpdateConfig }>('/server/update-config', config)
+    return response.data
+  },
+
+  async getUpdateStatus(): Promise<{ success: boolean; data?: NativeUpdateStatus; error?: string }> {
+    const response = await api.get<{ success: boolean; data?: NativeUpdateStatus; error?: string }>('/server/update-status')
+    return response.data
+  },
+
+  async checkForNativeUpdate(): Promise<{ success: boolean; data?: NativeUpdateStatus; message?: string; error?: string }> {
+    const response = await api.post<{ success: boolean; data?: NativeUpdateStatus; message?: string; error?: string }>('/server/update-check')
+    return response.data
+  },
+
+  async downloadNativeUpdate(): Promise<{ success: boolean; message?: string; error?: string }> {
+    const response = await api.post<{ success: boolean; message?: string; error?: string }>('/server/update-download')
+    return response.data
+  },
+
+  async applyNativeUpdate(): Promise<{ success: boolean; message?: string; warning?: string; error?: string }> {
+    const response = await api.post<{ success: boolean; message?: string; warning?: string; error?: string }>('/server/update-apply')
+    return response.data
+  },
+
+  async cancelNativeUpdate(): Promise<{ success: boolean; message?: string; error?: string }> {
+    const response = await api.post<{ success: boolean; message?: string; error?: string }>('/server/update-cancel')
+    return response.data
+  },
+
+  // New Features Banner
+  async getNewFeaturesStatus(): Promise<NewFeaturesStatus> {
+    const response = await api.get<NewFeaturesStatus>('/server/new-features')
+    return response.data
+  },
+
+  async dismissNewFeaturesBanner(): Promise<{ success: boolean }> {
+    const response = await api.post<{ success: boolean }>('/server/new-features/dismiss')
     return response.data
   },
 }

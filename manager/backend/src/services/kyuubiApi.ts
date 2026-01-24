@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Plugin version (should match the built JAR version)
-export const PLUGIN_VERSION = '1.1.6';
+export const PLUGIN_VERSION = '1.2.1';
 export const PLUGIN_PORT = 18085;
 export const PLUGIN_JAR_NAME = `KyuubiSoftAPI-${PLUGIN_VERSION}.jar`;
 
@@ -81,9 +81,12 @@ export function getInstalledVersion(): string | null {
 /**
  * Get the host for connecting to the plugin API
  * Uses the game container name for Docker networking
+ * Note: config.gameContainerName already has STACK_NAME fallback built in
  */
 function getPluginHost(): string {
-  return process.env.GAME_CONTAINER_NAME || config.gameContainerName || 'hytale';
+  const host = config.gameContainerName;
+  console.log(`[KyuubiAPI] Using plugin host: ${host}`);
+  return host;
 }
 
 /**
@@ -212,6 +215,36 @@ export async function getServerInfoFromPlugin(): Promise<PluginApiResponse> {
  */
 export async function getMemoryFromPlugin(): Promise<PluginApiResponse> {
   return fetchFromPlugin('/api/server/memory');
+}
+
+/**
+ * Get Prometheus metrics from the plugin API
+ * Returns raw Prometheus text format
+ */
+export async function getPrometheusMetrics(): Promise<{ success: boolean; data?: string; error?: string }> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const host = getPluginHost();
+    const response = await fetch(`http://${host}:${PLUGIN_PORT}/metrics`, {
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}` };
+    }
+
+    const data = await response.text();
+    return { success: true, data };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to connect to plugin'
+    };
+  }
 }
 
 /**

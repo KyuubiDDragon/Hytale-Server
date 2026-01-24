@@ -2,6 +2,149 @@
 
 All notable changes to the Hytale Server Manager will be documented in this file.
 
+## [2.1.1] - 2026-01-24 - Performance Metrics & Bug Fixes
+
+### Added
+
+- **Advanced Performance Metrics** (KyuubiAPI Plugin 1.2.1)
+  - TPS Tracking: Current, Average, Min, Max (60 second window)
+  - MSPT: Milliseconds per tick with trend analysis
+  - JVM Details: Heap, Non-Heap, Memory Pools breakdown
+  - Threads: Current, Daemon, Peak thread counts
+  - GC Stats: Collections count per garbage collector
+  - Session Stats: Player joins/leaves since server start
+  - Players per World: Real-time breakdown by world
+  - Location: `plugins/kyuubisoft-api/`, `manager/frontend/src/views/Performance.vue`
+
+- **Prometheus Metrics Endpoint** (KyuubiAPI Plugin)
+  - Endpoint: `/metrics` for Prometheus/Grafana integration
+  - Includes all server metrics in Prometheus format
+  - Location: `plugins/kyuubisoft-api/src/main/java/com/kyuubisoft/api/metrics/`
+
+- **EasyWebMap Config Auto-Fix**
+  - `ensureEasyWebMapConfig()` function to fix port after mod startup
+  - Automatically corrects httpPort if mod creates default config
+  - Called 10 seconds after server restart during setup
+  - Location: `manager/backend/src/services/modStore.ts`
+
+- **MaxPlayers Fallback** (Dashboard)
+  - When KyuubiAPI plugin unavailable, reads MaxPlayers from config.json
+  - Uses quick-settings API as fallback source
+  - Location: `manager/frontend/src/composables/useServerStats.ts`
+
+### Fixed
+
+- **KyuubiAPI Plugin: MaxPlayers was hardcoded to 100**
+  - Now reads actual `MaxPlayers` value from server config.json
+  - Location: `plugins/kyuubisoft-api/src/main/java/com/kyuubisoft/api/handlers/ServerHandler.java`
+
+- **EasyWebMap Config Not Created**
+  - External mod registry was overwriting built-in configTemplate
+  - Registry merge now preserves configTemplate/configPath from built-in
+  - Added extensive debug logging for config creation
+  - Location: `manager/backend/src/services/modStore.ts`
+
+- **Container Name Resolution**
+  - Added `STACK_NAME` as fallback for `gameContainerName`
+  - Simplified plugin host resolution in kyuubiApi.ts and pluginEvents.ts
+  - Fixes issues with multiple server stacks
+  - Location: `manager/backend/src/config.ts`, `manager/backend/src/services/kyuubiApi.ts`
+
+- **Setup Wizard Timing Issues**
+  - Increased server restart delay from 1s to 3s
+  - Added 500ms filesystem sync delay after config writes
+  - Added config file verification after write
+  - Location: `manager/backend/src/services/setupService.ts`
+
+### Changed
+
+- **KyuubiAPI Plugin Version**: 1.2.0 → 1.2.1
+- **Debug Logging**: Added extensive logging for mod installation and config creation
+
+## [2.1.0] - 2026-01-24 - Native Update System
+
+### Added
+
+- **Native Hytale Update System Integration**: Full support for Hytale's native update mechanism (24.01.2026+)
+  - Exit Code 8 restart loop in `start-server.sh` for automatic update restarts
+  - Updater volume mount (`/opt/hytale/server/updater`) for staged update persistence
+  - UpdateConfig management via panel Configuration page
+  - Location: `start-server.sh`, `docker-compose.yml`, `Configuration.vue`
+
+- **UpdateConfig UI**: Complete configuration interface for native updates
+  - Enable/disable update checking
+  - Check interval configuration (1 hour, 6 hours, 12 hours, 24 hours)
+  - Player notification toggle when updates are available
+  - Patchline selection (release/pre-release)
+  - Backup options before update (full backup, config-only backup)
+  - Auto-apply mode (disabled, when empty, scheduled)
+  - Auto-apply delay configuration (1-30 minutes)
+  - Location: `manager/frontend/src/views/Configuration.vue`
+
+- **New Features Banner**: Dashboard notification for panel updates
+  - Displays after panel update when new features are available
+  - Lists new features with descriptions
+  - Quick-configure button to navigate to settings
+  - Dismissible banner that remembers user preference
+  - Location: `manager/frontend/src/views/Dashboard.vue`
+
+- **Panel Version Tracking**: Automatic version detection and migration
+  - `CURRENT_PANEL_VERSION` constant for version tracking
+  - `VERSION_FEATURES` mapping for feature announcements
+  - `checkPanelVersionAndFeatures()` for update detection
+  - `migrateUpdateConfig()` for existing installation upgrades
+  - Location: `manager/backend/src/services/migration.ts`
+
+- **New API Endpoints**:
+  - `GET /api/config/update` - Retrieve current UpdateConfig
+  - `PUT /api/config/update` - Save UpdateConfig changes
+  - `GET /api/new-features` - Get new features status for banner
+  - `POST /api/new-features/dismiss` - Dismiss the new features banner
+  - Location: `manager/backend/src/routes/server.ts`
+
+- **Setup Wizard Integration**: New servers get UpdateConfig automatically
+  - `finalizeSetup()` now writes UpdateConfig to server config.json
+  - Uses setup wizard patchline and autoUpdate preferences
+  - Location: `manager/backend/src/services/setupService.ts`
+
+- **Translations**: Full localization for native update system
+  - English, German, and Brazilian Portuguese translations
+  - Dashboard new features banner texts
+  - Configuration UpdateConfig labels and descriptions
+  - Location: `manager/frontend/src/i18n/{en,de,pt_br}.json`
+
+- **Console Command**: Added `/update` to allowed game commands whitelist
+  - Location: `manager/backend/src/utils/sanitize.ts`
+
+### Changed
+
+- **Docker Compose**: Added updater volume for staged update persistence
+  - New volume: `${HOST_DATA_PATH:-/opt/hytale}/updater:/opt/hytale/server/updater`
+
+- **Start Script**: Implemented Exit Code 8 restart loop
+  - Server automatically restarts when update is staged
+  - 2-second delay between restart cycles
+  - Proper exit code propagation for non-update exits
+
+### Technical Details
+
+The native update system works as follows:
+1. Hytale server checks for updates based on `updateConfig.checkIntervalSeconds`
+2. When update is available, server downloads to `updater/staging/`
+3. Server exits with code 8 to signal update ready
+4. `start-server.sh` detects exit code 8 and restarts the server
+5. Server applies staged update on restart
+
+UpdateConfig options:
+- `enabled`: Master toggle for update checking
+- `checkIntervalSeconds`: How often to check (3600-86400)
+- `notifyPlayersOnAvailable`: Broadcast message when update found
+- `patchline`: "release" or "pre-release"
+- `runBackupBeforeUpdate`: Create full backup before applying
+- `backupConfigBeforeUpdate`: Backup config.json only
+- `autoApplyMode`: "DISABLED", "WHEN_EMPTY", "SCHEDULED"
+- `autoApplyDelayMinutes`: Delay before auto-apply (1-30)
+
 ## [2.0.0] - 2026-01-19 - Security Release (Production Ready)
 
 ### Security

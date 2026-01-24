@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { readdir, readFile, writeFile, stat } from 'fs/promises';
+import { readdir, readFile, writeFile, stat, access, constants } from 'fs/promises';
 import path from 'path';
 import { authMiddleware } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
@@ -7,6 +7,7 @@ import * as dockerService from '../services/docker.js';
 import * as kyuubiApiService from '../services/kyuubiApi.js';
 import { getPlayerInventoryFromFile, getPlayerDetailsFromFile } from '../services/players.js';
 import { config } from '../config.js';
+import { dismissNewFeaturesBanner } from '../services/migration.js';
 
 const router = Router();
 
@@ -435,24 +436,95 @@ router.put('/allow-op', authMiddleware, requirePermission('config.edit'), async 
   }
 });
 
+// Helper to check if downloader credentials exist
+async function checkDownloaderCredentials(): Promise<{ exists: boolean; error?: string }> {
+  // Check multiple possible locations for downloader credentials
+  const credentialPaths = [
+    '/opt/hytale/downloader/.hytale-downloader-credentials.json',
+    '/opt/hytale/auth/credentials.json',
+    '/opt/hytale/auth/oauth_credentials.json',
+  ];
+
+  for (const credPath of credentialPaths) {
+    try {
+      await access(credPath, constants.R_OK);
+      console.log(`[Server] Found downloader credentials at: ${credPath}`);
+      return { exists: true };
+    } catch {
+      // Continue checking
+    }
+  }
+
+  console.log('[Server] No downloader credentials found');
+  return { exists: false, error: 'Downloader credentials not found. Re-authentication required.' };
+}
+
 // Helper to get latest version for a patchline
 // SECURITY: Defense-in-depth validation - even though callers use hardcoded values
 const VALID_PATCHLINES = ['release', 'pre-release'] as const;
-async function getLatestVersion(patchline: string): Promise<string> {
+
+interface VersionCheckResult {
+  version: string;
+  authRequired?: boolean;
+  error?: string;
+}
+
+async function getLatestVersion(patchline: string): Promise<VersionCheckResult> {
   // SECURITY: Validate patchline to prevent command injection
   if (!VALID_PATCHLINES.includes(patchline as typeof VALID_PATCHLINES[number])) {
     console.error(`Invalid patchline attempted: ${patchline}`);
-    return 'unknown';
+    return { version: 'unknown', error: 'Invalid patchline' };
   }
 
+  // Run downloader and capture both stdout and stderr to detect auth issues
   const checkResult = await dockerService.execInContainer(
-    `cd /opt/hytale/downloader && ./hytale-downloader-linux-amd64 -patchline ${patchline} -print-version 2>/dev/null | grep -oE "[0-9]+\\.[0-9]+\\.[0-9]+" | head -1`
+    `cd /opt/hytale/downloader && ./hytale-downloader-linux-amd64 -patchline ${patchline} -print-version 2>&1`
   );
 
-  if (checkResult.success && checkResult.output) {
-    return checkResult.output.trim();
+  if (!checkResult.success) {
+    console.error('[Server] Downloader exec failed:', checkResult.error);
+    return { version: 'unknown', error: checkResult.error };
   }
-  return 'unknown';
+
+  const output = checkResult.output || '';
+
+  // Check for authentication errors in output
+  const authErrorPatterns = [
+    /unauthorized/i,
+    /authentication.*required/i,
+    /invalid.*token/i,
+    /token.*expired/i,
+    /login.*required/i,
+    /401/,
+    /403/,
+    /no.*credentials/i,
+    /credentials.*not.*found/i,
+    /please.*authenticate/i,
+  ];
+
+  for (const pattern of authErrorPatterns) {
+    if (pattern.test(output)) {
+      console.log('[Server] Downloader auth error detected:', output.substring(0, 200));
+      return { version: 'unknown', authRequired: true, error: 'Authentication required' };
+    }
+  }
+
+  // Extract version number from output
+  const versionMatch = output.match(/[0-9]+\.[0-9]+\.[0-9]+/);
+  if (versionMatch) {
+    return { version: versionMatch[0] };
+  }
+
+  // If no version found but also no auth error, credentials might be missing
+  // Check if credentials exist
+  const credCheck = await checkDownloaderCredentials();
+  if (!credCheck.exists) {
+    return { version: 'unknown', authRequired: true, error: credCheck.error };
+  }
+
+  // No version found, but credentials exist - might be a network issue
+  console.log('[Server] No version found in output:', output.substring(0, 200));
+  return { version: 'unknown', error: 'Could not fetch version. Check network connection.' };
 }
 
 // GET /api/server/check-update - Check if a Hytale server update is available
@@ -472,32 +544,47 @@ router.get('/check-update', authMiddleware, requirePermission('server.view_statu
     const currentPatchline = panelConfig.patchline;
 
     // Check both patchlines in parallel
-    const [releaseVersion, preReleaseVersion] = await Promise.all([
+    const [releaseResult, preReleaseResult] = await Promise.all([
       getLatestVersion('release'),
       getLatestVersion('pre-release')
     ]);
 
+    // Check if any auth is required
+    const authRequired = releaseResult.authRequired || preReleaseResult.authRequired;
+
     // Check if update is available for current patchline
-    const latestVersion = currentPatchline === 'release' ? releaseVersion : preReleaseVersion;
+    const latestVersionResult = currentPatchline === 'release' ? releaseResult : preReleaseResult;
+    const latestVersion = latestVersionResult.version;
     const updateAvailable = installedVersion !== 'unknown' &&
                            latestVersion !== 'unknown' &&
                            installedVersion !== latestVersion;
+
+    // Determine appropriate message
+    let message: string;
+    if (authRequired) {
+      message = 'Downloader authentication required. Please re-authenticate to check for updates.';
+    } else if (updateAvailable) {
+      message = `Update available: ${installedVersion} → ${latestVersion}`;
+    } else if (installedVersion === latestVersion) {
+      message = 'Server is up to date';
+    } else if (latestVersion === 'unknown') {
+      message = 'Could not fetch latest version. Check network connection or re-authenticate.';
+    } else {
+      message = 'Could not determine update status';
+    }
 
     res.json({
       installedVersion,
       latestVersion,
       updateAvailable,
       patchline: currentPatchline,
+      authRequired, // NEW: indicates if re-authentication is needed
       // Include both patchline versions
       versions: {
-        release: releaseVersion,
-        preRelease: preReleaseVersion
+        release: releaseResult.version,
+        preRelease: preReleaseResult.version
       },
-      message: updateAvailable
-        ? `Update available: ${installedVersion} → ${latestVersion}`
-        : installedVersion === latestVersion
-          ? 'Server is up to date'
-          : 'Could not determine update status'
+      message,
     });
   } catch (error) {
     res.status(500).json({
@@ -722,6 +809,188 @@ router.get('/plugin/memory', authMiddleware, requirePermission('server.view_stat
   }
 });
 
+// GET /api/server/plugin/metrics - Get Prometheus metrics from plugin API
+router.get('/plugin/metrics', authMiddleware, requirePermission('performance.view'), async (_req: Request, res: Response) => {
+  try {
+    const result = await kyuubiApiService.getPrometheusMetrics();
+    if (!result.success) {
+      res.status(503).json({ success: false, error: result.error });
+      return;
+    }
+
+    // Parse Prometheus text format into structured data
+    const raw = result.data || '';
+    const parsed = parsePrometheusMetrics(raw);
+
+    res.json({
+      success: true,
+      data: {
+        raw,
+        parsed
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get Prometheus metrics from plugin',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/server/plugin/tps - Get extended TPS metrics from plugin API
+router.get('/plugin/tps', authMiddleware, requirePermission('performance.view'), async (_req: Request, res: Response) => {
+  try {
+    const result = await kyuubiApiService.getPrometheusMetrics();
+    if (!result.success) {
+      res.status(503).json({ success: false, error: result.error });
+      return;
+    }
+
+    const raw = result.data || '';
+    const tpsMetrics = parseTpsMetrics(raw);
+
+    res.json({
+      success: true,
+      data: tpsMetrics
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get TPS metrics from plugin',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Helper function to parse Prometheus text format
+function parsePrometheusMetrics(raw: string): Record<string, unknown> {
+  const lines = raw.split('\n').filter(line => line && !line.startsWith('#'));
+  const metrics: Record<string, number> = {};
+  const labeledMetrics: Record<string, Record<string, number>> = {};
+
+  for (const line of lines) {
+    // Match metrics with labels: metric_name{label="value"} 123.45
+    const labelMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\{([^}]+)\}\s+([\d.eE+-]+)/);
+    if (labelMatch) {
+      const metricName = labelMatch[1];
+      const labelStr = labelMatch[2];
+      const value = parseFloat(labelMatch[3]);
+
+      // Parse label (e.g., pool="G1 Eden Space" or gc="G1 Young Generation")
+      const labelValueMatch = labelStr.match(/(?:pool|gc|world)="([^"]+)"/);
+      if (labelValueMatch) {
+        if (!labeledMetrics[metricName]) {
+          labeledMetrics[metricName] = {};
+        }
+        labeledMetrics[metricName][labelValueMatch[1]] = value;
+      }
+      continue;
+    }
+
+    // Match simple metrics: metric_name 123.45
+    const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s+([\d.eE+-]+)/);
+    if (match) {
+      metrics[match[1]] = parseFloat(match[2]);
+    }
+  }
+
+  // Parse memory pools
+  const memoryPools: Array<{ name: string; used: number; max: number; percent: number }> = [];
+  const poolUsed = labeledMetrics['jvm_memory_pool_used_bytes'] || {};
+  const poolMax = labeledMetrics['jvm_memory_pool_max_bytes'] || {};
+  for (const poolName of Object.keys(poolUsed)) {
+    const used = poolUsed[poolName] || 0;
+    const max = poolMax[poolName] || 0;
+    memoryPools.push({
+      name: poolName,
+      used,
+      max,
+      percent: max > 0 ? (used / max) * 100 : 0,
+    });
+  }
+
+  // Parse GC stats
+  const gcStats: Array<{ name: string; count: number; timeSeconds: number }> = [];
+  const gcCount = labeledMetrics['jvm_gc_collection_count_total'] || {};
+  const gcTime = labeledMetrics['jvm_gc_collection_time_seconds_total'] || {};
+  for (const gcName of Object.keys(gcCount)) {
+    gcStats.push({
+      name: gcName,
+      count: gcCount[gcName] || 0,
+      timeSeconds: gcTime[gcName] || 0,
+    });
+  }
+
+  // Parse players per world
+  const playersPerWorld: Record<string, number> = labeledMetrics['hytale_players_world'] || {};
+
+  return {
+    tps: {
+      current: metrics['hytale_tps_current'] ?? 20,
+      average: metrics['hytale_tps_average'] ?? 20,
+      min: metrics['hytale_tps_min'] ?? 20,
+      max: metrics['hytale_tps_max'] ?? 20,
+      target: metrics['hytale_tps_target'] ?? 20,
+      msptCurrent: metrics['hytale_mspt_current'] ?? 50,
+      msptAverage: metrics['hytale_mspt_average'] ?? 50,
+    },
+    players: {
+      online: metrics['hytale_players_online'] ?? 0,
+      max: metrics['hytale_players_max'] ?? 100,
+      joins: metrics['hytale_player_joins_total'] ?? 0,
+      leaves: metrics['hytale_player_leaves_total'] ?? 0,
+      perWorld: playersPerWorld,
+    },
+    memory: {
+      heapUsed: metrics['jvm_memory_heap_used_bytes'] ?? 0,
+      heapMax: metrics['jvm_memory_heap_max_bytes'] ?? 0,
+      heapCommitted: metrics['jvm_memory_heap_committed_bytes'] ?? 0,
+      heapPercent: metrics['jvm_memory_heap_max_bytes']
+        ? (metrics['jvm_memory_heap_used_bytes'] / metrics['jvm_memory_heap_max_bytes']) * 100
+        : 0,
+      nonHeapUsed: metrics['jvm_memory_nonheap_used_bytes'] ?? 0,
+      nonHeapCommitted: metrics['jvm_memory_nonheap_committed_bytes'] ?? 0,
+      pools: memoryPools,
+    },
+    threads: {
+      current: metrics['jvm_threads_current'] ?? 0,
+      daemon: metrics['jvm_threads_daemon'] ?? 0,
+      peak: metrics['jvm_threads_peak'] ?? 0,
+    },
+    gc: gcStats,
+    cpu: {
+      process: (metrics['process_cpu_usage'] ?? 0) * 100,
+      system: (metrics['system_cpu_usage'] ?? 0) * 100,
+    },
+    uptime: metrics['hytale_uptime_seconds'] ?? 0,
+    worlds: metrics['hytale_worlds_loaded'] ?? 0,
+  };
+}
+
+// Helper function to parse TPS metrics
+function parseTpsMetrics(raw: string): Record<string, number> {
+  const lines = raw.split('\n').filter(line => line && !line.startsWith('#'));
+  const metrics: Record<string, number> = {};
+
+  for (const line of lines) {
+    const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)(?:\{[^}]*\})?\s+([\d.eE+-]+)/);
+    if (match) {
+      metrics[match[1]] = parseFloat(match[2]);
+    }
+  }
+
+  return {
+    current: metrics['hytale_tps_current'] ?? 20,
+    average: metrics['hytale_tps_average'] ?? 20,
+    min: metrics['hytale_tps_min'] ?? 20,
+    max: metrics['hytale_tps_max'] ?? 20,
+    target: metrics['hytale_tps_target'] ?? 20,
+    msptCurrent: metrics['hytale_mspt_current'] ?? 50,
+    msptAverage: metrics['hytale_mspt_average'] ?? 50,
+  };
+}
+
 // GET /api/server/plugin/players/:name/details - Get player details from plugin API
 router.get('/plugin/players/:name/details', authMiddleware, requirePermission('server.view_status'), async (req: Request, res: Response) => {
   try {
@@ -825,6 +1094,577 @@ router.get('/players/:name/file/inventory', authMiddleware, requirePermission('p
     res.status(500).json({
       success: false,
       error: 'Failed to read player inventory',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================
+// Downloader Authentication Endpoints
+// ============================================================
+
+// GET /api/server/downloader/auth-status - Check downloader authentication status
+router.get('/downloader/auth-status', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  try {
+    const credCheck = await checkDownloaderCredentials();
+
+    // Try to get version as a test
+    if (credCheck.exists) {
+      const testResult = await getLatestVersion('release');
+      res.json({
+        authenticated: testResult.version !== 'unknown' && !testResult.authRequired,
+        credentialsExist: true,
+        authRequired: testResult.authRequired || false,
+        error: testResult.authRequired ? 'Token expired or invalid' : undefined,
+      });
+    } else {
+      res.json({
+        authenticated: false,
+        credentialsExist: false,
+        authRequired: true,
+        error: 'No credentials found',
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to check downloader auth status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// In-memory state for downloader OAuth flow
+let downloaderOAuthState: {
+  active: boolean;
+  verificationUrl?: string;
+  userCode?: string;
+  expiresAt?: Date;
+} = { active: false };
+
+// POST /api/server/downloader/initiate-auth - Start downloader OAuth flow
+router.post('/downloader/initiate-auth', authMiddleware, requirePermission('server.restart'), async (_req: Request, res: Response) => {
+  try {
+    console.log('[Server] Initiating downloader OAuth flow...');
+
+    // First, delete existing credentials to force re-authentication
+    await dockerService.execInContainer(
+      `rm -f /opt/hytale/downloader/.hytale-downloader-credentials.json 2>/dev/null || true`
+    );
+
+    // Run the downloader - it will start OAuth flow when credentials are missing
+    // Use a timeout since it will wait for user input
+    const authResult = await dockerService.execInContainer(
+      `cd /opt/hytale/downloader && timeout 60 ./hytale-downloader-linux-amd64 2>&1 || true`
+    );
+
+    const output = authResult.output || '';
+    console.log('[Server] Downloader auth output:', output.substring(0, 1000));
+
+    // Parse OAuth URLs from output
+    // The downloader outputs: "Visit: https://oauth.accounts.hytale.com/oauth2/device/verify"
+    // And a user code like: "Enter code: fHmkjxFE" or the code might be in the URL
+    const urlMatch = output.match(/(https:\/\/oauth\.accounts\.hytale\.com\/[^\s\n\]]+)/i);
+
+    // Try multiple patterns for the user code
+    let userCode: string | null = null;
+    const codePatterns = [
+      /(?:enter\s+code|user_code|code)[:\s=]+([A-Za-z0-9]{6,12})/i,
+      /user_code=([A-Za-z0-9]{6,12})/i,
+      /\[([A-Za-z0-9]{8})\]/,  // Code might be in brackets
+    ];
+
+    for (const pattern of codePatterns) {
+      const match = output.match(pattern);
+      if (match) {
+        userCode = match[1].trim();
+        break;
+      }
+    }
+
+    if (!urlMatch) {
+      // Check if already authenticated or if download started
+      if (output.includes('Downloading') || output.includes('already') || output.includes('authenticated') || output.includes('success')) {
+        return res.json({
+          success: true,
+          alreadyAuthenticated: true,
+          message: 'Downloader is already authenticated',
+        });
+      }
+
+      // Maybe the downloader isn't installed or there's another issue
+      return res.status(400).json({
+        success: false,
+        error: 'Could not parse OAuth URL from downloader output. The downloader may need to be reinstalled.',
+        output: output.substring(0, 800),
+      });
+    }
+
+    let verificationUrl = urlMatch[1].trim();
+
+    // Clean up URL - remove any trailing characters that might have been captured
+    verificationUrl = verificationUrl.replace(/[\]\)\}\s]+$/, '');
+
+    // If URL doesn't have user_code, add it
+    if (userCode && !verificationUrl.includes('user_code=')) {
+      verificationUrl += verificationUrl.includes('?') ? `&user_code=${userCode}` : `?user_code=${userCode}`;
+    }
+
+    // Store state
+    downloaderOAuthState = {
+      active: true,
+      verificationUrl,
+      userCode: userCode || undefined,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes
+    };
+
+    res.json({
+      success: true,
+      verificationUrl,
+      userCode,
+      expiresIn: 900, // 15 minutes
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to initiate downloader auth',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// GET /api/server/downloader/auth-poll - Poll for auth completion
+router.get('/downloader/auth-poll', authMiddleware, requirePermission('server.restart'), async (_req: Request, res: Response) => {
+  try {
+    if (!downloaderOAuthState.active) {
+      return res.json({
+        completed: false,
+        error: 'No active auth flow',
+      });
+    }
+
+    // Check if expired
+    if (downloaderOAuthState.expiresAt && new Date() > downloaderOAuthState.expiresAt) {
+      downloaderOAuthState = { active: false };
+      return res.json({
+        completed: false,
+        expired: true,
+        error: 'Auth flow expired',
+      });
+    }
+
+    // Check if credentials now exist and work
+    const credCheck = await checkDownloaderCredentials();
+    if (credCheck.exists) {
+      const testResult = await getLatestVersion('release');
+      if (testResult.version !== 'unknown' && !testResult.authRequired) {
+        downloaderOAuthState = { active: false };
+        return res.json({
+          completed: true,
+          version: testResult.version,
+        });
+      }
+    }
+
+    res.json({
+      completed: false,
+      verificationUrl: downloaderOAuthState.verificationUrl,
+      userCode: downloaderOAuthState.userCode,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to poll auth status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================
+// Native Update System Endpoints (Hytale 24.01.2026+)
+// ============================================================
+
+// UpdateConfig interface
+interface UpdateConfig {
+  enabled: boolean;
+  checkIntervalSeconds: number;
+  notifyPlayersOnAvailable: boolean;
+  patchline: 'release' | 'pre-release';
+  runBackupBeforeUpdate: boolean;
+  backupConfigBeforeUpdate: boolean;
+  autoApplyMode: 'DISABLED' | 'WHEN_EMPTY' | 'SCHEDULED';
+  autoApplyDelayMinutes: number;
+}
+
+// Default UpdateConfig values
+function getDefaultUpdateConfig(): UpdateConfig {
+  return {
+    enabled: true,
+    checkIntervalSeconds: 3600,
+    notifyPlayersOnAvailable: true,
+    patchline: 'release',
+    runBackupBeforeUpdate: true,
+    backupConfigBeforeUpdate: true,
+    autoApplyMode: 'DISABLED',
+    autoApplyDelayMinutes: 5,
+  };
+}
+
+// GET /api/server/update-config - Get native update configuration
+router.get('/update-config', authMiddleware, requirePermission('updates.view'), async (_req: Request, res: Response) => {
+  try {
+    const configPath = path.join(config.serverPath, 'config.json');
+
+    try {
+      await access(configPath, constants.R_OK);
+      const serverConfig = JSON.parse(await readFile(configPath, 'utf-8'));
+      const updateConfig = serverConfig.updateConfig || getDefaultUpdateConfig();
+      res.json(updateConfig);
+    } catch {
+      // Config doesn't exist yet, return defaults
+      res.json(getDefaultUpdateConfig());
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to read update config',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// PUT /api/server/update-config - Update native update configuration
+router.put('/update-config', authMiddleware, requirePermission('updates.config'), async (req: Request, res: Response) => {
+  try {
+    const {
+      enabled,
+      checkIntervalSeconds,
+      notifyPlayersOnAvailable,
+      patchline,
+      runBackupBeforeUpdate,
+      backupConfigBeforeUpdate,
+      autoApplyMode,
+      autoApplyDelayMinutes
+    } = req.body;
+
+    // Validation
+    if (enabled !== undefined && typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'Field "enabled" must be boolean' });
+    }
+    if (checkIntervalSeconds !== undefined && (!Number.isInteger(checkIntervalSeconds) || checkIntervalSeconds < 60)) {
+      return res.status(400).json({ error: 'Field "checkIntervalSeconds" must be integer >= 60' });
+    }
+    if (patchline !== undefined && !['release', 'pre-release'].includes(patchline)) {
+      return res.status(400).json({ error: 'Field "patchline" must be "release" or "pre-release"' });
+    }
+    if (autoApplyMode !== undefined && !['DISABLED', 'WHEN_EMPTY', 'SCHEDULED'].includes(autoApplyMode)) {
+      return res.status(400).json({ error: 'Field "autoApplyMode" must be DISABLED, WHEN_EMPTY, or SCHEDULED' });
+    }
+    if (autoApplyDelayMinutes !== undefined && (!Number.isInteger(autoApplyDelayMinutes) || autoApplyDelayMinutes < 1)) {
+      return res.status(400).json({ error: 'Field "autoApplyDelayMinutes" must be integer >= 1' });
+    }
+
+    const configPath = path.join(config.serverPath, 'config.json');
+
+    // Read existing config or create new
+    let serverConfig: Record<string, unknown> = {};
+    try {
+      await access(configPath, constants.R_OK);
+      serverConfig = JSON.parse(await readFile(configPath, 'utf-8'));
+    } catch {
+      // Config doesn't exist, will create new
+    }
+
+    // Merge with existing updateConfig
+    const currentUpdateConfig = (serverConfig.updateConfig as UpdateConfig) || getDefaultUpdateConfig();
+    serverConfig.updateConfig = {
+      ...currentUpdateConfig,
+      ...(enabled !== undefined && { enabled }),
+      ...(checkIntervalSeconds !== undefined && { checkIntervalSeconds }),
+      ...(notifyPlayersOnAvailable !== undefined && { notifyPlayersOnAvailable }),
+      ...(patchline !== undefined && { patchline }),
+      ...(runBackupBeforeUpdate !== undefined && { runBackupBeforeUpdate }),
+      ...(backupConfigBeforeUpdate !== undefined && { backupConfigBeforeUpdate }),
+      ...(autoApplyMode !== undefined && { autoApplyMode }),
+      ...(autoApplyDelayMinutes !== undefined && { autoApplyDelayMinutes }),
+    };
+
+    await writeFile(configPath, JSON.stringify(serverConfig, null, 2));
+
+    res.json({
+      success: true,
+      message: 'Update config saved',
+      data: serverConfig.updateConfig
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to save update config',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Native update status interface
+interface NativeUpdateStatus {
+  available: boolean;
+  currentVersion: string;
+  latestVersion: string;
+  state: 'IDLE' | 'CHECKING' | 'DOWNLOADING' | 'READY' | 'APPLYING' | 'ERROR';
+  progress?: number;
+  message?: string;
+  error?: string;
+}
+
+// Helper to parse /update status output
+function parseUpdateStatusOutput(output: string): NativeUpdateStatus {
+  if (!output || typeof output !== 'string') {
+    return {
+      available: false,
+      currentVersion: 'unknown',
+      latestVersion: 'unknown',
+      state: 'IDLE',
+      error: 'No output from server'
+    };
+  }
+
+  const lower = output.toLowerCase();
+
+  // Detect state
+  let state: NativeUpdateStatus['state'] = 'IDLE';
+  if (lower.includes('error') || lower.includes('failed')) state = 'ERROR';
+  else if (lower.includes('applying') || lower.includes('installing')) state = 'APPLYING';
+  else if (lower.includes('ready') || lower.includes('staged') || lower.includes('downloaded')) state = 'READY';
+  else if (lower.includes('downloading') || lower.includes('download')) state = 'DOWNLOADING';
+  else if (lower.includes('checking')) state = 'CHECKING';
+
+  // Extract versions using multiple patterns
+  const versionPatterns = [
+    /(?:current|installed).*?([0-9]+\.[0-9]+\.[0-9]+)/i,
+    /version[:\s]+([0-9]+\.[0-9]+\.[0-9]+)/i,
+  ];
+
+  let currentVersion = 'unknown';
+  for (const pattern of versionPatterns) {
+    const match = output.match(pattern);
+    if (match) {
+      currentVersion = match[1];
+      break;
+    }
+  }
+
+  // Extract latest version
+  const latestPatterns = [
+    /(?:latest|available|new).*?([0-9]+\.[0-9]+\.[0-9]+)/i,
+  ];
+
+  let latestVersion = 'unknown';
+  for (const pattern of latestPatterns) {
+    const match = output.match(pattern);
+    if (match) {
+      latestVersion = match[1];
+      break;
+    }
+  }
+
+  // Extract progress
+  const progressMatch = output.match(/(\d+)\s*%/);
+  const progress = progressMatch ? parseInt(progressMatch[1]) : undefined;
+
+  return {
+    available: state === 'READY' || (latestVersion !== 'unknown' && currentVersion !== latestVersion),
+    currentVersion,
+    latestVersion,
+    state,
+    progress,
+    message: output.substring(0, 200)
+  };
+}
+
+// GET /api/server/update-status - Get native update status
+router.get('/update-status', authMiddleware, requirePermission('updates.view'), async (_req: Request, res: Response) => {
+  try {
+    const result = await dockerService.execCommand('/update status');
+
+    if (!result.success) {
+      return res.status(503).json({
+        error: 'Server not responding',
+        message: 'Cannot query update status. Is the server running?'
+      });
+    }
+
+    const status = parseUpdateStatusOutput(result.message || '');
+    res.json({
+      success: true,
+      data: status
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get update status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/server/update-check - Check for updates
+router.post('/update-check', authMiddleware, requirePermission('updates.check'), async (_req: Request, res: Response) => {
+  try {
+    const result = await dockerService.execCommand('/update check');
+
+    if (!result.success) {
+      return res.status(503).json({
+        success: false,
+        error: result.error || 'Update check failed',
+        message: 'Server may be offline or not responding'
+      });
+    }
+
+    // Give server time to process and get status
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    const statusResult = await dockerService.execCommand('/update status');
+    const status = parseUpdateStatusOutput(statusResult.message || '');
+
+    res.json({
+      success: true,
+      message: 'Update check completed',
+      data: status
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Update check failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/server/update-download - Download available update
+router.post('/update-download', authMiddleware, requirePermission('updates.download'), async (_req: Request, res: Response) => {
+  try {
+    const result = await dockerService.execCommand('/update download');
+
+    if (!result.success) {
+      return res.status(503).json({
+        success: false,
+        error: result.error || 'Download failed',
+        message: 'Server may be offline or not responding'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Update download started. Check status for progress.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Download failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/server/update-apply - Apply downloaded update (restarts server)
+router.post('/update-apply', authMiddleware, requirePermission('updates.apply'), async (_req: Request, res: Response) => {
+  try {
+    // Check if update is ready
+    const statusResult = await dockerService.execCommand('/update status');
+    const status = parseUpdateStatusOutput(statusResult.message || '');
+
+    if (status.state !== 'READY') {
+      return res.status(400).json({
+        success: false,
+        error: 'No update ready to apply',
+        message: 'Download an update first using /update download'
+      });
+    }
+
+    // Apply update (server will restart with exit code 8)
+    const result = await dockerService.execCommand('/update apply');
+
+    res.json({
+      success: true,
+      message: 'Update applied. Server is restarting...',
+      warning: 'Server will restart shortly. Players will be disconnected.'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Apply update failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/server/update-cancel - Cancel ongoing download
+router.post('/update-cancel', authMiddleware, requirePermission('updates.download'), async (_req: Request, res: Response) => {
+  try {
+    const result = await dockerService.execCommand('/update cancel');
+
+    res.json({
+      success: true,
+      message: 'Update download cancelled'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Cancel failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================
+// New Features Banner Endpoints
+// ============================================================
+
+// GET /api/server/new-features - Get new features status
+router.get('/new-features', authMiddleware, requirePermission('dashboard.view'), async (_req: Request, res: Response) => {
+  try {
+    const configPath = path.join(config.dataPath, 'config.json');
+
+    try {
+      await access(configPath, constants.R_OK);
+      const mainConfig = JSON.parse(await readFile(configPath, 'utf-8'));
+
+      res.json({
+        hasNewFeatures: !!(mainConfig.newFeaturesAvailable && mainConfig.newFeaturesAvailable.length > 0),
+        features: mainConfig.newFeaturesAvailable || [],
+        dismissed: mainConfig.newFeaturesBannerDismissed || false,
+        panelVersion: mainConfig.panelVersion || '2.0.0',
+      });
+    } catch {
+      res.json({
+        hasNewFeatures: false,
+        features: [],
+        dismissed: true,
+        panelVersion: '2.0.0',
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to get new features status',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// POST /api/server/new-features/dismiss - Dismiss new features banner
+router.post('/new-features/dismiss', authMiddleware, requirePermission('dashboard.view'), async (_req: Request, res: Response) => {
+  try {
+    const success = await dismissNewFeaturesBanner();
+
+    if (success) {
+      res.json({
+        success: true,
+        message: 'New features banner dismissed'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to dismiss banner'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to dismiss banner',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

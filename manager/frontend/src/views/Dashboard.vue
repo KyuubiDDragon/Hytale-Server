@@ -3,7 +3,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useServerStats } from '@/composables/useServerStats'
-import { serverApi, type ServerMemoryStats, type UpdateCheckResponse, type PatchlineResponse } from '@/api/server'
+import { serverApi, type ServerMemoryStats, type UpdateCheckResponse, type PatchlineResponse, type DownloaderAuthStatus, type NewFeaturesStatus } from '@/api/server'
 import { authApi, type HytaleAuthStatus } from '@/api/auth'
 import { schedulerApi, type SchedulerStatus } from '@/api/scheduler'
 import StatusCard from '@/components/dashboard/StatusCard.vue'
@@ -22,12 +22,23 @@ let memoryInterval: ReturnType<typeof setInterval> | null = null
 const updateInfo = ref<UpdateCheckResponse | null>(null)
 const checkingUpdate = ref(false)
 const updateCheckError = ref<string | null>(null)
+const reAuthenticating = ref(false)
+const reAuthUrl = ref<string | null>(null)
+const reAuthCode = ref<string | null>(null)
 
 // Hytale Auth status
 const hytaleAuthStatus = ref<HytaleAuthStatus>({ authenticated: false })
 const showAuthBanner = ref(false)
 const showMemoryOnlyWarning = ref(false)
 const enablingPersistence = ref(false)
+
+// Downloader Auth status (for auto-updates)
+const downloaderAuthStatus = ref<DownloaderAuthStatus | null>(null)
+const showDownloaderAuthWarning = ref(false)
+
+// New Features Banner (shown after panel updates)
+const newFeaturesStatus = ref<NewFeaturesStatus | null>(null)
+const showNewFeaturesBanner = ref(false)
 
 // Scheduler status
 const schedulerStatus = ref<SchedulerStatus | null>(null)
@@ -53,6 +64,75 @@ async function checkForUpdates() {
   } finally {
     checkingUpdate.value = false
   }
+}
+
+async function initiateDownloaderReAuth() {
+  reAuthenticating.value = true
+  try {
+    const result = await serverApi.initiateDownloaderAuth()
+    if (result.alreadyAuthenticated) {
+      // Already authenticated, just refresh
+      await checkForUpdates()
+      return
+    }
+    if (result.verificationUrl) {
+      reAuthUrl.value = result.verificationUrl
+      reAuthCode.value = result.userCode || null
+      // Open the auth URL in a new window
+      window.open(result.verificationUrl, '_blank', 'noopener,noreferrer')
+      // Start polling for completion
+      pollDownloaderAuth()
+    }
+  } catch (err) {
+    updateCheckError.value = err instanceof Error ? err.message : 'Failed to initiate authentication'
+    reAuthenticating.value = false
+  }
+}
+
+async function pollDownloaderAuth() {
+  const maxAttempts = 60 // 5 minutes
+  let attempts = 0
+
+  const poll = async () => {
+    try {
+      const result = await serverApi.pollDownloaderAuth()
+      if (result.completed) {
+        reAuthenticating.value = false
+        reAuthUrl.value = null
+        reAuthCode.value = null
+        // Refresh update info
+        await checkForUpdates()
+        return
+      }
+      if (result.expired) {
+        updateCheckError.value = 'Authentication expired. Please try again.'
+        reAuthenticating.value = false
+        reAuthUrl.value = null
+        reAuthCode.value = null
+        return
+      }
+      // Continue polling
+      attempts++
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 5000) // Poll every 5 seconds
+      } else {
+        updateCheckError.value = 'Authentication timed out. Please try again.'
+        reAuthenticating.value = false
+        reAuthUrl.value = null
+        reAuthCode.value = null
+      }
+    } catch {
+      // Continue polling on error
+      attempts++
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 5000)
+      } else {
+        reAuthenticating.value = false
+      }
+    }
+  }
+
+  poll()
 }
 
 async function checkHytaleAuth() {
@@ -128,6 +208,39 @@ async function fetchPanelPatchline() {
   }
 }
 
+async function checkDownloaderAuth() {
+  try {
+    const status = await serverApi.getDownloaderAuthStatus()
+    downloaderAuthStatus.value = status
+    // Show warning if auth is required (credentials missing or expired)
+    showDownloaderAuthWarning.value = status.authRequired || !status.authenticated
+  } catch {
+    // Silently fail - don't show warning if we can't check
+    showDownloaderAuthWarning.value = false
+  }
+}
+
+async function fetchNewFeatures() {
+  try {
+    const status = await serverApi.getNewFeaturesStatus()
+    newFeaturesStatus.value = status
+    showNewFeaturesBanner.value = status.hasNewFeatures && !status.dismissed
+  } catch {
+    // Silently fail
+    showNewFeaturesBanner.value = false
+  }
+}
+
+async function dismissNewFeaturesBanner() {
+  try {
+    await serverApi.dismissNewFeaturesBanner()
+    showNewFeaturesBanner.value = false
+  } catch {
+    // Still hide the banner locally even if the API call fails
+    showNewFeaturesBanner.value = false
+  }
+}
+
 // Computed: Always use panel patchline setting (that's what the user configured)
 // The plugin patchline shows what's currently running, but panel setting is the source of truth
 const displayPatchline = computed(() => panelPatchline.value || patchline.value)
@@ -137,6 +250,8 @@ onMounted(() => {
   checkHytaleAuth()
   fetchSchedulerStatus()
   fetchPanelPatchline()
+  checkDownloaderAuth()
+  fetchNewFeatures()
   memoryInterval = setInterval(() => {
     fetchServerMemory()
     checkHytaleAuth()
@@ -262,6 +377,122 @@ function refreshAll() {
 
 <template>
   <div class="space-y-6">
+    <!-- New Features Banner (shown after panel updates) -->
+    <div
+      v-if="showNewFeaturesBanner && newFeaturesStatus"
+      class="bg-gradient-to-r from-hytale-orange/20 to-hytale-yellow/20 border-2 border-hytale-orange rounded-lg p-4"
+    >
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0">
+          <svg class="w-8 h-8 text-hytale-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-white mb-1">
+            {{ t('dashboard.newFeatures.title') }}
+          </h3>
+          <p class="text-gray-300 text-sm mb-3">
+            {{ t('dashboard.newFeatures.description', { version: newFeaturesStatus.panelVersion }) }}
+          </p>
+          <ul class="space-y-1 mb-3">
+            <li
+              v-for="(feature, index) in newFeaturesStatus.features"
+              :key="index"
+              class="flex items-center gap-2 text-sm text-gray-200"
+            >
+              <svg class="w-4 h-4 text-hytale-orange flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {{ feature }}
+            </li>
+          </ul>
+          <div class="flex items-center gap-3">
+            <router-link
+              to="/configuration"
+              class="btn btn-primary inline-flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {{ t('dashboard.newFeatures.configure') }}
+            </router-link>
+            <button
+              @click="dismissNewFeaturesBanner"
+              class="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              {{ t('common.dismiss') }}
+            </button>
+          </div>
+        </div>
+        <button
+          @click="dismissNewFeaturesBanner"
+          class="flex-shrink-0 text-gray-400 hover:text-white"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Downloader Auth Warning Banner (for auto-updates) -->
+    <div
+      v-if="showDownloaderAuthWarning"
+      class="bg-gradient-to-r from-status-error/20 to-status-warning/20 border-2 border-status-error rounded-lg p-4"
+    >
+      <div class="flex items-start gap-4">
+        <div class="flex-shrink-0">
+          <svg class="w-8 h-8 text-status-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold text-white mb-1">
+            {{ t('dashboard.downloaderAuthExpired') }}
+          </h3>
+          <p class="text-gray-300 text-sm mb-3">
+            {{ t('dashboard.downloaderAuthExpiredDesc') }}
+          </p>
+
+          <!-- Show auth code when authenticating -->
+          <div v-if="reAuthenticating && reAuthCode" class="mb-3 p-3 bg-dark-300 rounded-lg border border-dark-50">
+            <p class="text-xs text-gray-400 mb-1">{{ t('dashboard.enterCodeOnHytale') }}:</p>
+            <p class="text-xl font-mono text-white tracking-wider">{{ reAuthCode }}</p>
+            <a
+              v-if="reAuthUrl"
+              :href="reAuthUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-sm text-hytale-orange hover:underline mt-2 inline-block"
+            >
+              {{ t('dashboard.openAuthPage') }} →
+            </a>
+          </div>
+
+          <button
+            @click="initiateDownloaderReAuth"
+            :disabled="reAuthenticating"
+            class="btn btn-primary inline-flex items-center gap-2"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {{ reAuthenticating ? t('dashboard.waitingForAuth') : t('dashboard.reAuthenticateDownloader') }}
+          </button>
+        </div>
+        <button
+          @click="showDownloaderAuthWarning = false"
+          class="flex-shrink-0 text-gray-400 hover:text-white"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
     <!-- Server Authentication Required Banner (after download complete) -->
     <div
       v-if="showAuthBanner && status?.running && hytaleAuthStatus.serverAuthRequired && hytaleAuthStatus.authType === 'downloader'"
@@ -709,8 +940,45 @@ function refreshAll() {
             </div>
           </div>
 
-          <!-- Status Message -->
+          <!-- Auth Required Warning -->
+          <div v-if="updateInfo.authRequired" class="p-3 rounded-lg text-sm font-medium bg-status-warning/20 text-status-warning border border-status-warning/30">
+            <div class="flex items-center gap-2">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <span>{{ updateInfo.message }}</span>
+            </div>
+            <p class="mt-2 text-xs opacity-80">
+              The Hytale downloader needs to be re-authenticated to check for updates.
+            </p>
+
+            <!-- Show auth code when authenticating -->
+            <div v-if="reAuthenticating && reAuthCode" class="mt-3 p-2 bg-dark-300 rounded border border-dark-50">
+              <p class="text-xs text-gray-400 mb-1">Enter this code on the Hytale authentication page:</p>
+              <p class="text-lg font-mono text-white tracking-wider">{{ reAuthCode }}</p>
+              <a
+                v-if="reAuthUrl"
+                :href="reAuthUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs text-hytale-orange hover:underline mt-1 inline-block"
+              >
+                Open authentication page →
+              </a>
+            </div>
+
+            <button
+              @click="initiateDownloaderReAuth"
+              :disabled="reAuthenticating"
+              class="mt-3 px-3 py-1.5 bg-status-warning hover:bg-status-warning/80 disabled:bg-gray-600 disabled:cursor-not-allowed text-dark-400 text-xs font-medium rounded transition-colors"
+            >
+              {{ reAuthenticating ? 'Waiting for authentication...' : 'Re-authenticate Downloader' }}
+            </button>
+          </div>
+
+          <!-- Status Message (when not auth required) -->
           <div
+            v-else
             class="p-3 rounded-lg text-sm font-medium"
             :class="updateInfo.updateAvailable
               ? 'bg-hytale-orange/20 text-hytale-orange border border-hytale-orange/30'
