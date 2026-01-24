@@ -67,7 +67,7 @@ const BUILTIN_REGISTRY: ModStoreEntry[] = [
       acmeEmail: '',
       useProductionAcme: true,
     },
-    configPath: 'config/cryptobench_EasyWebMap/config.json',
+    configPath: 'mods/cryptobench_EasyWebMap/config.json',
     ports: [
       { name: 'HTTP', default: 8081, env: 'WEBMAP_PORT' },
     ],
