@@ -7,6 +7,7 @@ import * as dockerService from './docker.js';
 import { runSystemChecks as runSystemChecksFromService, type SystemCheck, type SystemCheckResult } from './systemCheck.js';
 import { installPlugin as installKyuubiApiPlugin } from './kyuubiApi.js';
 import { saveConfig as saveSchedulerConfig } from './scheduler.js';
+import { installMod } from './modStore.js';
 
 // Re-export system check types and function
 export type { SystemCheck, SystemCheckResult };
@@ -630,6 +631,29 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
         }
       } catch (pluginError) {
         console.error('[Setup] Error installing KyuubiAPI plugin:', pluginError);
+      }
+    }
+
+    // Install EasyWebMap plugin if user enabled webmap
+    if (setupConfig.integrations?.webmap) {
+      console.log('[Setup] Installing EasyWebMap plugin...');
+      try {
+        const webmapResult = await installMod('easywebmap');
+        if (webmapResult.success) {
+          console.log('[Setup] EasyWebMap plugin installed successfully:', webmapResult.filename);
+          if (webmapResult.configCreated) {
+            console.log('[Setup] EasyWebMap config created');
+          }
+        } else {
+          // "already installed" is not an error, just info
+          if (webmapResult.error?.includes('already installed')) {
+            console.log('[Setup] EasyWebMap already installed:', webmapResult.error);
+          } else {
+            console.error('[Setup] Failed to install EasyWebMap:', webmapResult.error);
+          }
+        }
+      } catch (webmapError) {
+        console.error('[Setup] Error installing EasyWebMap:', webmapError);
       }
     }
 
