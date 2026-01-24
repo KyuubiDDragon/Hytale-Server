@@ -31,6 +31,7 @@ const consoleContainer = ref<HTMLElement | null>(null)
 // Step 4.2: Server Device Code Flow
 const serverDeviceCodeState = ref<{
   verificationUrl: string
+  verificationUrlDirect: string
   userCode: string
   expiresIn: number
   pollInterval: number
@@ -261,10 +262,20 @@ async function startServerDeviceCodeFlow() {
   serverAuthSuccess.value = false
 
   try {
-    const response = await setupApi.startServerAuth()
+    const response = await setupApi.startServerAuth() as {
+      success: boolean
+      deviceCode?: string
+      verificationUrl?: string
+      verificationUrlDirect?: string
+      userCode?: string
+      expiresIn?: number
+      pollInterval?: number
+      error?: string
+    }
     if (response.success && response.deviceCode) {
       serverDeviceCodeState.value = {
         verificationUrl: response.verificationUrl || '',
+        verificationUrlDirect: response.verificationUrlDirect || '',
         userCode: response.userCode || '',
         expiresIn: response.expiresIn || 900,
         pollInterval: response.pollInterval || 5,
@@ -347,10 +358,11 @@ async function pollServerAuthStatus() {
   }, pollInterval * 1000)
 }
 
-// Open server verification URL in new tab
+// Open server verification URL in new tab (prefer direct URL with code)
 function openServerVerificationUrl() {
   if (!serverDeviceCodeState.value) return
-  window.open(serverDeviceCodeState.value.verificationUrl, '_blank', 'noopener,noreferrer')
+  const url = serverDeviceCodeState.value.verificationUrlDirect || serverDeviceCodeState.value.verificationUrl
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 // Copy server verification URL to clipboard
@@ -678,33 +690,49 @@ onUnmounted(() => {
           <!-- Device Code Display -->
           <div v-else-if="serverDeviceCodeState" class="space-y-6">
             <div class="text-center">
-              <p class="text-gray-300 mb-4">{{ t('setup.openLinkInBrowser') }}</p>
-
-              <!-- Verification URL -->
-              <div class="bg-dark-300 rounded-lg p-4 mb-4">
-                <p class="text-sm text-gray-400 mb-2">{{ t('setup.verificationUrl') }}</p>
+              <!-- Option 1: Direct Link (One-Click Auth) -->
+              <div v-if="serverDeviceCodeState.verificationUrlDirect" class="bg-dark-300 rounded-lg p-4 mb-4">
+                <p class="text-sm text-gray-400 mb-3">{{ t('setup.quickAuthOption') }}</p>
                 <a
-                  :href="serverDeviceCodeState.verificationUrl"
+                  :href="serverDeviceCodeState.verificationUrlDirect"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="text-hytale-orange hover:text-hytale-orange-light break-all text-sm"
+                  class="inline-flex items-center gap-2 px-6 py-3 bg-hytale-orange hover:bg-hytale-orange-light text-white font-semibold rounded-lg transition-colors"
                 >
-                  {{ serverDeviceCodeState.verificationUrl }}
+                  <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  {{ t('setup.openAuthPage') }}
                 </a>
-                <div class="flex gap-2 mt-3">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    @click="openServerVerificationUrl"
+                <p class="text-xs text-gray-500 mt-2">{{ t('setup.directLinkHint') }}</p>
+              </div>
+
+              <!-- Divider -->
+              <div v-if="serverDeviceCodeState.verificationUrlDirect && serverDeviceCodeState.verificationUrl" class="flex items-center gap-4 my-4">
+                <div class="flex-1 h-px bg-dark-50"></div>
+                <span class="text-gray-500 text-sm">{{ t('setup.orAlternatively') }}</span>
+                <div class="flex-1 h-px bg-dark-50"></div>
+              </div>
+
+              <!-- Option 2: Manual Code Entry -->
+              <div class="bg-dark-300 rounded-lg p-4 mb-4">
+                <p class="text-sm text-gray-400 mb-2">{{ t('setup.manualAuthOption') }}</p>
+
+                <!-- Verification URL (Base URL) -->
+                <div class="mb-4">
+                  <p class="text-xs text-gray-500 mb-1">{{ t('setup.verificationUrl') }}</p>
+                  <a
+                    :href="serverDeviceCodeState.verificationUrl || serverDeviceCodeState.verificationUrlDirect"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="text-hytale-orange hover:text-hytale-orange-light break-all text-sm"
                   >
-                    <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    {{ t('setup.openInBrowser') }}
-                  </Button>
+                    {{ serverDeviceCodeState.verificationUrl || serverDeviceCodeState.verificationUrlDirect }}
+                  </a>
                   <Button
                     variant="secondary"
                     size="sm"
+                    class="mt-2"
                     @click="copyServerVerificationUrl"
                   >
                     <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -713,15 +741,15 @@ onUnmounted(() => {
                     {{ t('setup.copyLink') }}
                   </Button>
                 </div>
-              </div>
 
-              <p class="text-gray-300 mb-4">{{ t('setup.enterCode') }}</p>
+                <p class="text-gray-300 mb-4">{{ t('setup.enterCode') }}</p>
 
-              <!-- User Code Display -->
-              <div class="bg-dark-400 border-2 border-dark-50 rounded-xl p-6 inline-block">
-                <p class="text-3xl font-mono font-bold text-white tracking-widest">
-                  {{ formattedServerUserCode }}
-                </p>
+                <!-- User Code Display -->
+                <div class="bg-dark-400 border-2 border-dark-50 rounded-xl p-6 inline-block">
+                  <p class="text-3xl font-mono font-bold text-white tracking-widest">
+                    {{ formattedServerUserCode }}
+                  </p>
+                </div>
               </div>
             </div>
 
