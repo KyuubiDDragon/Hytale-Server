@@ -780,13 +780,63 @@ router.get('/plugin/tps', authMiddleware, requirePermission('performance.view'),
 function parsePrometheusMetrics(raw: string): Record<string, unknown> {
   const lines = raw.split('\n').filter(line => line && !line.startsWith('#'));
   const metrics: Record<string, number> = {};
+  const labeledMetrics: Record<string, Record<string, number>> = {};
 
   for (const line of lines) {
-    const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)(?:\{[^}]*\})?\s+([\d.eE+-]+)/);
+    // Match metrics with labels: metric_name{label="value"} 123.45
+    const labelMatch = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\{([^}]+)\}\s+([\d.eE+-]+)/);
+    if (labelMatch) {
+      const metricName = labelMatch[1];
+      const labelStr = labelMatch[2];
+      const value = parseFloat(labelMatch[3]);
+
+      // Parse label (e.g., pool="G1 Eden Space" or gc="G1 Young Generation")
+      const labelValueMatch = labelStr.match(/(?:pool|gc|world)="([^"]+)"/);
+      if (labelValueMatch) {
+        if (!labeledMetrics[metricName]) {
+          labeledMetrics[metricName] = {};
+        }
+        labeledMetrics[metricName][labelValueMatch[1]] = value;
+      }
+      continue;
+    }
+
+    // Match simple metrics: metric_name 123.45
+    const match = line.match(/^([a-zA-Z_][a-zA-Z0-9_]*)\s+([\d.eE+-]+)/);
     if (match) {
       metrics[match[1]] = parseFloat(match[2]);
     }
   }
+
+  // Parse memory pools
+  const memoryPools: Array<{ name: string; used: number; max: number; percent: number }> = [];
+  const poolUsed = labeledMetrics['jvm_memory_pool_used_bytes'] || {};
+  const poolMax = labeledMetrics['jvm_memory_pool_max_bytes'] || {};
+  for (const poolName of Object.keys(poolUsed)) {
+    const used = poolUsed[poolName] || 0;
+    const max = poolMax[poolName] || 0;
+    memoryPools.push({
+      name: poolName,
+      used,
+      max,
+      percent: max > 0 ? (used / max) * 100 : 0,
+    });
+  }
+
+  // Parse GC stats
+  const gcStats: Array<{ name: string; count: number; timeSeconds: number }> = [];
+  const gcCount = labeledMetrics['jvm_gc_collection_count_total'] || {};
+  const gcTime = labeledMetrics['jvm_gc_collection_time_seconds_total'] || {};
+  for (const gcName of Object.keys(gcCount)) {
+    gcStats.push({
+      name: gcName,
+      count: gcCount[gcName] || 0,
+      timeSeconds: gcTime[gcName] || 0,
+    });
+  }
+
+  // Parse players per world
+  const playersPerWorld: Record<string, number> = labeledMetrics['hytale_players_world'] || {};
 
   return {
     tps: {
@@ -803,20 +853,31 @@ function parsePrometheusMetrics(raw: string): Record<string, unknown> {
       max: metrics['hytale_players_max'] ?? 100,
       joins: metrics['hytale_player_joins_total'] ?? 0,
       leaves: metrics['hytale_player_leaves_total'] ?? 0,
+      perWorld: playersPerWorld,
     },
     memory: {
       heapUsed: metrics['jvm_memory_heap_used_bytes'] ?? 0,
       heapMax: metrics['jvm_memory_heap_max_bytes'] ?? 0,
+      heapCommitted: metrics['jvm_memory_heap_committed_bytes'] ?? 0,
       heapPercent: metrics['jvm_memory_heap_max_bytes']
         ? (metrics['jvm_memory_heap_used_bytes'] / metrics['jvm_memory_heap_max_bytes']) * 100
         : 0,
+      nonHeapUsed: metrics['jvm_memory_nonheap_used_bytes'] ?? 0,
+      nonHeapCommitted: metrics['jvm_memory_nonheap_committed_bytes'] ?? 0,
+      pools: memoryPools,
     },
+    threads: {
+      current: metrics['jvm_threads_current'] ?? 0,
+      daemon: metrics['jvm_threads_daemon'] ?? 0,
+      peak: metrics['jvm_threads_peak'] ?? 0,
+    },
+    gc: gcStats,
     cpu: {
       process: (metrics['process_cpu_usage'] ?? 0) * 100,
       system: (metrics['system_cpu_usage'] ?? 0) * 100,
     },
     uptime: metrics['hytale_uptime_seconds'] ?? 0,
-    threads: metrics['jvm_threads_current'] ?? 0,
+    worlds: metrics['hytale_worlds_loaded'] ?? 0,
   };
 }
 

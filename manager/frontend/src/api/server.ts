@@ -173,28 +173,63 @@ export interface PluginTpsMetrics {
   msptAverage: number
 }
 
+// Memory pool info
+export interface MemoryPool {
+  name: string
+  used: number
+  max: number
+  percent: number
+}
+
+// GC stats
+export interface GcStats {
+  name: string
+  count: number
+  timeSeconds: number
+}
+
+// Thread metrics
+export interface ThreadMetrics {
+  current: number
+  daemon: number
+  peak: number
+}
+
+// Extended memory metrics
+export interface ExtendedMemoryMetrics {
+  heapUsed: number
+  heapMax: number
+  heapCommitted: number
+  heapPercent: number
+  nonHeapUsed: number
+  nonHeapCommitted: number
+  pools: MemoryPool[]
+}
+
+// Extended player metrics
+export interface ExtendedPlayerMetrics {
+  online: number
+  max: number
+  joins: number
+  leaves: number
+  perWorld: Record<string, number>
+}
+
 // Prometheus metrics response
 export interface PrometheusMetrics {
   raw: string
   parsed?: {
     tps: PluginTpsMetrics
-    players: {
-      online: number
-      max: number
-      joins: number
-      leaves: number
-    }
-    memory: {
-      heapUsed: number
-      heapMax: number
-      heapPercent: number
-    }
+    players: ExtendedPlayerMetrics
+    memory: ExtendedMemoryMetrics
+    threads: ThreadMetrics
+    gc: GcStats[]
     cpu: {
       process: number
       system: number
     }
     uptime: number
-    threads: number
+    worlds: number
   }
 }
 

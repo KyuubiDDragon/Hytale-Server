@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useServerStats } from '@/composables/useServerStats'
 import { statsApi, type StatsEntry } from '@/api/management'
-import { serverApi, type PluginMemoryInfo, type PluginTpsMetrics } from '@/api/server'
+import { serverApi, type PluginMemoryInfo, type PluginTpsMetrics, type PrometheusMetrics } from '@/api/server'
 import Card from '@/components/ui/Card.vue'
 
 const { t } = useI18n()
@@ -14,6 +14,9 @@ const pluginMemory = ref<PluginMemoryInfo | null>(null)
 
 // Extended TPS metrics from Prometheus endpoint
 const tpsMetrics = ref<PluginTpsMetrics | null>(null)
+
+// Full Prometheus metrics (includes JVM, threads, GC, etc.)
+const prometheusData = ref<PrometheusMetrics['parsed'] | null>(null)
 
 // Historical data
 const history = ref<StatsEntry[]>([])
@@ -57,6 +60,26 @@ async function fetchTpsMetrics() {
   } catch {
     // TPS metrics not available
   }
+}
+
+async function fetchPrometheusMetrics() {
+  try {
+    const response = await serverApi.getPluginPrometheusMetrics()
+    if (response.success && response.data?.parsed) {
+      prometheusData.value = response.data.parsed
+    }
+  } catch {
+    // Prometheus metrics not available
+  }
+}
+
+// Helper to format bytes to human readable
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
 }
 
 function addLocalEntry() {
@@ -177,6 +200,7 @@ onMounted(async () => {
   await refresh()
   await fetchPluginMemory()
   await fetchTpsMetrics()
+  await fetchPrometheusMetrics()
   addLocalEntry()
 
   // Update every 5 seconds
@@ -184,6 +208,7 @@ onMounted(async () => {
     await refresh()
     await fetchPluginMemory()
     await fetchTpsMetrics()
+    await fetchPrometheusMetrics()
     addLocalEntry()
   }, 5000)
 })
@@ -579,6 +604,113 @@ onUnmounted(() => {
           <div class="p-3 bg-dark-100 rounded-lg text-center">
             <p class="text-xs text-gray-500 mb-1">MSPT Avg</p>
             <p class="text-lg font-bold text-orange-400">{{ tpsMetrics.msptAverage.toFixed(1) }}ms</p>
+          </div>
+        </div>
+      </div>
+    </Card>
+
+    <!-- JVM Details (when Prometheus available) -->
+    <Card v-if="prometheusData">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-semibold text-white">JVM Details</h3>
+        <span class="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+          Prometheus
+        </span>
+      </div>
+
+      <!-- Main JVM Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+        <!-- Heap Memory -->
+        <div class="p-4 bg-dark-100 rounded-lg">
+          <p class="text-xs text-gray-500 mb-1">Heap Memory</p>
+          <p class="text-lg font-bold text-purple-400">{{ formatBytes(prometheusData.memory.heapUsed) }}</p>
+          <p class="text-xs text-gray-500">/ {{ formatBytes(prometheusData.memory.heapMax) }}</p>
+          <div class="mt-2 h-1.5 bg-dark-200 rounded-full overflow-hidden">
+            <div class="h-full bg-purple-500 rounded-full" :style="{ width: prometheusData.memory.heapPercent + '%' }"></div>
+          </div>
+        </div>
+
+        <!-- Non-Heap Memory -->
+        <div class="p-4 bg-dark-100 rounded-lg">
+          <p class="text-xs text-gray-500 mb-1">Non-Heap Memory</p>
+          <p class="text-lg font-bold text-cyan-400">{{ formatBytes(prometheusData.memory.nonHeapUsed) }}</p>
+          <p class="text-xs text-gray-500">committed: {{ formatBytes(prometheusData.memory.nonHeapCommitted) }}</p>
+        </div>
+
+        <!-- Threads -->
+        <div class="p-4 bg-dark-100 rounded-lg">
+          <p class="text-xs text-gray-500 mb-1">Threads</p>
+          <p class="text-lg font-bold text-green-400">{{ prometheusData.threads.current }}</p>
+          <p class="text-xs text-gray-500">{{ prometheusData.threads.daemon }} daemon / {{ prometheusData.threads.peak }} peak</p>
+        </div>
+
+        <!-- CPU -->
+        <div class="p-4 bg-dark-100 rounded-lg">
+          <p class="text-xs text-gray-500 mb-1">CPU Usage</p>
+          <p class="text-lg font-bold text-blue-400">{{ prometheusData.cpu.process.toFixed(1) }}%</p>
+          <p class="text-xs text-gray-500">System: {{ prometheusData.cpu.system.toFixed(1) }}%</p>
+        </div>
+
+        <!-- Session Stats -->
+        <div class="p-4 bg-dark-100 rounded-lg">
+          <p class="text-xs text-gray-500 mb-1">Session Stats</p>
+          <div class="flex items-center gap-2">
+            <span class="text-lg font-bold text-green-400">+{{ prometheusData.players.joins }}</span>
+            <span class="text-gray-500">/</span>
+            <span class="text-lg font-bold text-red-400">-{{ prometheusData.players.leaves }}</span>
+          </div>
+          <p class="text-xs text-gray-500">joins / leaves</p>
+        </div>
+
+        <!-- Worlds -->
+        <div class="p-4 bg-dark-100 rounded-lg">
+          <p class="text-xs text-gray-500 mb-1">Worlds Loaded</p>
+          <p class="text-lg font-bold text-orange-400">{{ prometheusData.worlds }}</p>
+          <p class="text-xs text-gray-500">active worlds</p>
+        </div>
+      </div>
+
+      <!-- Memory Pools -->
+      <div v-if="prometheusData.memory.pools.length > 0" class="mb-6">
+        <h4 class="text-sm font-medium text-gray-400 mb-3">Memory Pools</h4>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div v-for="pool in prometheusData.memory.pools" :key="pool.name" class="p-3 bg-dark-100 rounded-lg">
+            <p class="text-xs text-gray-500 mb-1 truncate" :title="pool.name">{{ pool.name }}</p>
+            <p class="text-sm font-bold text-white">{{ formatBytes(pool.used) }}</p>
+            <div class="mt-1.5 h-1 bg-dark-200 rounded-full overflow-hidden">
+              <div
+                class="h-full rounded-full transition-all duration-300"
+                :class="pool.percent > 80 ? 'bg-red-500' : pool.percent > 60 ? 'bg-yellow-500' : 'bg-blue-500'"
+                :style="{ width: Math.min(pool.percent, 100) + '%' }"
+              ></div>
+            </div>
+            <p class="text-[10px] text-gray-600 mt-1">{{ pool.max > 0 ? formatBytes(pool.max) : 'unlimited' }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- GC Stats -->
+      <div v-if="prometheusData.gc.length > 0">
+        <h4 class="text-sm font-medium text-gray-400 mb-3">Garbage Collection</h4>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div v-for="gc in prometheusData.gc" :key="gc.name" class="p-3 bg-dark-100 rounded-lg">
+            <p class="text-xs text-gray-500 mb-1 truncate" :title="gc.name">{{ gc.name }}</p>
+            <div class="flex items-baseline gap-2">
+              <p class="text-lg font-bold text-yellow-400">{{ gc.count }}</p>
+              <p class="text-xs text-gray-500">collections</p>
+            </div>
+            <p class="text-xs text-gray-500">{{ (gc.timeSeconds * 1000).toFixed(0) }}ms total</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Players per World -->
+      <div v-if="Object.keys(prometheusData.players.perWorld).length > 0" class="mt-6">
+        <h4 class="text-sm font-medium text-gray-400 mb-3">Players per World</h4>
+        <div class="flex flex-wrap gap-2">
+          <div v-for="(count, world) in prometheusData.players.perWorld" :key="world" class="px-3 py-2 bg-dark-100 rounded-lg flex items-center gap-2">
+            <span class="text-sm text-gray-400">{{ world }}:</span>
+            <span class="text-sm font-bold text-hytale-orange">{{ count }}</span>
           </div>
         </div>
       </div>
