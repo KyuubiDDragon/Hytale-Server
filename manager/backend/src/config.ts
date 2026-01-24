@@ -152,13 +152,18 @@ export const config = {
   hostDataPath: process.env.HOST_DATA_PATH || '/opt/hytale',
 
   // Paths (inside manager container - Docker volume mounts)
-  // Derived from HOST_DATA_PATH if individual path variables are not set
-  serverPath: process.env.SERVER_PATH || `${process.env.HOST_DATA_PATH || '/opt/hytale'}/server`,
-  backupsPath: process.env.BACKUPS_PATH || `${process.env.HOST_DATA_PATH || '/opt/hytale'}/backups`,
-  dataPath: process.env.DATA_PATH || `${process.env.HOST_DATA_PATH || '/opt/hytale'}/data`,
-  modsPath: process.env.MODS_PATH || `${process.env.HOST_DATA_PATH || '/opt/hytale'}/mods`,
-  pluginsPath: process.env.PLUGINS_PATH || `${process.env.HOST_DATA_PATH || '/opt/hytale'}/plugins`,
-  assetsPath: process.env.ASSETS_PATH || `${process.env.HOST_DATA_PATH || '/opt/hytale'}/assets`,
+  // IMPORTANT: These are CONTAINER paths, not host paths!
+  // Docker mounts: ${HOST_DATA_PATH}/mods (host) → /opt/hytale/mods (container)
+  // The container always sees /opt/hytale/... regardless of HOST_DATA_PATH
+  serverPath: process.env.SERVER_PATH || '/opt/hytale/server',
+  backupsPath: process.env.BACKUPS_PATH || '/opt/hytale/backups',
+  dataPath: process.env.DATA_PATH || '/opt/hytale/data',
+  modsPath: process.env.MODS_PATH || '/opt/hytale/mods',
+  pluginsPath: process.env.PLUGINS_PATH || '/opt/hytale/plugins',
+  assetsPath: process.env.ASSETS_PATH || '/opt/hytale/assets',
+
+  // Host data path (for display purposes only - shows actual host path in error messages)
+  hostDataPath: process.env.HOST_DATA_PATH || '/opt/hytale',
 
   // Server port - internal port is always 18080, external port from MANAGER_PORT
   // Internal port is what Express listens on inside the container
