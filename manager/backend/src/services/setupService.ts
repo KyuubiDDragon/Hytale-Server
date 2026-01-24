@@ -115,6 +115,7 @@ export interface DownloadProgress {
 const DATA_DIR = config.dataPath;
 const SETUP_CONFIG_FILE = path.join(DATA_DIR, 'setup-config.json');
 const PANEL_CONFIG_FILE = path.join(DATA_DIR, 'panel-config.json');
+const CONFIG_JSON_FILE = path.join(DATA_DIR, 'config.json');
 
 // Step definitions
 const SETUP_STEPS = [
@@ -509,6 +510,25 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
     delete (setupConfig as any)._customUrls;
 
     await writeSetupConfig(setupConfig);
+
+    // Write the main config.json with jwtSecret for the auth service
+    // This is the config that gets loaded at application startup
+    const mainConfig = {
+      setupComplete: true,
+      jwtSecret: jwtSecret,
+      corsOrigins: setupConfig.network?.domain ? [setupConfig.network.domain] : [],
+      network: {
+        trustProxy: setupConfig.network?.trustProxy ?? false,
+        accessMode: setupConfig.network?.accessMode ?? 'local',
+        domain: setupConfig.network?.domain ?? null,
+      },
+      integrations: {
+        modtaleApiKey: setupConfig.integrations?.modtaleApiKey ?? '',
+        stackmartApiKey: setupConfig.integrations?.stackmartApiKey ?? '',
+      },
+    };
+    await writeFile(CONFIG_JSON_FILE, JSON.stringify(mainConfig, null, 2), 'utf-8');
+    console.log('[Setup] Wrote config.json with JWT secret');
 
     return { success: true, jwtSecret };
   } catch (error) {

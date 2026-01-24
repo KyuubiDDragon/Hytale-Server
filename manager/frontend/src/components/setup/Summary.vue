@@ -26,35 +26,68 @@ const finalServerAddress = ref('')
 // Computed configuration summary from setup data
 const configSummary = computed(() => {
   const data = setupStore.setupData
+
+  // Get network config
+  const networkData = data.network as Record<string, unknown> | null
+  const accessMode = networkData?.accessMode as string || 'local'
+  const domain = networkData?.domain as string | null
+  const panelPort = networkData?.panelPort as number || 18080
+  const detectedIp = networkData?.detectedIp as string || 'localhost'
+
+  // Build URLs based on access mode
+  let panelUrl = 'http://localhost:18080'
+  let serverAddress = 'localhost:5520'
+
+  if (accessMode === 'domain' && domain) {
+    // Use custom domain
+    panelUrl = domain.replace(/\/$/, '') // Remove trailing slash
+    serverAddress = new URL(domain).hostname + ':5520'
+  } else if (accessMode === 'lan' && detectedIp) {
+    panelUrl = `http://${detectedIp}:${panelPort}`
+    serverAddress = `${detectedIp}:5520`
+  } else {
+    panelUrl = `http://localhost:${panelPort}`
+    serverAddress = 'localhost:5520'
+  }
+
+  // Get integrations config
+  const integrationsData = data.integrations as Record<string, unknown> | null
+
+  // Get plugin config
+  const pluginData = data.plugin as Record<string, unknown> | null
+
+  // Map backend access mode to display value
+  const accessModeDisplay = accessMode === 'domain' ? 'custom' : accessMode === 'lan' ? 'lan' : 'localhost'
+
   return {
     admin: {
       username: data.admin?.username || 'admin',
     },
     language: data.language?.language || 'en',
     plugin: {
-      installed: true, // This would come from stored data
-      version: '1.1.6',
+      installed: pluginData?.installPlugin ?? true,
+      version: (pluginData?.version as string) || '1.1.6',
     },
     integrations: {
-      modtale: false,
-      stackmart: false,
-      webmap: false,
+      modtale: !!integrationsData?.modtaleApiKey,
+      stackmart: !!integrationsData?.stackmartApiKey,
+      webmap: integrationsData?.webmapEnabled ?? false,
     },
     network: {
-      accessMode: 'localhost',
-      panelUrl: 'http://localhost:18080',
-      serverAddress: 'localhost:5520',
+      accessMode: accessModeDisplay,
+      panelUrl,
+      serverAddress,
     },
   }
 })
 
-// Edit sections map to step indices
+// Edit sections map to step indices (0-indexed based on SETUP_STEPS)
 const sectionStepMap: Record<string, number> = {
-  language: 1,
-  admin: 2,
-  plugin: 6,
-  integrations: 7,
-  network: 8,
+  language: 1,      // LanguageSelect
+  admin: 2,         // AdminAccount
+  plugin: 10,       // PluginInstall
+  integrations: 11, // Integrations
+  network: 12,      // NetworkConfig
 }
 
 function handleEdit(section: string) {
