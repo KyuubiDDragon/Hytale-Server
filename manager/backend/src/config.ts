@@ -20,10 +20,29 @@ interface ConfigJson {
   corsOrigins?: string[];
   network?: {
     trustProxy?: boolean;
+    accessMode?: string;
+    domain?: string;
   };
   integrations?: {
     modtaleApiKey?: string;
     stackmartApiKey?: string;
+    webmap?: boolean;
+  };
+  automation?: {
+    backups?: {
+      enabled?: boolean;
+      interval?: string;
+      retention?: number;
+    };
+    restart?: {
+      enabled?: boolean;
+      schedule?: string;
+      warnMinutes?: number;
+    };
+  };
+  plugin?: {
+    kyuubiApiInstalled?: boolean;
+    version?: string;
   };
 }
 
@@ -107,6 +126,9 @@ export const config = {
 
   // Modtale Integration - from config.json if available, otherwise from env
   modtaleApiKey: effectiveModtaleApiKey,
+
+  // WebMap enabled - from config.json after setup
+  webmapEnabled: configJson?.integrations?.webmap ?? false,
 
   // ============================================================
   // Legacy values (kept for backward compatibility during migration)
@@ -192,6 +214,9 @@ export function reloadConfigFromFile(): void {
       }
       if (newConfigJson.integrations?.modtaleApiKey !== undefined) {
         (config as { modtaleApiKey: string }).modtaleApiKey = newConfigJson.integrations.modtaleApiKey;
+      }
+      if (newConfigJson.integrations?.webmap !== undefined) {
+        (config as { webmapEnabled: boolean }).webmapEnabled = newConfigJson.integrations.webmap;
       }
       if (newConfigJson.setupComplete !== undefined) {
         (config as { setupComplete: boolean }).setupComplete = newConfigJson.setupComplete;

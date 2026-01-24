@@ -297,11 +297,12 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'server-config':
+        // Frontend sends 'name' and 'gameMode', support both naming conventions
         setupConfig.server = {
-          name: (data.serverName as string) || 'Hytale Server',
+          name: (data.name as string) || (data.serverName as string) || 'Hytale Server',
           motd: (data.motd as string) || 'Welcome to Hytale!',
           maxPlayers: (data.maxPlayers as number) || 20,
-          gameMode: (data.gameMode as string) || 'Adventure',
+          gameMode: (data.gameMode as string) || (data.defaultGamemode as string) || 'Adventure',
           password: (data.password as string) || '',
           whitelist: data.whitelist === true,
           allowOp: data.allowOp === true,
@@ -317,16 +318,19 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'automation':
+        // Frontend sends nested objects: { backups: {...}, restart: {...} }
+        const backupsData = data.backups as Record<string, unknown> | undefined;
+        const restartData = data.restart as Record<string, unknown> | undefined;
         setupConfig.automation = {
           backups: {
-            enabled: data.backupsEnabled !== false,
-            interval: (data.backupInterval as string) || '6h',
-            retention: (data.backupRetention as number) || 7,
+            enabled: backupsData?.enabled !== false,
+            interval: (backupsData?.interval as string) || '6h',
+            retention: (backupsData?.retention as number) || 7,
           },
           restart: {
-            enabled: data.restartEnabled === true,
-            schedule: (data.restartSchedule as string) || '0 4 * * *',
-            warnMinutes: (data.restartWarnMinutes as number) || 5,
+            enabled: restartData?.enabled === true,
+            schedule: (restartData?.schedule as string) || '0 4 * * *',
+            warnMinutes: (restartData?.warnMinutes as number) || 5,
           },
         };
         break;
@@ -347,10 +351,11 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'integrations':
+        // Frontend sends 'webmapEnabled', support both naming conventions
         setupConfig.integrations = {
           modtaleApiKey: (data.modtaleApiKey as string) || '',
           stackmartApiKey: (data.stackmartApiKey as string) || '',
-          webmap: data.webmap === true,
+          webmap: data.webmapEnabled === true || data.webmap === true,
         };
         break;
 
@@ -391,8 +396,28 @@ export async function saveStepData(stepId: string, data: PartialSetupData): Prom
         break;
 
       case 'security-settings':
-        // Security settings step - stores auth configuration status
-        // The actual auth is handled by the setup routes, this just saves the step data
+        // Update server config with security settings
+        if (!setupConfig.server) {
+          setupConfig.server = {
+            name: 'Hytale Server',
+            motd: 'Welcome to Hytale!',
+            maxPlayers: 20,
+            gameMode: 'Adventure',
+            password: '',
+            whitelist: false,
+            allowOp: true,
+          };
+        }
+        // Apply security settings from frontend
+        if (data.password !== undefined) {
+          setupConfig.server.password = (data.password as string) || '';
+        }
+        if (data.whitelist !== undefined) {
+          setupConfig.server.whitelist = data.whitelist === true;
+        }
+        if (data.allowOp !== undefined) {
+          setupConfig.server.allowOp = data.allowOp === true;
+        }
         break;
 
       case 'summary':
@@ -491,10 +516,13 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
         serverConfig.MOTD = setupConfig.server.motd;
         serverConfig.MaxPlayers = setupConfig.server.maxPlayers;
         serverConfig.Password = setupConfig.server.password;
+        serverConfig.Whitelist = setupConfig.server.whitelist ?? false;
+        serverConfig.AllowOp = setupConfig.server.allowOp ?? true;
         if (!serverConfig.Defaults) serverConfig.Defaults = {};
         serverConfig.Defaults.GameMode = setupConfig.server.gameMode;
 
         await writeFile(serverConfigPath, JSON.stringify(serverConfig, null, 2), 'utf-8');
+        console.log('[Setup] Wrote server config.json with all settings');
       } catch {
         // Server directory might not exist yet, skip
         console.log('Note: Server config not written (server directory not ready)');
@@ -525,10 +553,13 @@ export async function finalizeSetup(): Promise<{ success: boolean; error?: strin
       integrations: {
         modtaleApiKey: setupConfig.integrations?.modtaleApiKey ?? '',
         stackmartApiKey: setupConfig.integrations?.stackmartApiKey ?? '',
+        webmap: setupConfig.integrations?.webmap ?? false,
       },
+      automation: setupConfig.automation ?? null,
+      plugin: setupConfig.plugin ?? null,
     };
     await writeFile(CONFIG_JSON_FILE, JSON.stringify(mainConfig, null, 2), 'utf-8');
-    console.log('[Setup] Wrote config.json with JWT secret');
+    console.log('[Setup] Wrote config.json with all settings');
 
     // Reload config in memory so auth service can use the new JWT secret immediately
     reloadConfigFromFile();
