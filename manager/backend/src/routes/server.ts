@@ -195,6 +195,15 @@ router.put('/quick-settings', authMiddleware, requirePermission('config.edit'), 
 
 // POST /api/server/start
 router.post('/start', authMiddleware, requirePermission('server.start'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate server start
+  if (isDemoMode()) {
+    res.json({
+      success: true,
+      message: '[Demo] Server started successfully',
+    });
+    return;
+  }
+
   const result = await dockerService.startContainer();
   if (!result.success) {
     res.status(500).json(result);
@@ -205,6 +214,15 @@ router.post('/start', authMiddleware, requirePermission('server.start'), async (
 
 // POST /api/server/stop
 router.post('/stop', authMiddleware, requirePermission('server.stop'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate server stop
+  if (isDemoMode()) {
+    res.json({
+      success: true,
+      message: '[Demo] Server stopped successfully',
+    });
+    return;
+  }
+
   const result = await dockerService.stopContainer();
   if (!result.success) {
     res.status(500).json(result);
@@ -215,6 +233,15 @@ router.post('/stop', authMiddleware, requirePermission('server.stop'), async (_r
 
 // POST /api/server/restart
 router.post('/restart', authMiddleware, requirePermission('server.restart'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate server restart
+  if (isDemoMode()) {
+    res.json({
+      success: true,
+      message: '[Demo] Server restarted successfully',
+    });
+    return;
+  }
+
   const result = await dockerService.restartContainer();
   if (!result.success) {
     res.status(500).json(result);
