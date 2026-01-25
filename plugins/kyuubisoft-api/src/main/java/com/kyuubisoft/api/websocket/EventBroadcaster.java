@@ -25,7 +25,7 @@ public class EventBroadcaster {
      */
     public void addChannel(Channel channel) {
         channels.add(channel);
-        LOGGER.info("WebSocket client connected. Total clients: " + channels.size());
+        // Debug: LOGGER.fine("WebSocket client connected. Total clients: " + channels.size());
     }
 
     /**
@@ -33,7 +33,7 @@ public class EventBroadcaster {
      */
     public void removeChannel(Channel channel) {
         channels.remove(channel);
-        LOGGER.info("WebSocket client disconnected. Total clients: " + channels.size());
+        // Debug: LOGGER.fine("WebSocket client disconnected. Total clients: " + channels.size());
     }
 
     /**
