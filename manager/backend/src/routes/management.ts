@@ -1842,6 +1842,13 @@ router.delete('/modstore/:modId/uninstall', authMiddleware, requirePermission('m
 
 // POST /api/management/modstore/:modId/update
 router.post('/modstore/:modId/update', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate update
+  if (isDemoMode()) {
+    const { modId } = req.params;
+    res.json({ success: true, filename: `${modId}.jar`, version: '1.1.0', message: '[DEMO] Mod updated (simulated)' });
+    return;
+  }
+
   try {
     const { modId } = req.params;
     const result = await updateMod(modId);
@@ -2469,6 +2476,13 @@ router.get('/modtale/installed', authMiddleware, requirePermission('mods.view'),
 
 // DELETE /api/management/modtale/uninstall/:projectId - Uninstall a Modtale mod
 router.delete('/modtale/uninstall/:projectId', authMiddleware, requirePermission('mods.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate uninstall
+  if (isDemoMode()) {
+    const { projectId } = req.params;
+    res.json({ success: true, projectId, message: '[DEMO] Modtale mod uninstalled (simulated)' });
+    return;
+  }
+
   try {
     const { projectId } = req.params;
 
@@ -2666,6 +2680,13 @@ router.get('/stackmart/installed', authMiddleware, requirePermission('mods.view'
 
 // DELETE /api/management/stackmart/uninstall/:resourceId - Uninstall a StackMart resource
 router.delete('/stackmart/uninstall/:resourceId', authMiddleware, requirePermission('mods.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate uninstall
+  if (isDemoMode()) {
+    const { resourceId } = req.params;
+    res.json({ success: true, resourceId, message: '[DEMO] StackMart resource uninstalled (simulated)' });
+    return;
+  }
+
   try {
     const { resourceId } = req.params;
 
