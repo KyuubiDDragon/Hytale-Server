@@ -345,7 +345,7 @@ export function checkSecurityConfig(): void {
 
   // Critical: CORS must be explicitly configured
   if (!config.corsOrigins) {
-    criticalErrors.push('CORS_ORIGINS is not set! Set to specific origins (e.g., "https://panel.example.com")');
+    criticalErrors.push('CORS_ORIGINS is not set! Set to specific origins (e.g., "http://your-server-ip:18080" or "https://your-domain.com")');
   } else if (config.corsOrigins === '*') {
     warnings.push('CORS_ORIGINS is set to "*" (allows all origins). Consider restricting in production.');
   }
@@ -387,7 +387,7 @@ export function checkSecurityConfig(): void {
       console.log('║    MANAGER_USERNAME=your_admin_username                      ║');
       console.log('║    MANAGER_PASSWORD=your_secure_password_12_chars_min        ║');
       console.log('║    JWT_SECRET=$(openssl rand -base64 48)                     ║');
-      console.log('║    CORS_ORIGINS=https://your-domain.com                      ║');
+      console.log('║    CORS_ORIGINS=http://your-ip:18080 (or https://domain.com) ║');
       console.log('║                                                              ║');
       console.log('║  To bypass (NOT recommended for production):                 ║');
       console.log('║    Set SECURITY_MODE=warn                                    ║');

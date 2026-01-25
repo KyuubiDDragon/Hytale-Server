@@ -79,6 +79,7 @@ services:
       - ${HOST_DATA_PATH:-/opt/hytale}/backups:/opt/hytale/backups
       - ${HOST_DATA_PATH:-/opt/hytale}/plugins:/opt/hytale/plugins
       - ${HOST_DATA_PATH:-/opt/hytale}/mods:/opt/hytale/mods
+      - ${HOST_DATA_PATH:-/opt/hytale}/prefabs:/opt/hytale/prefabs
       - ${HOST_DATA_PATH:-/opt/hytale}/downloader:/opt/hytale/downloader
       - ${HOST_DATA_PATH:-/opt/hytale}/auth:/opt/hytale/auth
       - ${HOST_DATA_PATH:-/opt/hytale}/updater:/opt/hytale/server/updater
@@ -194,6 +195,7 @@ services:
       - ${HOST_DATA_PATH:-/opt/hytale}/data:/opt/hytale/data
       - ${HOST_DATA_PATH:-/opt/hytale}/mods:/opt/hytale/mods
       - ${HOST_DATA_PATH:-/opt/hytale}/plugins:/opt/hytale/plugins
+      - ${HOST_DATA_PATH:-/opt/hytale}/prefabs:/opt/hytale/prefabs:ro
       - ${HOST_DATA_PATH:-/opt/hytale}/auth:/opt/hytale/auth:ro
 
       # Asset Explorer cache (extracted game assets)

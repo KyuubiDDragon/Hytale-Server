@@ -78,7 +78,7 @@ export async function setPersistence(type: 'Memory' | 'Encrypted'): Promise<Acti
     const logs = await getLogs(150);
     const cleanLogs = stripAnsiCodes(logs);
 
-    console.log('[HytaleAuth] Logs after persistence command:', cleanLogs.substring(cleanLogs.length - 500));
+    // Debug logging removed to reduce console spam
 
     // Check if persistence was set successfully - look for success messages
     const successPatterns = [
@@ -196,7 +196,7 @@ export async function initiateDeviceLogin(): Promise<HytaleDeviceCodeResponse> {
     }
 
     if (!verificationUrl || !userCode) {
-      console.error('[HytaleAuth] Could not parse auth response. Logs:', cleanLogs.substring(cleanLogs.length - 1000));
+      console.error('[HytaleAuth] Could not parse auth response from server logs');
       return {
         success: false,
         error: 'Could not parse authentication response from server logs. Make sure the server is running.',
@@ -257,16 +257,14 @@ export async function listAuthFiles(): Promise<string[]> {
   for (const authDir of authDirs) {
     try {
       const files = await fs.readdir(authDir);
-      console.log(`[HytaleAuth] Files in ${authDir}:`, files);
+      // Files found in auth directory
       allFiles.push(...files);
     } catch {
       // Directory doesn't exist, continue
     }
   }
 
-  if (allFiles.length === 0) {
-    console.log('[HytaleAuth] No auth directories found or they are empty');
-  }
+  // No logging needed for empty auth directories
 
   return allFiles;
 }
@@ -298,14 +296,14 @@ export async function inspectDownloaderCredentials(): Promise<{ exists: boolean;
         return acc;
       }, {} as any);
 
-      console.log('[HytaleAuth] Downloader credentials structure:', structure);
+      // Credentials structure inspected
 
       return {
         exists: true,
         structure,
       };
     } catch (readError) {
-      console.log('[HytaleAuth] Could not read downloader credentials:', readError);
+      // Downloader credentials not found or not readable
       return {
         exists: false,
         error: 'File not found or not readable',

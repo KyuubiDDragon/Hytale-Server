@@ -102,9 +102,7 @@ export function getInstalledVersion(): string | null {
  * Note: config.gameContainerName already has STACK_NAME fallback built in
  */
 function getPluginHost(): string {
-  const host = config.gameContainerName;
-  console.log(`[KyuubiAPI] Using plugin host: ${host}`);
-  return host;
+  return config.gameContainerName;
 }
 
 /**
