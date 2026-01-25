@@ -270,9 +270,44 @@ router.get('/item-icon/:itemId', publicAssetLimiter, (req: Request, res: Respons
   }
 
   // Strip namespace prefix if present (e.g., "hytale:Cobalt_Sword" -> "Cobalt_Sword")
-  const originalId = itemId;
   if (itemId.includes(':')) {
     itemId = itemId.split(':')[1];
+  }
+
+  // Demo mode: Return a placeholder SVG icon
+  if (isDemoMode()) {
+    // Generate a color based on item type
+    const itemLower = itemId.toLowerCase();
+    let color = '#6b7280'; // Default gray
+    let icon = '📦'; // Default box
+
+    if (itemLower.includes('weapon') || itemLower.includes('sword') || itemLower.includes('bow') || itemLower.includes('battleaxe')) {
+      color = '#ef4444'; icon = '⚔️'; // Red - weapons
+    } else if (itemLower.includes('armor') || itemLower.includes('shield')) {
+      color = '#3b82f6'; icon = '🛡️'; // Blue - armor
+    } else if (itemLower.includes('tool') || itemLower.includes('pickaxe') || itemLower.includes('hatchet') || itemLower.includes('shovel')) {
+      color = '#f59e0b'; icon = '⛏️'; // Yellow - tools
+    } else if (itemLower.includes('food') || itemLower.includes('kebab') || itemLower.includes('meat') || itemLower.includes('fish')) {
+      color = '#22c55e'; icon = '🍖'; // Green - food
+    } else if (itemLower.includes('potion') || itemLower.includes('health') || itemLower.includes('stamina')) {
+      color = '#a855f7'; icon = '🧪'; // Purple - potions
+    } else if (itemLower.includes('material') || itemLower.includes('ingot') || itemLower.includes('wood')) {
+      color = '#78716c'; icon = '🧱'; // Stone - materials
+    } else if (itemLower.includes('torch') || itemLower.includes('furniture')) {
+      color = '#fb923c'; icon = '🔥'; // Orange - utility
+    }
+
+    // Return an SVG placeholder
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="8" fill="${color}" fill-opacity="0.2"/>
+      <rect x="2" y="2" width="60" height="60" rx="6" fill="none" stroke="${color}" stroke-width="2" stroke-opacity="0.5"/>
+      <text x="32" y="40" text-anchor="middle" font-size="24">${icon}</text>
+    </svg>`;
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(svg);
+    return;
   }
 
   // Check cache first for fast lookup
@@ -382,6 +417,20 @@ router.get('/item-icon/:itemId', publicAssetLimiter, (req: Request, res: Respons
 // Searches for player character textures in the assets
 // NOTE: Public endpoint with rate limiting - required for <img> tags
 router.get('/player-avatar', publicAssetLimiter, (req: Request, res: Response) => {
+  // Demo mode: Return a placeholder avatar SVG
+  if (isDemoMode()) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="32" fill="#4f46e5" fill-opacity="0.2"/>
+      <circle cx="32" cy="24" r="12" fill="#4f46e5" fill-opacity="0.6"/>
+      <ellipse cx="32" cy="52" rx="18" ry="14" fill="#4f46e5" fill-opacity="0.6"/>
+    </svg>`;
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(svg);
+    return;
+  }
+
   // Try specific paths first (common Hytale asset locations)
   const specificPaths = [
     // UI portraits/avatars
