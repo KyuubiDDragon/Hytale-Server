@@ -21,6 +21,7 @@ const loading = ref(false)
 const demoLoading = ref<'demo' | 'admin' | null>(null)
 const showPassword = ref(false)
 const currentLocale = ref(getLocale())
+const checkingDemo = ref(true)
 
 // Check for logout message from session invalidation
 onMounted(async () => {
@@ -31,7 +32,20 @@ onMounted(async () => {
   }
 
   // Check if demo mode is enabled
-  await demoStore.checkDemoMode()
+  try {
+    // Force re-check by directly calling the API
+    const response = await fetch('/api/server/demo')
+    if (response.ok) {
+      const data = await response.json()
+      if (data.demoMode) {
+        // Update store manually
+        demoStore.isDemoMode = true
+      }
+    }
+  } catch {
+    // Ignore errors
+  }
+  checkingDemo.value = false
 })
 
 function toggleLocale() {
@@ -106,8 +120,13 @@ async function handleDemoLogin(type: 'demo' | 'admin') {
           <p class="text-status-error text-sm">{{ error }}</p>
         </div>
 
+        <!-- Loading while checking demo mode -->
+        <div v-if="checkingDemo" class="flex justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-hytale-orange"></div>
+        </div>
+
         <!-- Demo Mode Buttons -->
-        <div v-if="demoStore.isDemoMode" class="space-y-4">
+        <div v-else-if="demoStore.isDemoMode" class="space-y-4">
           <div class="text-center mb-6">
             <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-hytale-orange/10 border border-hytale-orange/30 rounded-full">
               <svg class="w-4 h-4 text-hytale-orange" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,7 +169,7 @@ async function handleDemoLogin(type: 'demo' | 'admin') {
         </div>
 
         <!-- Regular Login Form -->
-        <form v-else @submit.prevent="handleLogin" class="space-y-5">
+        <form v-else-if="!checkingDemo" @submit.prevent="handleLogin" class="space-y-5">
           <div>
             <label class="label">{{ t('auth.username') }}</label>
             <Input
