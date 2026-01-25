@@ -2,6 +2,7 @@
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
 import PermissionBanner from './PermissionBanner.vue'
+import DemoBanner from './DemoBanner.vue'
 </script>
 
 <template>
@@ -11,6 +12,9 @@ import PermissionBanner from './PermissionBanner.vue'
 
     <!-- Main Content -->
     <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Demo Mode Banner (only shows if in demo mode) -->
+      <DemoBanner />
+
       <!-- Permission Warning Banner (only shows if there are issues) -->
       <PermissionBanner />
 

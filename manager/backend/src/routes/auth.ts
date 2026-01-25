@@ -7,6 +7,13 @@ import { getAllUsers, createUser, updateUser, deleteUser, getUser, invalidateUse
 import { getUserPermissions, hasPermission } from '../services/roles.js';
 import { initiateDeviceLogin, checkAuthCompletion, getAuthStatus, resetAuth, setPersistence, listAuthFiles, inspectDownloaderCredentials } from '../services/hytaleAuth.js';
 import type { AuthenticatedRequest, LoginRequest } from '../types/index.js';
+import { isDemoMode, getDemoUsers, getDemoRoles } from '../services/demoData.js';
+
+// Demo credentials
+const DEMO_USERNAME = 'demo';
+const DEMO_PASSWORD = 'demo';
+const DEMO_ADMIN_USERNAME = 'admin';
+const DEMO_ADMIN_PASSWORD = 'admin';
 
 const router = Router();
 
@@ -34,6 +41,34 @@ router.post('/login', loginLimiter, async (req: Request, res: Response) => {
 
   if (!username || !password) {
     res.status(400).json({ detail: 'Username and password required' });
+    return;
+  }
+
+  // Demo mode: Accept demo credentials
+  if (isDemoMode()) {
+    const isAdmin = username === DEMO_ADMIN_USERNAME && password === DEMO_ADMIN_PASSWORD;
+    const isDemo = username === DEMO_USERNAME && password === DEMO_PASSWORD;
+
+    if (!isAdmin && !isDemo) {
+      res.status(401).json({ detail: 'Invalid credentials. Use demo/demo or admin/admin in demo mode.' });
+      return;
+    }
+
+    const role = isAdmin ? 'admin' : 'viewer';
+    const permissions = isAdmin ? ['*'] : ['server.view_status', 'players.view', 'console.view', 'performance.view', 'backups.view', 'scheduler.view', 'mods.view', 'plugins.view', 'worlds.view', 'chat.view', 'activity.view'];
+
+    // Create tokens even in demo mode for consistent behavior
+    const accessToken = await createAccessToken(username);
+    const refreshToken = createRefreshToken(username);
+
+    res.json({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      token_type: 'bearer',
+      role,
+      permissions,
+      demo: true,
+    });
     return;
   }
 
@@ -70,6 +105,24 @@ router.post('/refresh', refreshLimiter, async (req: Request, res: Response) => {
 
   if (!result) {
     res.status(401).json({ detail: 'Invalid or expired refresh token' });
+    return;
+  }
+
+  // Demo mode: Create new tokens for demo users
+  if (isDemoMode()) {
+    const isAdmin = result.username === DEMO_ADMIN_USERNAME;
+    const accessToken = await createAccessToken(result.username);
+    const newRefreshToken = createRefreshToken(result.username);
+    const permissions = isAdmin ? ['*'] : ['server.view_status', 'players.view', 'console.view', 'performance.view', 'backups.view', 'scheduler.view', 'mods.view', 'plugins.view', 'worlds.view', 'chat.view', 'activity.view'];
+
+    res.json({
+      access_token: accessToken,
+      refresh_token: newRefreshToken,
+      token_type: 'bearer',
+      role: isAdmin ? 'admin' : 'viewer',
+      permissions,
+      demo: true,
+    });
     return;
   }
 
@@ -121,6 +174,16 @@ router.post('/ws-ticket', authMiddleware, wsTicketLimiter, async (req: Authentic
 // GET /api/auth/me
 router.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   const username = req.user!;  // authMiddleware guarantees this is set
+
+  // Demo mode: return demo user info
+  if (isDemoMode()) {
+    const isAdmin = username === DEMO_ADMIN_USERNAME;
+    const role = isAdmin ? 'admin' : 'viewer';
+    const permissions = isAdmin ? ['*'] : ['server.view_status', 'players.view', 'console.view', 'performance.view', 'backups.view', 'scheduler.view', 'mods.view', 'plugins.view', 'worlds.view', 'chat.view', 'activity.view'];
+    res.json({ username, role, permissions, demo: true });
+    return;
+  }
+
   const user = await getUser(username);
   const permissions = await getUserPermissions(username);
   if (!user) {
@@ -134,6 +197,12 @@ router.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: Respons
 
 // GET /api/auth/users - List all users
 router.get('/users', authMiddleware, requirePermission('users.view'), async (_req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: return demo users
+  if (isDemoMode()) {
+    res.json({ users: getDemoUsers() });
+    return;
+  }
+
   try {
     const users = await getAllUsers();
     res.json({ users });
@@ -144,6 +213,17 @@ router.get('/users', authMiddleware, requirePermission('users.view'), async (_re
 
 // POST /api/auth/users - Create new user
 router.post('/users', authMiddleware, requirePermission('users.create'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate user creation
+  if (isDemoMode()) {
+    const { username, roleId } = req.body;
+    res.json({
+      success: true,
+      message: '[DEMO] User created (simulated)',
+      user: { username, role: roleId || 'viewer', createdAt: new Date().toISOString() },
+    });
+    return;
+  }
+
   try {
     const { username, password, roleId } = req.body;
 
@@ -161,6 +241,12 @@ router.post('/users', authMiddleware, requirePermission('users.create'), async (
 
 // PUT /api/auth/users/:username - Update user
 router.put('/users/:username', authMiddleware, requirePermission('users.edit'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate user update
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] User updated (simulated)' });
+    return;
+  }
+
   try {
     const { username } = req.params;
     const { password, roleId } = req.body;
@@ -185,6 +271,12 @@ router.put('/users/:username', authMiddleware, requirePermission('users.edit'), 
 
 // DELETE /api/auth/users/:username - Delete user
 router.delete('/users/:username', authMiddleware, requirePermission('users.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate user deletion
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] User deleted (simulated)' });
+    return;
+  }
+
   try {
     const { username } = req.params;
 
@@ -205,6 +297,18 @@ router.delete('/users/:username', authMiddleware, requirePermission('users.delet
 
 // GET /api/auth/hytale/status - Get Hytale authentication status
 router.get('/hytale/status', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: Request, res: Response) => {
+  // Demo mode: return authenticated status
+  if (isDemoMode()) {
+    res.json({
+      authenticated: true,
+      username: 'demo@kyuubisoft.com',
+      persistence: 'Memory',
+      lastAuth: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      demo: true,
+    });
+    return;
+  }
+
   try {
     // Always verify auth status by checking for token files
     const result = await checkAuthCompletion();
@@ -220,6 +324,19 @@ router.get('/hytale/status', authMiddleware, requirePermission('hytale_auth.mana
 
 // POST /api/auth/hytale/initiate - Initiate Hytale device login
 router.post('/hytale/initiate', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate device login initiation
+  if (isDemoMode()) {
+    res.json({
+      success: true,
+      message: '[DEMO] Device login initiated (simulated)',
+      deviceCode: 'DEMO-1234-5678',
+      verificationUri: 'https://hypixel.net/activate',
+      expiresIn: 300,
+      demo: true,
+    });
+    return;
+  }
+
   try {
     const result = await initiateDeviceLogin();
 
@@ -239,6 +356,12 @@ router.post('/hytale/initiate', authMiddleware, requirePermission('hytale_auth.m
 
 // POST /api/auth/hytale/check - Check if authentication is complete
 router.post('/hytale/check', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: Request, res: Response) => {
+  // Demo mode: return authenticated
+  if (isDemoMode()) {
+    res.json({ success: true, authenticated: true, demo: true });
+    return;
+  }
+
   try {
     const result = await checkAuthCompletion();
     res.json(result);
@@ -252,6 +375,12 @@ router.post('/hytale/check', authMiddleware, requirePermission('hytale_auth.mana
 
 // POST /api/auth/hytale/reset - Reset Hytale authentication
 router.post('/hytale/reset', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate reset
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Auth reset (simulated)', demo: true });
+    return;
+  }
+
   try {
     const result = await resetAuth();
     res.json(result);
@@ -265,6 +394,13 @@ router.post('/hytale/reset', authMiddleware, requirePermission('hytale_auth.mana
 
 // POST /api/auth/hytale/persistence - Set authentication persistence type
 router.post('/hytale/persistence', authMiddleware, requirePermission('hytale_auth.manage'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate persistence change
+  if (isDemoMode()) {
+    const { type } = req.body;
+    res.json({ success: true, message: `[DEMO] Persistence set to ${type} (simulated)`, demo: true });
+    return;
+  }
+
   try {
     const { type } = req.body;
     if (!type || !['Memory', 'Encrypted'].includes(type)) {
@@ -287,6 +423,12 @@ router.post('/hytale/persistence', authMiddleware, requirePermission('hytale_aut
 
 // GET /api/auth/hytale/files - List files in auth directory (debug)
 router.get('/hytale/files', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: Request, res: Response) => {
+  // Demo mode: return simulated file list
+  if (isDemoMode()) {
+    res.json({ files: ['credentials.json', 'token.json'], demo: true });
+    return;
+  }
+
   try {
     const files = await listAuthFiles();
     res.json({ files });
@@ -297,6 +439,12 @@ router.get('/hytale/files', authMiddleware, requirePermission('hytale_auth.manag
 
 // GET /api/auth/hytale/inspect-credentials - Inspect downloader credentials structure (debug)
 router.get('/hytale/inspect-credentials', authMiddleware, requirePermission('hytale_auth.manage'), async (_req: Request, res: Response) => {
+  // Demo mode: return simulated credentials info
+  if (isDemoMode()) {
+    res.json({ success: true, hasCredentials: true, structure: { username: 'demo@kyuubisoft.com' }, demo: true });
+    return;
+  }
+
   try {
     const result = await inspectDownloaderCredentials();
     res.json(result);

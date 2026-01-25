@@ -3,6 +3,7 @@ import { config } from '../config.js';
 import type { ServerStatus, ServerStats, ActionResponse } from '../types/index.js';
 import { validateCommand, escapeShellArg } from '../utils/sanitize.js';
 import { clearOnlinePlayers } from './players.js';
+import { isDemoMode, getDemoStatus, getDemoStats, getDemoLogs } from './demoData.js';
 
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
@@ -15,6 +16,11 @@ async function getContainer(): Promise<Docker.Container | null> {
 }
 
 export async function getStatus(): Promise<ServerStatus> {
+  // Demo mode: return mock status
+  if (isDemoMode()) {
+    return getDemoStatus();
+  }
+
   try {
     const container = await getContainer();
     if (!container) {
@@ -44,6 +50,11 @@ export async function getStatus(): Promise<ServerStatus> {
 }
 
 export async function getStats(): Promise<ServerStats> {
+  // Demo mode: return mock stats
+  if (isDemoMode()) {
+    return getDemoStats();
+  }
+
   try {
     const container = await getContainer();
     if (!container) {
@@ -82,6 +93,11 @@ export async function getStats(): Promise<ServerStats> {
 }
 
 export async function startContainer(): Promise<ActionResponse> {
+  // Demo mode: simulate success
+  if (isDemoMode()) {
+    return { success: true, message: '[DEMO] Container started' };
+  }
+
   try {
     const container = await getContainer();
     if (!container) {
@@ -96,6 +112,11 @@ export async function startContainer(): Promise<ActionResponse> {
 }
 
 export async function stopContainer(): Promise<ActionResponse> {
+  // Demo mode: simulate success
+  if (isDemoMode()) {
+    return { success: true, message: '[DEMO] Container stopped' };
+  }
+
   try {
     const container = await getContainer();
     if (!container) {
@@ -112,6 +133,11 @@ export async function stopContainer(): Promise<ActionResponse> {
 }
 
 export async function restartContainer(): Promise<ActionResponse> {
+  // Demo mode: simulate success
+  if (isDemoMode()) {
+    return { success: true, message: '[DEMO] Container restarted' };
+  }
+
   try {
     const container = await getContainer();
     if (!container) {
@@ -128,6 +154,11 @@ export async function restartContainer(): Promise<ActionResponse> {
 }
 
 export async function getLogs(tail: number = 100): Promise<string> {
+  // Demo mode: return mock logs
+  if (isDemoMode()) {
+    return getDemoLogs(tail);
+  }
+
   try {
     const container = await getContainer();
     if (!container) {
@@ -197,6 +228,16 @@ async function ensureStdinAttached(): Promise<boolean> {
 }
 
 export async function execCommand(command: string): Promise<ActionResponse> {
+  // Demo mode: simulate command execution
+  if (isDemoMode()) {
+    // SECURITY: Still validate command even in demo mode
+    const validation = validateCommand(command);
+    if (!validation.valid) {
+      return { success: false, error: validation.error || 'Invalid command' };
+    }
+    return { success: true, message: `[DEMO] Command executed: ${command}` };
+  }
+
   try {
     // SECURITY: Validate command against whitelist and injection patterns
     const validation = validateCommand(command);
@@ -267,6 +308,15 @@ export async function execCommand(command: string): Promise<ActionResponse> {
 
 // Execute a shell command inside the container and capture output
 export async function execInContainer(command: string): Promise<ActionResponse & { output?: string }> {
+  // Demo mode: return mock output for known commands
+  if (isDemoMode()) {
+    if (command.includes('stats memory')) {
+      const { getDemoMemoryStats } = await import('./demoData.js');
+      return { success: true, output: getDemoMemoryStats().raw };
+    }
+    return { success: true, output: '[DEMO] Command executed' };
+  }
+
   try {
     const container = await getContainer();
     if (!container) {

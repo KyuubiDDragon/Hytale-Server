@@ -8,6 +8,20 @@ import * as kyuubiApiService from '../services/kyuubiApi.js';
 import { getPlayerInventoryFromFile, getPlayerDetailsFromFile } from '../services/players.js';
 import { config } from '../config.js';
 import { dismissNewFeaturesBanner } from '../services/migration.js';
+import {
+  isDemoMode,
+  getDemoQuickSettings,
+  getDemoMemoryStats,
+  getDemoUpdateStatus,
+  getDemoUpdateConfig,
+  getDemoVersionInfo,
+  getDemoPluginUpdateStatus,
+  getDemoNewFeatures,
+  getDemoConfigFiles,
+  getDemoServerConfig,
+  getDemoDownloaderStatus,
+  getDemoPatchlineConfig,
+} from '../services/demoData.js';
 
 const router = Router();
 
@@ -24,6 +38,14 @@ interface QuickSettings {
   defaultGameMode: string;
 }
 
+// GET /api/server/demo - Check if demo mode is enabled (no auth required for login page)
+router.get('/demo', (_req: Request, res: Response) => {
+  res.json({
+    demoMode: isDemoMode(),
+    message: isDemoMode() ? 'Panel is running in demo mode. All data is simulated.' : undefined,
+  });
+});
+
 // GET /api/server/status
 router.get('/status', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
   const status = await dockerService.getStatus();
@@ -38,6 +60,12 @@ router.get('/stats', authMiddleware, requirePermission('server.view_status'), as
 
 // GET /api/server/memory - Get detailed memory stats from server command
 router.get('/memory', authMiddleware, requirePermission('performance.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock memory stats
+  if (isDemoMode()) {
+    res.json(getDemoMemoryStats());
+    return;
+  }
+
   try {
     const result = await dockerService.execCommand('/server stats memory');
 
@@ -100,6 +128,12 @@ router.get('/memory', authMiddleware, requirePermission('performance.view'), asy
 
 // GET /api/server/quick-settings - Get quick settings from config.json
 router.get('/quick-settings', authMiddleware, requirePermission('config.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock settings
+  if (isDemoMode()) {
+    res.json(getDemoQuickSettings());
+    return;
+  }
+
   try {
     const configPath = path.join(config.serverPath, 'config.json');
     const content = await readFile(configPath, 'utf-8');
@@ -125,6 +159,12 @@ router.get('/quick-settings', authMiddleware, requirePermission('config.view'), 
 
 // PUT /api/server/quick-settings - Save quick settings to config.json
 router.put('/quick-settings', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  // Demo mode: simulate save
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Quick settings saved (simulated)' });
+    return;
+  }
+
   try {
     const { serverName, motd, password, maxPlayers, maxViewRadius, defaultGameMode } = req.body;
 
@@ -224,6 +264,16 @@ async function writePanelConfig(config: PanelConfig): Promise<void> {
 
 // GET /api/server/patchline - Get current patchline setting
 router.get('/patchline', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo patchline
+  if (isDemoMode()) {
+    const demoPatchline = getDemoPatchlineConfig();
+    res.json({
+      patchline: demoPatchline.patchline,
+      options: ['release', 'pre-release'],
+    });
+    return;
+  }
+
   try {
     const panelConfig = await readPanelConfig();
     res.json({
@@ -240,6 +290,13 @@ router.get('/patchline', authMiddleware, requirePermission('server.view_status')
 
 // PUT /api/server/patchline - Set patchline setting
 router.put('/patchline', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  // Demo mode: simulate patchline change
+  if (isDemoMode()) {
+    const { patchline } = req.body;
+    res.json({ success: true, patchline, changed: true, message: '[DEMO] Patchline changed (simulated)' });
+    return;
+  }
+
   try {
     const { patchline } = req.body;
 
@@ -291,6 +348,12 @@ router.put('/patchline', authMiddleware, requirePermission('config.edit'), async
 
 // GET /api/server/accept-early-plugins - Get current acceptEarlyPlugins setting
 router.get('/accept-early-plugins', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo setting
+  if (isDemoMode()) {
+    res.json({ acceptEarlyPlugins: true });
+    return;
+  }
+
   try {
     const panelConfig = await readPanelConfig();
     res.json({
@@ -306,6 +369,13 @@ router.get('/accept-early-plugins', authMiddleware, requirePermission('server.vi
 
 // PUT /api/server/accept-early-plugins - Set acceptEarlyPlugins setting
 router.put('/accept-early-plugins', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  // Demo mode: simulate setting change
+  if (isDemoMode()) {
+    const { acceptEarlyPlugins } = req.body;
+    res.json({ success: true, acceptEarlyPlugins, changed: true, message: '[DEMO] Setting changed (simulated)' });
+    return;
+  }
+
   try {
     const { acceptEarlyPlugins } = req.body;
 
@@ -340,6 +410,12 @@ router.put('/accept-early-plugins', authMiddleware, requirePermission('config.ed
 
 // GET /api/server/disable-sentry - Get current disableSentry setting
 router.get('/disable-sentry', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo setting
+  if (isDemoMode()) {
+    res.json({ disableSentry: false });
+    return;
+  }
+
   try {
     const panelConfig = await readPanelConfig();
     res.json({
@@ -355,6 +431,13 @@ router.get('/disable-sentry', authMiddleware, requirePermission('server.view_sta
 
 // PUT /api/server/disable-sentry - Set disableSentry setting
 router.put('/disable-sentry', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  // Demo mode: simulate setting change
+  if (isDemoMode()) {
+    const { disableSentry } = req.body;
+    res.json({ success: true, disableSentry, changed: true, message: '[DEMO] Setting changed (simulated)' });
+    return;
+  }
+
   try {
     const { disableSentry } = req.body;
 
@@ -389,6 +472,12 @@ router.put('/disable-sentry', authMiddleware, requirePermission('config.edit'), 
 
 // GET /api/server/allow-op - Get current allowOp setting
 router.get('/allow-op', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo setting
+  if (isDemoMode()) {
+    res.json({ allowOp: true });
+    return;
+  }
+
   try {
     const panelConfig = await readPanelConfig();
     res.json({
@@ -404,6 +493,13 @@ router.get('/allow-op', authMiddleware, requirePermission('server.view_status'),
 
 // PUT /api/server/allow-op - Set allowOp setting
 router.put('/allow-op', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
+  // Demo mode: simulate setting change
+  if (isDemoMode()) {
+    const { allowOp } = req.body;
+    res.json({ success: true, allowOp, changed: true, message: '[DEMO] Setting changed (simulated)' });
+    return;
+  }
+
   try {
     const { allowOp } = req.body;
 
@@ -529,6 +625,26 @@ async function getLatestVersion(patchline: string): Promise<VersionCheckResult> 
 
 // GET /api/server/check-update - Check if a Hytale server update is available
 router.get('/check-update', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock update status
+  if (isDemoMode()) {
+    const updateStatus = getDemoUpdateStatus();
+    res.json({
+      installedVersion: updateStatus.currentVersion,
+      latestVersion: updateStatus.latestVersion,
+      updateAvailable: updateStatus.updateAvailable,
+      patchline: 'release',
+      authRequired: false,
+      versions: {
+        release: updateStatus.latestVersion,
+        preRelease: '1.1.0-pre.1-demo',
+      },
+      message: updateStatus.updateAvailable
+        ? `[DEMO] Update available: ${updateStatus.currentVersion} → ${updateStatus.latestVersion}`
+        : '[DEMO] Server is up to date',
+    });
+    return;
+  }
+
   try {
     // Read installed version from file
     const versionFilePath = path.join(config.serverPath, '.hytale-version');
@@ -596,6 +712,19 @@ router.get('/check-update', authMiddleware, requirePermission('server.view_statu
 
 // GET /api/server/config/files - List config files
 router.get('/config/files', authMiddleware, requirePermission('config.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo config files
+  if (isDemoMode()) {
+    const demoFiles = getDemoConfigFiles();
+    res.json({
+      files: demoFiles.map(f => ({
+        name: f.name,
+        size: f.size,
+        modified: f.lastModified,
+      })),
+    });
+    return;
+  }
+
   try {
     const files = await readdir(config.serverPath);
     const configFiles = files.filter(f =>
@@ -629,6 +758,12 @@ router.get('/config/files', authMiddleware, requirePermission('config.view'), as
 router.get('/config/:filename', authMiddleware, requirePermission('config.view'), async (req: Request, res: Response) => {
   const { filename } = req.params;
 
+  // Demo mode: return demo config content
+  if (isDemoMode()) {
+    res.json({ filename, content: getDemoServerConfig() });
+    return;
+  }
+
   // Security: prevent path traversal
   if (filename.includes('..') || filename.includes('/')) {
     res.status(400).json({ error: 'Invalid filename' });
@@ -657,6 +792,12 @@ router.get('/config/:filename', authMiddleware, requirePermission('config.view')
 router.put('/config/:filename', authMiddleware, requirePermission('config.edit'), async (req: Request, res: Response) => {
   const { filename } = req.params;
   const { content } = req.body;
+
+  // Demo mode: simulate config save
+  if (isDemoMode()) {
+    res.json({ success: true, filename, message: '[DEMO] Config saved (simulated)' });
+    return;
+  }
 
   // Security: prevent path traversal
   if (filename.includes('..') || filename.includes('/')) {
@@ -706,6 +847,13 @@ router.get('/plugin/status', authMiddleware, requirePermission('server.view_stat
 
 // GET /api/server/plugin/update-check - Check if plugin update is available
 router.get('/plugin/update-check', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock plugin update status
+  if (isDemoMode()) {
+    const pluginUpdate = getDemoPluginUpdateStatus();
+    res.json(pluginUpdate);
+    return;
+  }
+
   try {
     const updateInfo = kyuubiApiService.isUpdateAvailable();
     res.json(updateInfo);
@@ -719,6 +867,12 @@ router.get('/plugin/update-check', authMiddleware, requirePermission('server.vie
 
 // POST /api/server/plugin/install - Install or update the KyuubiSoft API plugin
 router.post('/plugin/install', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate plugin install
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Plugin installed (simulated)', version: '1.0.0' });
+    return;
+  }
+
   try {
     const result = await kyuubiApiService.installPlugin();
     if (!result.success) {
@@ -740,6 +894,12 @@ router.post('/plugin/install', authMiddleware, requirePermission('mods.install')
 
 // DELETE /api/server/plugin/uninstall - Uninstall the KyuubiSoft API plugin
 router.delete('/plugin/uninstall', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate plugin uninstall
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Plugin uninstalled (simulated)' });
+    return;
+  }
+
   try {
     const result = await kyuubiApiService.uninstallPlugin();
     if (!result.success) {
@@ -1105,6 +1265,19 @@ router.get('/players/:name/file/inventory', authMiddleware, requirePermission('p
 
 // GET /api/server/downloader/auth-status - Check downloader authentication status
 router.get('/downloader/auth-status', authMiddleware, requirePermission('server.view_status'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo downloader status
+  if (isDemoMode()) {
+    const demoStatus = getDemoDownloaderStatus();
+    res.json({
+      authenticated: demoStatus.authenticated,
+      credentialsExist: true,
+      authRequired: false,
+      username: demoStatus.username,
+      lastAuth: demoStatus.lastAuth,
+    });
+    return;
+  }
+
   try {
     const credCheck = await checkDownloaderCredentials();
 
@@ -1309,6 +1482,12 @@ function getDefaultUpdateConfig(): UpdateConfig {
 
 // GET /api/server/update-config - Get native update configuration
 router.get('/update-config', authMiddleware, requirePermission('updates.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo update config
+  if (isDemoMode()) {
+    res.json(getDemoUpdateConfig());
+    return;
+  }
+
   try {
     const configPath = path.join(config.serverPath, 'config.json');
 
@@ -1331,6 +1510,12 @@ router.get('/update-config', authMiddleware, requirePermission('updates.view'), 
 
 // PUT /api/server/update-config - Update native update configuration
 router.put('/update-config', authMiddleware, requirePermission('updates.config'), async (req: Request, res: Response) => {
+  // Demo mode: simulate config update
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Update config saved (simulated)' });
+    return;
+  }
+
   try {
     const {
       enabled,
@@ -1478,6 +1663,12 @@ function parseUpdateStatusOutput(output: string): NativeUpdateStatus {
 
 // GET /api/server/update-status - Get native update status
 router.get('/update-status', authMiddleware, requirePermission('updates.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo update status
+  if (isDemoMode()) {
+    res.json({ success: true, data: getDemoUpdateStatus() });
+    return;
+  }
+
   try {
     const result = await dockerService.execCommand('/update status');
 
@@ -1536,6 +1727,12 @@ router.post('/update-check', authMiddleware, requirePermission('updates.check'),
 
 // POST /api/server/update-download - Download available update
 router.post('/update-download', authMiddleware, requirePermission('updates.download'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate update download
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Update download started (simulated)', data: { state: 'DOWNLOADING', progress: 0 } });
+    return;
+  }
+
   try {
     const result = await dockerService.execCommand('/update download');
 
@@ -1562,6 +1759,12 @@ router.post('/update-download', authMiddleware, requirePermission('updates.downl
 
 // POST /api/server/update-apply - Apply downloaded update (restarts server)
 router.post('/update-apply', authMiddleware, requirePermission('updates.apply'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate update apply
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Update applied (simulated)', warning: 'Server would restart in real mode' });
+    return;
+  }
+
   try {
     // Check if update is ready
     const statusResult = await dockerService.execCommand('/update status');
@@ -1594,6 +1797,12 @@ router.post('/update-apply', authMiddleware, requirePermission('updates.apply'),
 
 // POST /api/server/update-cancel - Cancel ongoing download
 router.post('/update-cancel', authMiddleware, requirePermission('updates.download'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate update cancel
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Update cancelled (simulated)' });
+    return;
+  }
+
   try {
     const result = await dockerService.execCommand('/update cancel');
 
@@ -1616,6 +1825,18 @@ router.post('/update-cancel', authMiddleware, requirePermission('updates.downloa
 
 // GET /api/server/new-features - Get new features status
 router.get('/new-features', authMiddleware, requirePermission('dashboard.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo new features
+  if (isDemoMode()) {
+    const demoFeatures = getDemoNewFeatures();
+    res.json({
+      hasNewFeatures: demoFeatures.features.length > 0 && !demoFeatures.dismissed,
+      features: demoFeatures.features,
+      dismissed: demoFeatures.dismissed,
+      panelVersion: demoFeatures.version,
+    });
+    return;
+  }
+
   try {
     const configPath = path.join(config.dataPath, 'config.json');
 
@@ -1647,6 +1868,12 @@ router.get('/new-features', authMiddleware, requirePermission('dashboard.view'),
 
 // POST /api/server/new-features/dismiss - Dismiss new features banner
 router.post('/new-features/dismiss', authMiddleware, requirePermission('dashboard.view'), async (_req: Request, res: Response) => {
+  // Demo mode: simulate dismiss
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] New features banner dismissed (simulated)' });
+    return;
+  }
+
   try {
     const success = await dismissNewFeaturesBanner();
 

@@ -10,6 +10,7 @@ import { config } from '../config.js';
 import { logActivity, getActivityLog, clearActivityLog, type ActivityLogEntry } from '../services/activityLog.js';
 import type { AuthenticatedRequest } from '../types/index.js';
 import { getRealPathIfSafe, isPathSafe, sanitizeFileName } from '../utils/pathSecurity.js';
+import { isDemoMode, getDemoMods, getDemoPlugins, getDemoWorlds, getDemoActivityLog, getDemoWhitelist, getDemoBans, getDemoPermissions, getDemoModStore, getDemoModtaleResults, getDemoStackMartResults } from '../services/demoData.js';
 
 // SECURITY: Magic bytes for file type verification
 const FILE_SIGNATURES = {
@@ -186,6 +187,12 @@ async function writeWhitelist(data: WhitelistData): Promise<void> {
 
 // GET /api/management/whitelist
 router.get('/whitelist', authMiddleware, requirePermission('players.whitelist'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo whitelist
+  if (isDemoMode()) {
+    res.json(getDemoWhitelist());
+    return;
+  }
+
   try {
     const data = await readWhitelist();
     res.json(data);
@@ -196,6 +203,13 @@ router.get('/whitelist', authMiddleware, requirePermission('players.whitelist'),
 
 // PUT /api/management/whitelist/enabled
 router.put('/whitelist/enabled', authMiddleware, requirePermission('players.whitelist'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate whitelist toggle
+  if (isDemoMode()) {
+    const { enabled } = req.body;
+    res.json({ success: true, enabled, message: '[DEMO] Whitelist toggled (simulated)' });
+    return;
+  }
+
   try {
     const { enabled } = req.body;
     const username = req.user || 'system';
@@ -215,6 +229,14 @@ router.put('/whitelist/enabled', authMiddleware, requirePermission('players.whit
 
 // POST /api/management/whitelist/add
 router.post('/whitelist/add', authMiddleware, requirePermission('players.whitelist'), async (req: Request, res: Response) => {
+  // Demo mode: simulate adding to whitelist
+  if (isDemoMode()) {
+    const { player } = req.body;
+    const demoList = getDemoWhitelist().list;
+    res.json({ success: true, list: [...demoList, player], message: '[DEMO] Player added (simulated)' });
+    return;
+  }
+
   try {
     const { player } = req.body;
     if (!player || typeof player !== 'string') {
@@ -234,6 +256,14 @@ router.post('/whitelist/add', authMiddleware, requirePermission('players.whiteli
 
 // DELETE /api/management/whitelist/:player
 router.delete('/whitelist/:player', authMiddleware, requirePermission('players.whitelist'), async (req: Request, res: Response) => {
+  // Demo mode: simulate removing from whitelist
+  if (isDemoMode()) {
+    const { player } = req.params;
+    const demoList = getDemoWhitelist().list.filter(p => p !== player);
+    res.json({ success: true, list: demoList, message: '[DEMO] Player removed (simulated)' });
+    return;
+  }
+
   try {
     const { player } = req.params;
     const data = await readWhitelist();
@@ -320,6 +350,12 @@ async function readBans(): Promise<BanEntry[]> {
 
 // GET /api/management/bans
 router.get('/bans', authMiddleware, requirePermission('players.ban'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo bans
+  if (isDemoMode()) {
+    res.json(getDemoBans());
+    return;
+  }
+
   try {
     const bans = await readBans();
     res.json({ bans });
@@ -330,6 +366,21 @@ router.get('/bans', authMiddleware, requirePermission('players.ban'), async (_re
 
 // POST /api/management/bans/add - Stores name mapping, server command handles actual ban
 router.post('/bans/add', authMiddleware, requirePermission('players.ban'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate banning
+  if (isDemoMode()) {
+    const { player, reason } = req.body;
+    const demoBans = getDemoBans().bans;
+    demoBans.push({
+      player,
+      target: `demo-uuid-${player.toLowerCase()}`,
+      reason: reason || 'Banned by admin',
+      bannedAt: new Date().toISOString(),
+      bannedBy: 'admin',
+    });
+    res.json({ success: true, bans: demoBans, message: '[DEMO] Player banned (simulated)' });
+    return;
+  }
+
   try {
     const { player, reason } = req.body;
     if (!player || typeof player !== 'string') {
@@ -393,6 +444,14 @@ router.post('/bans/add', authMiddleware, requirePermission('players.ban'), async
 
 // DELETE /api/management/bans/:player - Execute unban command (works online and offline)
 router.delete('/bans/:player', authMiddleware, requirePermission('players.unban'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate unbanning
+  if (isDemoMode()) {
+    const { player } = req.params;
+    const demoBans = getDemoBans().bans.filter(b => b.player !== player);
+    res.json({ success: true, bans: demoBans, message: '[DEMO] Player unbanned (simulated)' });
+    return;
+  }
+
   try {
     const { player } = req.params;
 
@@ -592,6 +651,12 @@ async function readPermissionsDisplay(): Promise<PermissionsDisplayData> {
 
 // GET /api/management/permissions
 router.get('/permissions', authMiddleware, requirePermission('players.permissions'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo permissions
+  if (isDemoMode()) {
+    res.json(getDemoPermissions());
+    return;
+  }
+
   try {
     const data = await readPermissionsDisplay();
     res.json(data);
@@ -602,6 +667,15 @@ router.get('/permissions', authMiddleware, requirePermission('players.permission
 
 // POST /api/management/permissions/users
 router.post('/permissions/users', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate adding user permission
+  if (isDemoMode()) {
+    const { name, groups } = req.body;
+    const demoPerms = getDemoPermissions();
+    demoPerms.users.push({ identifier: name, type: groups?.[0] || 'member', addedAt: new Date().toISOString() });
+    res.json({ success: true, users: demoPerms.users, message: '[DEMO] User permission added (simulated)' });
+    return;
+  }
+
   try {
     const { name, uuid, groups } = req.body;
     const username = req.user || 'system';
@@ -647,6 +721,15 @@ router.post('/permissions/users', authMiddleware, requirePermission('players.per
 
 // DELETE /api/management/permissions/users/:identifier (can be UUID or name)
 router.delete('/permissions/users/:identifier', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate removing user permission
+  if (isDemoMode()) {
+    const { identifier } = req.params;
+    const demoPerms = getDemoPermissions();
+    demoPerms.users = demoPerms.users.filter(u => u.identifier !== identifier);
+    res.json({ success: true, users: demoPerms.users, message: '[DEMO] User permission removed (simulated)' });
+    return;
+  }
+
   try {
     const { identifier } = req.params;
     const username = req.user || 'system';
@@ -682,6 +765,15 @@ router.delete('/permissions/users/:identifier', authMiddleware, requirePermissio
 
 // POST /api/management/permissions/groups
 router.post('/permissions/groups', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate creating group
+  if (isDemoMode()) {
+    const { name, permissions } = req.body;
+    const demoPerms = getDemoPermissions();
+    demoPerms.groups.push({ name, permissions: permissions || [], description: 'User created group' });
+    res.json({ success: true, groups: demoPerms.groups, message: '[DEMO] Group created (simulated)' });
+    return;
+  }
+
   try {
     const { name, permissions } = req.body;
     const username = req.user || 'system';
@@ -707,6 +799,15 @@ router.post('/permissions/groups', authMiddleware, requirePermission('players.pe
 
 // DELETE /api/management/permissions/groups/:name
 router.delete('/permissions/groups/:name', authMiddleware, requirePermission('players.permissions'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate deleting group
+  if (isDemoMode()) {
+    const { name } = req.params;
+    const demoPerms = getDemoPermissions();
+    demoPerms.groups = demoPerms.groups.filter(g => g.name !== name);
+    res.json({ success: true, groups: demoPerms.groups, message: '[DEMO] Group deleted (simulated)' });
+    return;
+  }
+
   try {
     const { name } = req.params;
     const username = req.user || 'system';
@@ -865,6 +966,23 @@ async function scanWorldsInPath(worldsPath: string, seenRealPaths: Set<string>):
 
 // GET /api/management/worlds
 router.get('/worlds', authMiddleware, requirePermission('worlds.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock worlds
+  if (isDemoMode()) {
+    const demoWorlds = getDemoWorlds();
+    res.json({
+      worlds: demoWorlds.map(w => ({
+        name: w.name,
+        path: `/opt/hytale/worlds/${w.name}`,
+        size: w.size,
+        lastModified: w.lastPlayed,
+        hasConfig: true,
+        playerCount: w.playerCount,
+      })),
+      checkedPaths: ['/opt/hytale/worlds'],
+    });
+    return;
+  }
+
   try {
     let worlds: WorldInfo[] = [];
     const checkedPaths: string[] = [];
@@ -935,6 +1053,23 @@ async function scanDirectory(dirPath: string, type: 'mod' | 'plugin'): Promise<M
 
 // GET /api/management/mods
 router.get('/mods', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock mods
+  if (isDemoMode()) {
+    const demoMods = getDemoMods();
+    res.json({
+      mods: demoMods.map(m => ({
+        name: m.name,
+        filename: m.filename,
+        size: m.size,
+        lastModified: new Date().toISOString(),
+        enabled: m.enabled,
+        installedVersion: m.version,
+      })),
+      path: '/opt/hytale/mods',
+    });
+    return;
+  }
+
   try {
     const mods = await scanDirectory(config.modsPath, 'mod');
 
@@ -975,6 +1110,23 @@ router.get('/mods', authMiddleware, requirePermission('mods.view'), async (_req:
 
 // GET /api/management/plugins
 router.get('/plugins', authMiddleware, requirePermission('plugins.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock plugins
+  if (isDemoMode()) {
+    const demoPlugins = getDemoPlugins();
+    res.json({
+      plugins: demoPlugins.map(p => ({
+        name: p.name,
+        filename: p.filename,
+        size: p.size,
+        lastModified: new Date().toISOString(),
+        enabled: p.enabled,
+        installedVersion: p.version,
+      })),
+      path: '/opt/hytale/plugins',
+    });
+    return;
+  }
+
   try {
     const plugins = await scanDirectory(config.pluginsPath, 'plugin');
     res.json({ plugins, path: config.pluginsPath });
@@ -1510,6 +1662,21 @@ router.put('/config/write', authMiddleware, requirePermission('config.edit'), as
 
 // GET /api/management/activity
 router.get('/activity', authMiddleware, requirePermission('activity.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock activity
+  if (isDemoMode()) {
+    const demoActivity = getDemoActivityLog();
+    const limit = parseInt(req.query.limit as string) || 50;
+    const offset = parseInt(req.query.offset as string) || 0;
+    const sliced = demoActivity.slice(offset, offset + limit);
+    res.json({
+      entries: sliced,
+      total: demoActivity.length,
+      limit,
+      offset,
+    });
+    return;
+  }
+
   try {
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
@@ -1525,6 +1692,12 @@ router.get('/activity', authMiddleware, requirePermission('activity.view'), asyn
 
 // DELETE /api/management/activity
 router.delete('/activity', authMiddleware, requirePermission('activity.clear'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate clear
+  if (isDemoMode()) {
+    res.json({ success: true, message: '[DEMO] Activity log cleared (simulated)' });
+    return;
+  }
+
   try {
     await clearActivityLog();
 
@@ -1547,6 +1720,12 @@ router.delete('/activity', authMiddleware, requirePermission('activity.clear'), 
 
 // GET /api/management/modstore
 router.get('/modstore', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return demo mod store
+  if (isDemoMode()) {
+    res.json({ mods: getDemoModStore() });
+    return;
+  }
+
   try {
     const mods = await getAvailableMods();
     res.json({ mods });
@@ -1603,6 +1782,13 @@ router.get('/modstore/:modId/release', authMiddleware, requirePermission('mods.v
 
 // POST /api/management/modstore/:modId/install
 router.post('/modstore/:modId/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate install
+  if (isDemoMode()) {
+    const { modId } = req.params;
+    res.json({ success: true, filename: `${modId}.jar`, version: '1.0.0', message: '[DEMO] Mod installed (simulated)' });
+    return;
+  }
+
   try {
     const { modId } = req.params;
     const result = await installMod(modId);
@@ -1626,6 +1812,13 @@ router.post('/modstore/:modId/install', authMiddleware, requirePermission('mods.
 
 // DELETE /api/management/modstore/:modId/uninstall
 router.delete('/modstore/:modId/uninstall', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate uninstall
+  if (isDemoMode()) {
+    const { modId } = req.params;
+    res.json({ success: true, modId, message: '[DEMO] Mod uninstalled (simulated)' });
+    return;
+  }
+
   try {
     const { modId } = req.params;
     const result = await uninstallMod(modId);
@@ -2074,6 +2267,12 @@ router.put('/worlds/:worldName/files/*', authMiddleware, requirePermission('worl
 
 // GET /api/management/modtale/status - Check Modtale API status
 router.get('/modtale/status', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return online status
+  if (isDemoMode()) {
+    res.json({ available: true, latency: 120, demo: true });
+    return;
+  }
+
   try {
     const status = await checkModtaleStatus();
     res.json(status);
@@ -2084,6 +2283,12 @@ router.get('/modtale/status', authMiddleware, requirePermission('mods.view'), as
 
 // GET /api/management/modtale/search - Search mods on Modtale
 router.get('/modtale/search', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return demo results
+  if (isDemoMode()) {
+    res.json(getDemoModtaleResults());
+    return;
+  }
+
   try {
     const {
       search,
@@ -2144,6 +2349,13 @@ router.get('/modtale/projects/:projectId', authMiddleware, requirePermission('mo
 
 // POST /api/management/modtale/install - Install mod from Modtale
 router.post('/modtale/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate install
+  if (isDemoMode()) {
+    const { projectId } = req.body;
+    res.json({ success: true, projectId, filename: `${projectId}.jar`, message: '[DEMO] Mod installed from Modtale (simulated)' });
+    return;
+  }
+
   try {
     const { projectId, versionId } = req.body;
 
@@ -2289,6 +2501,12 @@ router.delete('/modtale/uninstall/:projectId', authMiddleware, requirePermission
 
 // GET /api/management/stackmart/status - Check StackMart API status
 router.get('/stackmart/status', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return online status
+  if (isDemoMode()) {
+    res.json({ available: true, latency: 95, demo: true });
+    return;
+  }
+
   try {
     const status = await checkStackMartStatus();
     res.json(status);
@@ -2299,6 +2517,12 @@ router.get('/stackmart/status', authMiddleware, requirePermission('mods.view'), 
 
 // GET /api/management/stackmart/search - Search resources on StackMart
 router.get('/stackmart/search', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return demo results
+  if (isDemoMode()) {
+    res.json(getDemoStackMartResults());
+    return;
+  }
+
   try {
     const {
       search,
@@ -2353,6 +2577,13 @@ router.get('/stackmart/resources/:resourceId', authMiddleware, requirePermission
 
 // POST /api/management/stackmart/install - Install resource from StackMart
 router.post('/stackmart/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate install
+  if (isDemoMode()) {
+    const { resourceId } = req.body;
+    res.json({ success: true, resourceId, resourceName: 'Demo Resource', version: '1.0.0', message: '[DEMO] Resource installed from StackMart (simulated)' });
+    return;
+  }
+
   try {
     const { resourceId } = req.body;
 
