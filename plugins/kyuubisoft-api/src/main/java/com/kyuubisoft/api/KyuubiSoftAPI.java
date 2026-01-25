@@ -46,7 +46,7 @@ public class KyuubiSoftAPI extends JavaPlugin {
     @Override
     protected void setup() {
         LOGGER.info("╔════════════════════════════════════════╗");
-        LOGGER.info("║       KyuubiSoft API v1.2.0            ║");
+        LOGGER.info("║       KyuubiSoft API v1.2.2            ║");
         LOGGER.info("║       by KyuubiDDragon                 ║");
         LOGGER.info("║       + Prometheus Metrics Support     ║");
         LOGGER.info("╚════════════════════════════════════════╝");
@@ -100,7 +100,7 @@ public class KyuubiSoftAPI extends JavaPlugin {
         eventRegistry.register(PlayerConnectEvent.class, event -> {
             String playerName = event.getPlayerRef().getUsername();
             String uuid = event.getPlayerRef().getUuid().toString();
-            LOGGER.info("Player connected: " + playerName);
+            // Debug: LOGGER.fine("Player connected: " + playerName);
             eventBroadcaster.broadcastPlayerJoin(playerName, uuid);
             // Update Prometheus metrics
             if (prometheusMetrics != null) {
@@ -112,7 +112,7 @@ public class KyuubiSoftAPI extends JavaPlugin {
         eventRegistry.register(PlayerDisconnectEvent.class, event -> {
             String playerName = event.getPlayerRef().getUsername();
             String uuid = event.getPlayerRef().getUuid().toString();
-            LOGGER.info("Player disconnected: " + playerName);
+            // Debug: LOGGER.fine("Player disconnected: " + playerName);
             eventBroadcaster.broadcastPlayerLeave(playerName, uuid);
             // Update Prometheus metrics
             if (prometheusMetrics != null) {

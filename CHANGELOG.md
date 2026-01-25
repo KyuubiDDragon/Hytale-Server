@@ -27,6 +27,16 @@ All notable changes to the Hytale Server Manager will be documented in this file
   - Error logging preserved for actual failures
   - Location: `manager/backend/src/services/hytaleAuth.ts`
 
+- **KyuubiAPI Plugin Console Spam** (Plugin v1.2.2)
+  - Removed WebSocket client connect/disconnect logging
+  - Removed player connect/disconnect logging
+  - Events still broadcast to panel, just no console output
+  - Location: `plugins/kyuubisoft-api/`
+
+### Changed
+
+- **KyuubiAPI Plugin Version**: 1.2.1 → 1.2.2
+
 ## [2.1.1] - 2026-01-24 - Performance Metrics & Bug Fixes
 
 ### Added
