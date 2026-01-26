@@ -462,27 +462,27 @@ function handleSearchBlur() {
       <!-- Player Inventory View -->
       <div v-else class="flex gap-3 max-w-7xl mx-auto h-full">
         <!-- Left Panel: Avatar + Equipment + Stats -->
-        <div class="w-[280px] flex-shrink-0 flex flex-col gap-2">
+        <div class="w-[320px] flex-shrink-0 flex flex-col gap-2">
           <!-- Player Name Header -->
-          <div class="bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-t-lg border border-slate-600/50 px-3 py-2">
-            <h2 class="text-base font-bold text-white uppercase tracking-wide">{{ selectedPlayer }}</h2>
+          <div class="bg-gradient-to-r from-slate-800/80 to-slate-900/80 rounded-t-lg border border-slate-600/50 px-4 py-2">
+            <h2 class="text-lg font-bold text-white uppercase tracking-wide">{{ selectedPlayer }}</h2>
           </div>
 
           <!-- Avatar + Equipment Container -->
-          <div class="bg-gradient-to-b from-slate-800/60 to-slate-900/60 rounded-lg border border-slate-600/30 p-2 relative">
-            <div class="flex gap-2">
+          <div class="bg-gradient-to-b from-slate-800/60 to-slate-900/60 rounded-lg border border-slate-600/30 p-3 relative">
+            <div class="flex gap-3">
               <!-- Equipment Slots (Left side) -->
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col gap-1.5">
                 <!-- Cosmetic Slot -->
-                <div class="w-9 h-9 border-2 border-cyan-500/30 bg-slate-800/50 rounded flex items-center justify-center" :title="t('avatarInventory.slots.cosmetic')">
-                  <svg class="w-4 h-4 text-cyan-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="w-11 h-11 border-2 border-cyan-500/30 bg-slate-800/50 rounded-lg flex items-center justify-center" :title="t('avatarInventory.slots.cosmetic')">
+                  <svg class="w-5 h-5 text-cyan-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
 
                 <!-- Tools Slot -->
-                <div class="w-9 h-9 border-2 border-amber-500/30 bg-slate-800/50 rounded flex items-center justify-center" :title="t('avatarInventory.slots.tools')">
-                  <svg class="w-4 h-4 text-amber-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="w-11 h-11 border-2 border-amber-500/30 bg-slate-800/50 rounded-lg flex items-center justify-center" :title="t('avatarInventory.slots.tools')">
+                  <svg class="w-5 h-5 text-amber-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   </svg>
                 </div>
@@ -491,7 +491,7 @@ function handleSearchBlur() {
                 <div
                   v-for="(item, index) in armorGrid"
                   :key="`armor-${index}`"
-                  class="w-9 h-9 border-2 rounded flex items-center justify-center relative cursor-pointer transition-all"
+                  class="w-11 h-11 border-2 rounded-lg flex items-center justify-center relative cursor-pointer transition-all"
                   :class="[
                     item ? getItemRarityBorder(item.itemId) + ' bg-slate-700/50' : 'border-blue-500/30 bg-slate-800/50'
                   ]"
@@ -504,10 +504,10 @@ function handleSearchBlur() {
                       v-if="!iconFailed(item.itemId)"
                       :src="getItemIconUrl(item.itemId)"
                       :alt="item.displayName"
-                      class="w-7 h-7 object-contain"
+                      class="w-8 h-8 object-contain"
                       @error="onIconError(item.itemId)"
                     />
-                    <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
+                    <div v-else :class="['w-8 h-8 rounded flex items-center justify-center text-sm font-bold', getItemColorClass(item.itemId)]">
                       {{ armorSlotLabels[index] }}
                     </div>
                     <!-- Durability bar -->
@@ -521,10 +521,10 @@ function handleSearchBlur() {
 
               <!-- Avatar Display -->
               <div class="flex-1 relative">
-                <div class="aspect-[3/4] max-h-[180px] bg-gradient-to-b from-slate-700/30 to-slate-900/50 rounded border border-slate-600/30 overflow-hidden relative">
+                <div class="aspect-[3/4] max-h-[240px] bg-gradient-to-b from-slate-700/30 to-slate-900/50 rounded-lg border border-slate-600/30 overflow-hidden relative">
                   <!-- Loading Spinner -->
                   <div v-if="avatarLoading" class="absolute inset-0 flex items-center justify-center">
-                    <svg class="w-8 h-8 animate-spin text-hytale-orange/50" fill="none" viewBox="0 0 24 24">
+                    <svg class="w-10 h-10 animate-spin text-hytale-orange/50" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
@@ -543,16 +543,16 @@ function handleSearchBlur() {
 
                   <!-- Avatar Error Fallback -->
                   <div v-if="avatarError" class="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                    <svg class="w-12 h-12 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="w-16 h-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    <span class="text-lg font-bold text-hytale-orange">{{ selectedPlayer?.[0]?.toUpperCase() }}</span>
+                    <span class="text-xl font-bold text-hytale-orange">{{ selectedPlayer?.[0]?.toUpperCase() }}</span>
                   </div>
                 </div>
 
                 <!-- Expand Arrow (decorative) -->
                 <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 text-hytale-orange/60">
-                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M10 17l5-5-5-5v10z"/>
                   </svg>
                 </div>
@@ -560,11 +560,11 @@ function handleSearchBlur() {
             </div>
 
             <!-- Quick Slots Row -->
-            <div class="flex justify-center gap-1.5 mt-2">
+            <div class="flex justify-center gap-2 mt-3">
               <!-- Utility Quick Slot -->
               <div class="relative group">
                 <div
-                  class="w-8 h-8 border-2 border-purple-500/30 bg-slate-800/50 rounded flex items-center justify-center cursor-pointer hover:border-purple-500/60 transition-all"
+                  class="w-10 h-10 border-2 border-purple-500/30 bg-slate-800/50 rounded-lg flex items-center justify-center cursor-pointer hover:border-purple-500/60 transition-all"
                   :class="{ 'border-purple-500/60': expandedQuickSlot === 0 }"
                   @mouseenter="expandedQuickSlot = 0"
                 >
@@ -573,10 +573,10 @@ function handleSearchBlur() {
                       v-if="!iconFailed(utilityGrid[0].itemId)"
                       :src="getItemIconUrl(utilityGrid[0].itemId)"
                       :alt="utilityGrid[0].displayName"
-                      class="w-6 h-6 object-contain"
+                      class="w-7 h-7 object-contain"
                       @error="onIconError(utilityGrid[0].itemId)"
                     />
-                    <div v-else :class="['w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold', getItemColorClass(utilityGrid[0].itemId)]">
+                    <div v-else :class="['w-7 h-7 rounded flex items-center justify-center text-xs font-bold', getItemColorClass(utilityGrid[0].itemId)]">
                       {{ getFallbackLetter(utilityGrid[0].itemId) }}
                     </div>
                   </template>
@@ -584,19 +584,19 @@ function handleSearchBlur() {
                     <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
                   </svg>
                   <span class="absolute -right-0.5 -bottom-0.5 text-purple-400/80">
-                    <svg class="w-2 h-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></svg>
+                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></svg>
                   </span>
                 </div>
                 <!-- Expanded Utility Slots -->
                 <div
                   v-if="expandedQuickSlot === 0"
-                  class="absolute left-full top-0 ml-1 flex gap-1 p-1.5 bg-slate-800/95 border border-slate-600/50 rounded shadow-xl z-10"
+                  class="absolute left-full top-0 ml-1.5 flex gap-1 p-1.5 bg-slate-800/95 border border-slate-600/50 rounded-lg shadow-xl z-10"
                   @mouseleave="expandedQuickSlot = null"
                 >
                   <div
                     v-for="(item, index) in utilityGrid"
                     :key="`utility-exp-${index}`"
-                    class="w-7 h-7 border rounded flex items-center justify-center relative cursor-pointer transition-all"
+                    class="w-8 h-8 border rounded flex items-center justify-center relative cursor-pointer transition-all"
                     :class="[
                       item ? getItemRarityBorder(item.itemId) + ' bg-slate-700/50 hover:bg-slate-600/50' : 'border-purple-500/30 bg-slate-700/50'
                     ]"
@@ -608,17 +608,17 @@ function handleSearchBlur() {
                         v-if="!iconFailed(item.itemId)"
                         :src="getItemIconUrl(item.itemId)"
                         :alt="item.displayName"
-                        class="w-5 h-5 object-contain"
+                        class="w-6 h-6 object-contain"
                         @error="onIconError(item.itemId)"
                       />
-                      <div v-else :class="['w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold', getItemColorClass(item.itemId)]">
+                      <div v-else :class="['w-6 h-6 rounded flex items-center justify-center text-[9px] font-bold', getItemColorClass(item.itemId)]">
                         {{ getFallbackLetter(item.itemId) }}
                       </div>
-                      <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[6px] font-bold text-white drop-shadow-lg">
+                      <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[7px] font-bold text-white drop-shadow-lg">
                         {{ item.amount }}
                       </span>
                     </template>
-                    <span v-else class="text-[8px] text-purple-400/40">{{ index + 1 }}</span>
+                    <span v-else class="text-[9px] text-purple-400/40">{{ index + 1 }}</span>
                   </div>
                 </div>
               </div>
@@ -626,7 +626,7 @@ function handleSearchBlur() {
               <!-- Pet/Companion Quick Slot -->
               <div class="relative group">
                 <div
-                  class="w-8 h-8 border-2 border-amber-500/30 bg-slate-800/50 rounded flex items-center justify-center cursor-pointer hover:border-amber-500/60 transition-all"
+                  class="w-10 h-10 border-2 border-amber-500/30 bg-slate-800/50 rounded-lg flex items-center justify-center cursor-pointer hover:border-amber-500/60 transition-all"
                   :class="{ 'border-amber-500/60': expandedQuickSlot === 1 }"
                   @mouseenter="expandedQuickSlot = 1"
                 >
@@ -634,17 +634,17 @@ function handleSearchBlur() {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                   <span class="absolute -right-0.5 -bottom-0.5 text-amber-400/80">
-                    <svg class="w-2 h-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></svg>
+                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></svg>
                   </span>
                 </div>
                 <!-- Expanded Pet Slots -->
                 <div
                   v-if="expandedQuickSlot === 1"
-                  class="absolute left-full top-0 ml-1 flex gap-1 p-1.5 bg-slate-800/95 border border-slate-600/50 rounded shadow-xl z-10"
+                  class="absolute left-full top-0 ml-1.5 flex gap-1 p-1.5 bg-slate-800/95 border border-slate-600/50 rounded-lg shadow-xl z-10"
                   @mouseleave="expandedQuickSlot = null"
                 >
-                  <div v-for="i in 4" :key="i" class="w-7 h-7 border border-amber-500/30 bg-slate-700/50 rounded flex items-center justify-center">
-                    <span class="text-[8px] text-amber-400/40">{{ i }}</span>
+                  <div v-for="i in 4" :key="i" class="w-8 h-8 border border-amber-500/30 bg-slate-700/50 rounded flex items-center justify-center">
+                    <span class="text-[9px] text-amber-400/40">{{ i }}</span>
                   </div>
                 </div>
               </div>
@@ -652,23 +652,23 @@ function handleSearchBlur() {
               <!-- Emote Quick Slot -->
               <div class="relative group">
                 <div
-                  class="w-8 h-8 border-2 border-green-500/30 bg-slate-800/50 rounded flex items-center justify-center cursor-pointer hover:border-green-500/60 transition-all"
+                  class="w-10 h-10 border-2 border-green-500/30 bg-slate-800/50 rounded-lg flex items-center justify-center cursor-pointer hover:border-green-500/60 transition-all"
                   :class="{ 'border-green-500/60': expandedQuickSlot === 2 }"
                   @mouseenter="expandedQuickSlot = 2"
                 >
-                  <span class="text-green-400/60 font-bold text-sm">Y</span>
+                  <span class="text-green-400/60 font-bold text-base">Y</span>
                   <span class="absolute -right-0.5 -bottom-0.5 text-green-400/80">
-                    <svg class="w-2 h-2" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></svg>
+                    <svg class="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 17l5-5-5-5v10z"/></svg>
                   </span>
                 </div>
                 <!-- Expanded Emote Slots -->
                 <div
                   v-if="expandedQuickSlot === 2"
-                  class="absolute left-full top-0 ml-1 flex gap-1 p-1.5 bg-slate-800/95 border border-slate-600/50 rounded shadow-xl z-10"
+                  class="absolute left-full top-0 ml-1.5 flex gap-1 p-1.5 bg-slate-800/95 border border-slate-600/50 rounded-lg shadow-xl z-10"
                   @mouseleave="expandedQuickSlot = null"
                 >
-                  <div v-for="i in 4" :key="i" class="w-7 h-7 border border-green-500/30 bg-slate-700/50 rounded flex items-center justify-center">
-                    <span class="text-[8px] text-green-400/40">{{ i }}</span>
+                  <div v-for="i in 4" :key="i" class="w-8 h-8 border border-green-500/30 bg-slate-700/50 rounded flex items-center justify-center">
+                    <span class="text-[9px] text-green-400/40">{{ i }}</span>
                   </div>
                 </div>
               </div>
@@ -676,60 +676,60 @@ function handleSearchBlur() {
           </div>
 
           <!-- Stats Panel -->
-          <div class="bg-gradient-to-b from-slate-800/60 to-slate-900/60 rounded-lg border border-slate-600/30 p-2">
+          <div class="bg-gradient-to-b from-slate-800/60 to-slate-900/60 rounded-lg border border-slate-600/30 p-3">
             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{{ t('avatarInventory.stats') }}</h3>
 
-            <div class="grid grid-cols-2 gap-x-3 gap-y-1.5">
+            <div class="grid grid-cols-2 gap-x-4 gap-y-2">
               <!-- Health -->
-              <div class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                 </svg>
                 <div class="flex-1">
-                  <div class="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-900 rounded-full overflow-hidden">
                     <div class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all" :style="{ width: `${healthPercent}%` }"></div>
                   </div>
                 </div>
-                <span class="text-[10px] text-white font-mono w-12 text-right">{{ details?.stats?.health?.toFixed(0) || 0 }}/{{ details?.stats?.maxHealth?.toFixed(0) || 0 }}</span>
+                <span class="text-[11px] text-white font-mono w-14 text-right">{{ details?.stats?.health?.toFixed(0) || 0 }}/{{ details?.stats?.maxHealth?.toFixed(0) || 0 }}</span>
               </div>
 
               <!-- Stamina -->
-              <div class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 <div class="flex-1">
-                  <div class="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-900 rounded-full overflow-hidden">
                     <div class="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 transition-all" :style="{ width: `${staminaPercent}%` }"></div>
                   </div>
                 </div>
-                <span class="text-[10px] text-white font-mono w-12 text-right">{{ details?.stats?.stamina?.toFixed(0) || 0 }}/{{ details?.stats?.maxStamina?.toFixed(0) || 0 }}</span>
+                <span class="text-[11px] text-white font-mono w-14 text-right">{{ details?.stats?.stamina?.toFixed(0) || 0 }}/{{ details?.stats?.maxStamina?.toFixed(0) || 0 }}</span>
               </div>
 
               <!-- Mana -->
-              <div class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2c-5.33 4.55-8 8.48-8 11.8 0 4.98 3.8 8.2 8 8.2s8-3.22 8-8.2c0-3.32-2.67-7.25-8-11.8z"/>
                 </svg>
                 <div class="flex-1">
-                  <div class="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-900 rounded-full overflow-hidden">
                     <div class="h-full bg-gradient-to-r from-blue-600 to-blue-400 transition-all" :style="{ width: `${manaPercent}%` }"></div>
                   </div>
                 </div>
-                <span class="text-[10px] text-white font-mono w-12 text-right">{{ details?.stats?.mana?.toFixed(0) || 0 }}</span>
+                <span class="text-[11px] text-white font-mono w-14 text-right">{{ details?.stats?.mana?.toFixed(0) || 0 }}</span>
               </div>
 
               <!-- Defense -->
-              <div class="flex items-center gap-1.5">
-                <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
                 <div class="flex-1">
-                  <div class="h-1.5 bg-slate-900 rounded-full overflow-hidden">
+                  <div class="h-2 bg-slate-900 rounded-full overflow-hidden">
                     <div class="h-full bg-gradient-to-r from-gray-600 to-gray-400 transition-all" :style="{ width: `${defensePercent}%` }"></div>
                   </div>
                 </div>
-                <span class="text-[10px] text-white font-mono w-12 text-right">{{ defensePercent }}%</span>
+                <span class="text-[11px] text-white font-mono w-14 text-right">{{ defensePercent }}%</span>
               </div>
             </div>
           </div>
@@ -837,11 +837,11 @@ function handleSearchBlur() {
             </div>
 
             <!-- Backpack Grid -->
-            <div class="grid grid-cols-7 gap-0.5">
+            <div class="flex flex-wrap gap-px">
               <div
                 v-for="(item, index) in backpackGrid"
                 :key="`backpack-${index}`"
-                class="aspect-square border rounded flex items-center justify-center relative cursor-pointer transition-all"
+                class="w-7 h-7 border rounded flex items-center justify-center relative cursor-pointer transition-all"
                 :class="[
                   item ? getItemRarityBorder(item.itemId) + ' bg-slate-700/50 hover:bg-slate-600/50' : 'border-slate-600/30 bg-slate-800/30'
                 ]"
@@ -853,13 +853,13 @@ function handleSearchBlur() {
                     v-if="!iconFailed(item.itemId)"
                     :src="getItemIconUrl(item.itemId)"
                     :alt="item.displayName"
-                    class="w-6 h-6 object-contain"
+                    class="w-5 h-5 object-contain"
                     @error="onIconError(item.itemId)"
                   />
-                  <div v-else :class="['w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold', getItemColorClass(item.itemId)]">
+                  <div v-else :class="['w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold', getItemColorClass(item.itemId)]">
                     {{ getFallbackLetter(item.itemId) }}
                   </div>
-                  <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[8px] font-bold text-white drop-shadow-lg">
+                  <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[7px] font-bold text-white drop-shadow-lg">
                     {{ item.amount }}
                   </span>
                 </template>
@@ -877,11 +877,11 @@ function handleSearchBlur() {
             </h3>
 
             <!-- Storage Grid (7x4 = 28 slots) -->
-            <div class="grid grid-cols-7 gap-0.5">
+            <div class="flex flex-wrap gap-px">
               <div
                 v-for="(item, index) in storageGrid"
                 :key="`storage-${index}`"
-                class="aspect-square border rounded flex items-center justify-center relative cursor-pointer transition-all"
+                class="w-7 h-7 border rounded flex items-center justify-center relative cursor-pointer transition-all"
                 :class="[
                   item ? getItemRarityBorder(item.itemId) + ' bg-slate-700/50 hover:bg-slate-600/50' : 'border-slate-600/30 bg-slate-800/30'
                 ]"
@@ -893,13 +893,13 @@ function handleSearchBlur() {
                     v-if="!iconFailed(item.itemId)"
                     :src="getItemIconUrl(item.itemId)"
                     :alt="item.displayName"
-                    class="w-6 h-6 object-contain"
+                    class="w-5 h-5 object-contain"
                     @error="onIconError(item.itemId)"
                   />
-                  <div v-else :class="['w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold', getItemColorClass(item.itemId)]">
+                  <div v-else :class="['w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold', getItemColorClass(item.itemId)]">
                     {{ getFallbackLetter(item.itemId) }}
                   </div>
-                  <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[8px] font-bold text-white drop-shadow-lg">
+                  <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[7px] font-bold text-white drop-shadow-lg">
                     {{ item.amount }}
                   </span>
                   <!-- Durability bar -->
@@ -921,11 +921,11 @@ function handleSearchBlur() {
             </h3>
 
             <!-- Hotbar Grid -->
-            <div class="grid grid-cols-9 gap-0.5">
+            <div class="flex flex-wrap gap-px">
               <div
                 v-for="(item, index) in hotbarGrid"
                 :key="`hotbar-${index}`"
-                class="aspect-square border rounded flex items-center justify-center relative cursor-pointer transition-all"
+                class="w-7 h-7 border rounded flex items-center justify-center relative cursor-pointer transition-all"
                 :class="[
                   item ? getItemRarityBorder(item.itemId) + ' bg-slate-700/50 hover:bg-slate-600/50' : 'border-slate-600/30 bg-slate-800/30',
                   inventory?.activeHotbarSlot === index ? 'ring-1 ring-hytale-orange ring-offset-1 ring-offset-slate-900' : ''
@@ -938,13 +938,13 @@ function handleSearchBlur() {
                     v-if="!iconFailed(item.itemId)"
                     :src="getItemIconUrl(item.itemId)"
                     :alt="item.displayName"
-                    class="w-6 h-6 object-contain"
+                    class="w-5 h-5 object-contain"
                     @error="onIconError(item.itemId)"
                   />
-                  <div v-else :class="['w-6 h-6 rounded flex items-center justify-center text-[10px] font-bold', getItemColorClass(item.itemId)]">
+                  <div v-else :class="['w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold', getItemColorClass(item.itemId)]">
                     {{ getFallbackLetter(item.itemId) }}
                   </div>
-                  <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[8px] font-bold text-white drop-shadow-lg">
+                  <span v-if="item.amount > 1" class="absolute bottom-0 right-0 text-[7px] font-bold text-white drop-shadow-lg">
                     {{ item.amount }}
                   </span>
                   <!-- Durability bar -->
@@ -953,7 +953,7 @@ function handleSearchBlur() {
                   </div>
                 </template>
                 <!-- Slot number -->
-                <span class="absolute top-0 left-0.5 text-[7px] font-bold text-slate-500">{{ index + 1 }}</span>
+                <span class="absolute top-0 left-0.5 text-[6px] font-bold text-slate-500">{{ index + 1 }}</span>
               </div>
             </div>
           </div>
