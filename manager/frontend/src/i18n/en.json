@@ -74,7 +74,8 @@
     "assets": "Asset Explorer",
     "chat": "Chat Log",
     "roles": "Roles",
-    "help": "Command Help"
+    "help": "Command Help",
+    "avatarInventory": "Avatar & Inventory"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1684,6 +1685,50 @@
       "configured": "Configured",
       "installed": "Installed",
       "editStep": "Edit"
+    }
+  },
+  "avatarInventory": {
+    "title": "Avatar & Inventory",
+    "subtitle": "View player avatar and inventory in Hytale style",
+    "searchPlayer": "Search player...",
+    "selectPrompt": "Select a Player",
+    "selectHint": "Use the search above to select a player",
+    "noData": "No player data available",
+    "stats": "Stats",
+    "health": "Health",
+    "stamina": "Stamina",
+    "mana": "Mana",
+    "defense": "Defense",
+    "backpack": "Backpack",
+    "inventory": "Inventory",
+    "hotbar": "Hotbar",
+    "info": "Info",
+    "chat": "Chat",
+    "deaths": "Deaths",
+    "playerInfo": "Player Information",
+    "world": "World",
+    "gamemode": "Gamemode",
+    "position": "Position",
+    "discoveredZones": "Discovered Zones",
+    "memories": "Memories",
+    "uniqueItems": "Unique Items",
+    "noInfoData": "No information available",
+    "chatHistory": "Chat History",
+    "noChat": "No chat messages found",
+    "messages": "messages",
+    "deathLocations": "Death Locations",
+    "noDeaths": "No deaths recorded",
+    "deathCount": "deaths recorded",
+    "day": "Day",
+    "latest": "Latest",
+    "teleport": "Teleport",
+    "slots": {
+      "helmet": "Helmet",
+      "chest": "Chestplate",
+      "gloves": "Gloves",
+      "legs": "Leggings",
+      "cosmetic": "Cosmetic",
+      "tools": "Tools"
     }
   }
 }

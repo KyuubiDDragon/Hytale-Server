@@ -74,7 +74,8 @@
     "assets": "Explorador de Assets",
     "chat": "Log de Chat",
     "roles": "Funções",
-    "help": "Ajuda de Comandos"
+    "help": "Ajuda de Comandos",
+    "avatarInventory": "Avatar e Inventário"
   },
   "dashboard": {
     "title": "Painel",
@@ -1610,6 +1611,50 @@
       "configured": "Configurado",
       "installed": "Instalado",
       "editStep": "Editar"
+    }
+  },
+  "avatarInventory": {
+    "title": "Avatar e Inventário",
+    "subtitle": "Ver avatar e inventário do jogador no estilo Hytale",
+    "searchPlayer": "Buscar jogador...",
+    "selectPrompt": "Selecione um Jogador",
+    "selectHint": "Use a busca acima para selecionar um jogador",
+    "noData": "Dados do jogador não disponíveis",
+    "stats": "Estatísticas",
+    "health": "Vida",
+    "stamina": "Vigor",
+    "mana": "Mana",
+    "defense": "Defesa",
+    "backpack": "Mochila",
+    "inventory": "Inventário",
+    "hotbar": "Barra Rápida",
+    "info": "Info",
+    "chat": "Chat",
+    "deaths": "Mortes",
+    "playerInfo": "Informações do Jogador",
+    "world": "Mundo",
+    "gamemode": "Modo de Jogo",
+    "position": "Posição",
+    "discoveredZones": "Zonas Descobertas",
+    "memories": "Memórias",
+    "uniqueItems": "Itens Únicos",
+    "noInfoData": "Nenhuma informação disponível",
+    "chatHistory": "Histórico de Chat",
+    "noChat": "Nenhuma mensagem de chat encontrada",
+    "messages": "mensagens",
+    "deathLocations": "Locais de Morte",
+    "noDeaths": "Nenhuma morte registrada",
+    "deathCount": "mortes registradas",
+    "day": "Dia",
+    "latest": "Mais Recente",
+    "teleport": "Teleportar",
+    "slots": {
+      "helmet": "Capacete",
+      "chest": "Peitoral",
+      "gloves": "Luvas",
+      "legs": "Calças",
+      "cosmetic": "Cosmético",
+      "tools": "Ferramentas"
     }
   }
 }
