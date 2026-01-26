@@ -823,7 +823,7 @@ function handleSearchBlur() {
             </div>
 
             <!-- Backpack Grid -->
-            <div class="grid grid-cols-8 gap-0">
+            <div class="grid grid-cols-8 gap-0.5 w-fit">
               <div
                 v-for="(item, index) in backpackGrid"
                 :key="`backpack-${index}`"
@@ -863,7 +863,7 @@ function handleSearchBlur() {
             </h3>
 
             <!-- Storage Grid (8x4 = 32 slots) -->
-            <div class="grid grid-cols-8 gap-0">
+            <div class="grid grid-cols-8 gap-0.5 w-fit">
               <div
                 v-for="(item, index) in storageGrid"
                 :key="`storage-${index}`"
@@ -907,7 +907,7 @@ function handleSearchBlur() {
             </h3>
 
             <!-- Hotbar Grid -->
-            <div class="grid grid-cols-8 gap-0">
+            <div class="grid grid-cols-8 gap-0.5 w-fit">
               <div
                 v-for="(item, index) in hotbarGrid"
                 :key="`hotbar-${index}`"
