@@ -74,7 +74,8 @@
     "assets": "Asset Explorer",
     "chat": "Chat Log",
     "roles": "Roles",
-    "help": "Command Help"
+    "help": "Command Help",
+    "avatarInventory": "Avatar & Inventory"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1684,6 +1685,30 @@
       "configured": "Configured",
       "installed": "Installed",
       "editStep": "Edit"
+    }
+  },
+  "avatarInventory": {
+    "title": "Avatar & Inventory",
+    "subtitle": "View player avatar and inventory in Hytale style",
+    "searchPlayer": "Search player...",
+    "selectPrompt": "Select a Player",
+    "selectHint": "Use the search above to select a player",
+    "noData": "No player data available",
+    "stats": "Stats",
+    "health": "Health",
+    "stamina": "Stamina",
+    "mana": "Mana",
+    "defense": "Defense",
+    "backpack": "Backpack",
+    "inventory": "Inventory",
+    "hotbar": "Hotbar",
+    "slots": {
+      "helmet": "Helmet",
+      "chest": "Chestplate",
+      "gloves": "Gloves",
+      "legs": "Leggings",
+      "cosmetic": "Cosmetic",
+      "tools": "Tools"
     }
   }
 }

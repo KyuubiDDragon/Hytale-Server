@@ -74,7 +74,8 @@
     "assets": "Asset Explorer",
     "chat": "Chat-Protokoll",
     "roles": "Rollen",
-    "help": "Befehlshilfe"
+    "help": "Befehlshilfe",
+    "avatarInventory": "Avatar & Inventar"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -1684,6 +1685,30 @@
       "configured": "Konfiguriert",
       "installed": "Installiert",
       "editStep": "Bearbeiten"
+    }
+  },
+  "avatarInventory": {
+    "title": "Avatar & Inventar",
+    "subtitle": "Spieler-Avatar und Inventar im Hytale-Stil anzeigen",
+    "searchPlayer": "Spieler suchen...",
+    "selectPrompt": "Wähle einen Spieler aus",
+    "selectHint": "Benutze die Suche oben, um einen Spieler auszuwählen",
+    "noData": "Keine Spielerdaten verfügbar",
+    "stats": "Stats",
+    "health": "Gesundheit",
+    "stamina": "Ausdauer",
+    "mana": "Mana",
+    "defense": "Verteidigung",
+    "backpack": "Rucksack",
+    "inventory": "Inventar",
+    "hotbar": "Hotbar",
+    "slots": {
+      "helmet": "Helm",
+      "chest": "Brustpanzer",
+      "gloves": "Handschuhe",
+      "legs": "Beinschutz",
+      "cosmetic": "Kosmetik",
+      "tools": "Werkzeuge"
     }
   }
 }
