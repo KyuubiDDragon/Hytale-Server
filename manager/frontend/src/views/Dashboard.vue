@@ -44,9 +44,8 @@ const showNewFeaturesBanner = ref(false)
 // Scheduler status
 const schedulerStatus = ref<SchedulerStatus | null>(null)
 
-// Mod Updates status
+// Mod update status
 const modUpdateStatus = ref<ModUpdateStatus | null>(null)
-const checkingModUpdates = ref(false)
 
 // Panel patchline setting (fallback when plugin not available)
 const panelPatchline = ref<string | null>(null)
@@ -208,23 +207,8 @@ async function fetchModUpdateStatus() {
   try {
     modUpdateStatus.value = await modupdatesApi.getStatus()
   } catch {
-    // Silently fail - mod updates may not be configured
-  }
-}
-
-async function checkModUpdates() {
-  checkingModUpdates.value = true
-  try {
-    modUpdateStatus.value = await modupdatesApi.checkAll()
-  } catch {
     // Silently fail
-  } finally {
-    checkingModUpdates.value = false
   }
-}
-
-function goToMods() {
-  router.push('/mods')
 }
 
 async function fetchPanelPatchline() {
@@ -277,6 +261,7 @@ onMounted(() => {
   fetchServerMemory()
   checkHytaleAuth()
   fetchSchedulerStatus()
+  fetchModUpdateStatus()
   fetchPanelPatchline()
   checkDownloaderAuth()
   fetchNewFeatures()
@@ -734,6 +719,43 @@ function refreshAll() {
           </div>
         </div>
       </div>
+
+      <!-- Mod Updates Card -->
+      <router-link to="/mod-updates" class="card hover:border-hytale-orange/50 transition-colors cursor-pointer">
+        <div class="card-body p-4">
+          <div class="flex items-center gap-3">
+            <div class="flex-shrink-0">
+              <svg
+                v-if="modUpdateStatus && modUpdateStatus.updatesAvailable > 0"
+                class="w-6 h-6 text-status-warning animate-pulse"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <svg
+                v-else
+                class="w-6 h-6 text-status-success"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs text-gray-400 mb-1">{{ t('dashboard.modUpdates.title') }}</p>
+              <p v-if="modUpdateStatus === null" class="text-sm text-gray-500">{{ t('dashboard.modUpdates.checking') }}</p>
+              <p v-else-if="modUpdateStatus.totalTracked === 0" class="text-sm text-gray-500">{{ t('dashboard.modUpdates.noTracked') }}</p>
+              <p v-else-if="modUpdateStatus.updatesAvailable > 0" class="text-sm font-semibold text-status-warning">
+                {{ t('dashboard.modUpdates.updatesAvailable', { count: modUpdateStatus.updatesAvailable }) }}
+              </p>
+              <p v-else class="text-sm font-semibold text-status-success">{{ t('dashboard.modUpdates.allUpToDate') }}</p>
+            </div>
+          </div>
+        </div>
+      </router-link>
     </div>
 
     <!-- Scheduler Status Cards -->
