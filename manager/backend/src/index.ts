@@ -263,7 +263,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-eval'"], // Vue.js needs unsafe-eval for template compilation
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], // Vue/CSS-in-JS + Google Fonts
-      imgSrc: ["'self'", "data:", "blob:", "https://cdn.modtale.net", "https://stackmart.org", "https://hyvatar.io"], // Allow data URIs, Modtale CDN, StackMart and Hyvatar
+      imgSrc: ["'self'", "data:", "blob:", "https://cdn.modtale.net", "https://stackmart.org", "https://hyvatar.io", "https://media.forgecdn.net"], // Allow data URIs, Modtale CDN, StackMart, Hyvatar and CurseForge CDN
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"], // Google Fonts
       connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
       frameSrc: ["'self'", "https:", "http:"], // Allow embedding web map iframe from external sources
