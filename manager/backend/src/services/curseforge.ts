@@ -19,9 +19,9 @@ const VERSION_PATTERN = /^[a-zA-Z0-9._-]{1,64}$/;
 const CURSEFORGE_API_BASE = 'api.curseforge.com';
 const CURSEFORGE_CDN_BASE = 'edge.forgecdn.net';
 
-// Game IDs - Hytale doesn't have an official ID yet, but this can be configured
-// For now, we'll use a generic approach that can work with any game
-const DEFAULT_GAME_ID = 432; // Minecraft as fallback since Hytale mods may be similar
+// Game IDs - Hytale's CurseForge game ID
+// See: https://www.curseforge.com/hytale
+const DEFAULT_GAME_ID = 6095; // Hytale
 
 // Cache configuration
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes

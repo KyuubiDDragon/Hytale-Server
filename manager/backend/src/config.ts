@@ -126,10 +126,10 @@ const curseforgeApiKeyFromEnv = process.env.CURSEFORGE_API_KEY || '';
 const effectiveCurseforgeApiKey = curseforgeApiKeyFromConfig || curseforgeApiKeyFromEnv;
 
 // Determine CurseForge game ID: prefer config.json, then env
-// Default is 432 (Minecraft) - can be changed when Hytale has an official ID
+// Default is 6095 (Hytale) - see https://www.curseforge.com/hytale
 const curseforgeGameIdFromConfig = configJson?.integrations?.curseforgeGameId;
 const curseforgeGameIdFromEnv = process.env.CURSEFORGE_GAME_ID ? parseInt(process.env.CURSEFORGE_GAME_ID, 10) : undefined;
-const effectiveCurseforgeGameId = curseforgeGameIdFromConfig || curseforgeGameIdFromEnv || 432;
+const effectiveCurseforgeGameId = curseforgeGameIdFromConfig || curseforgeGameIdFromEnv || 6095;
 
 export const config = {
   // ============================================================
