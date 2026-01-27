@@ -383,6 +383,14 @@ export async function checkModUpdate(filename: string): Promise<TrackedMod | nul
     return null;
   }
 
+  // Auto-extract version from filename if not already set (migration for old entries)
+  if (!tracked.installedVersion) {
+    const extractedVersion = extractVersionFromFilename(filename);
+    if (extractedVersion) {
+      tracked.installedVersion = extractedVersion;
+    }
+  }
+
   const modInfo = await getModInfo(tracked.curseforgeSlug);
 
   if (!modInfo) {
@@ -398,12 +406,25 @@ export async function checkModUpdate(filename: string): Promise<TrackedMod | nul
   tracked.projectTitle = modInfo.title;
   tracked.thumbnail = modInfo.thumbnail;
 
-  // Update check
+  // Update check - compare versions
+  tracked.hasUpdate = false;
   if (tracked.installedFileId && tracked.latestFileId) {
     tracked.hasUpdate = tracked.latestFileId > tracked.installedFileId;
   } else if (tracked.installedVersion && tracked.latestVersion) {
-    // Simple string comparison - not perfect but works for most cases
-    tracked.hasUpdate = tracked.installedVersion !== tracked.latestVersion;
+    // Compare version strings - need to normalize them first
+    // Latest version might be filename (e.g., "JET-1.3.2.jar") or display name
+    const installedVer = tracked.installedVersion;
+    let latestVer = tracked.latestVersion;
+
+    // Extract version from latestVersion if it looks like a filename
+    if (latestVer.includes('.jar') || latestVer.includes('.zip')) {
+      const extracted = extractVersionFromFilename(latestVer);
+      if (extracted) {
+        latestVer = extracted;
+      }
+    }
+
+    tracked.hasUpdate = installedVer !== latestVer;
   }
 
   data.mods[filename] = tracked;
