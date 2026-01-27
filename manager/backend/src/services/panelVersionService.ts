@@ -19,6 +19,19 @@ const GITHUB_REPO = 'KyuubiSoft-Hytale-Panel';
 // Cache duration (15 minutes)
 const CACHE_DURATION_MS = 15 * 60 * 1000;
 
+// GitHub API response types
+interface GitHubRelease {
+  tag_name?: string;
+  name?: string;
+  html_url?: string;
+  body?: string;
+  published_at?: string;
+}
+
+interface GitHubTag {
+  name?: string;
+}
+
 interface VersionCache {
   latestVersion: string;
   releaseUrl: string;
@@ -102,7 +115,7 @@ async function fetchLatestRelease(): Promise<{
     });
 
     if (response.ok) {
-      const release = await response.json();
+      const release = await response.json() as GitHubRelease;
       return {
         version: release.tag_name?.replace(/^v/, '') || release.name || 'unknown',
         url: release.html_url || `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,
@@ -122,7 +135,7 @@ async function fetchLatestRelease(): Promise<{
       });
 
       if (tagsResponse.ok) {
-        const tags = await tagsResponse.json();
+        const tags = await tagsResponse.json() as GitHubTag[];
         if (tags && tags.length > 0) {
           const latestTag = tags[0];
           return {
