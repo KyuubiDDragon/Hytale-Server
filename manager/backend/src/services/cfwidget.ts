@@ -8,6 +8,7 @@ import { readFile, writeFile, mkdir, access, unlink } from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
 import https from 'https';
+import http from 'http';
 import { config } from '../config.js';
 
 // CFWidget API Configuration
@@ -552,45 +553,79 @@ export async function updateInstalledVersion(
 /**
  * Download a file from URL to destination
  */
-async function downloadFile(url: string, destPath: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const file = createWriteStream(destPath);
+async function downloadFile(url: string, destPath: string, redirectCount = 0): Promise<boolean> {
+  // Prevent infinite redirects
+  if (redirectCount > 5) {
+    console.error('[CFWidget] Too many redirects');
+    return false;
+  }
 
-    const request = https.get(url, (response) => {
-      // Handle redirects
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        const redirectUrl = response.headers.location;
-        if (redirectUrl) {
-          file.close();
-          downloadFile(redirectUrl, destPath).then(resolve);
+  return new Promise((resolve) => {
+    try {
+      const parsedUrl = new URL(url);
+      const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+      const options = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: 'GET',
+        headers: {
+          'User-Agent': 'KyuubiSoft-HytalePanel/1.0',
+          'Accept': '*/*',
+        },
+      };
+
+      console.log(`[CFWidget] Downloading from: ${parsedUrl.hostname}${parsedUrl.pathname}`);
+
+      const request = protocol.request(options, (response) => {
+        // Handle redirects
+        if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 307 || response.statusCode === 308) {
+          let redirectUrl = response.headers.location;
+          if (redirectUrl) {
+            // Handle relative redirects
+            if (redirectUrl.startsWith('/')) {
+              redirectUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${redirectUrl}`;
+            }
+            console.log(`[CFWidget] Redirect to: ${redirectUrl}`);
+            downloadFile(redirectUrl, destPath, redirectCount + 1).then(resolve);
+            return;
+          }
+        }
+
+        if (response.statusCode !== 200) {
+          console.error(`[CFWidget] Download failed with status: ${response.statusCode}`);
+          resolve(false);
           return;
         }
-      }
 
-      if (response.statusCode !== 200) {
-        file.close();
-        resolve(false);
-        return;
-      }
+        const file = createWriteStream(destPath);
 
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve(true);
+        response.pipe(file);
+
+        file.on('finish', () => {
+          file.close();
+          console.log(`[CFWidget] Download complete: ${destPath}`);
+          resolve(true);
+        });
+
+        file.on('error', (err) => {
+          console.error('[CFWidget] File write error:', err);
+          file.close();
+          resolve(false);
+        });
       });
-    });
 
-    request.on('error', (err) => {
-      console.error('[CFWidget] Download error:', err);
-      file.close();
-      resolve(false);
-    });
+      request.on('error', (err) => {
+        console.error('[CFWidget] Download request error:', err);
+        resolve(false);
+      });
 
-    file.on('error', (err) => {
-      console.error('[CFWidget] File write error:', err);
-      file.close();
+      request.end();
+    } catch (err) {
+      console.error('[CFWidget] URL parse error:', err);
       resolve(false);
-    });
+    }
   });
 }
 
