@@ -555,14 +555,16 @@ export async function updateInstalledVersion(
  */
 async function downloadFile(url: string, destPath: string, redirectCount = 0): Promise<boolean> {
   // Prevent infinite redirects
-  if (redirectCount > 5) {
+  if (redirectCount > 10) {
     console.error('[CFWidget] Too many redirects');
     return false;
   }
 
   return new Promise((resolve) => {
     try {
-      const parsedUrl = new URL(url);
+      // Handle URL encoding for spaces and special chars
+      const encodedUrl = url.replace(/ /g, '%20');
+      const parsedUrl = new URL(encodedUrl);
       const protocol = parsedUrl.protocol === 'https:' ? https : http;
 
       const options = {
@@ -571,8 +573,10 @@ async function downloadFile(url: string, destPath: string, redirectCount = 0): P
         path: parsedUrl.pathname + parsedUrl.search,
         method: 'GET',
         headers: {
-          'User-Agent': 'KyuubiSoft-HytalePanel/1.0',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept': '*/*',
+          'Accept-Encoding': 'identity',
+          'Host': parsedUrl.hostname,
         },
       };
 
@@ -587,14 +591,16 @@ async function downloadFile(url: string, destPath: string, redirectCount = 0): P
             if (redirectUrl.startsWith('/')) {
               redirectUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}${redirectUrl}`;
             }
-            console.log(`[CFWidget] Redirect to: ${redirectUrl}`);
+            console.log(`[CFWidget] Redirect (${response.statusCode}) to: ${redirectUrl}`);
             downloadFile(redirectUrl, destPath, redirectCount + 1).then(resolve);
             return;
           }
         }
 
         if (response.statusCode !== 200) {
-          console.error(`[CFWidget] Download failed with status: ${response.statusCode}`);
+          console.error(`[CFWidget] Download failed with status: ${response.statusCode} from ${parsedUrl.hostname}${parsedUrl.pathname}`);
+          // Log response headers for debugging
+          console.error(`[CFWidget] Response headers: ${JSON.stringify(response.headers)}`);
           resolve(false);
           return;
         }
@@ -634,6 +640,20 @@ async function downloadFile(url: string, destPath: string, redirectCount = 0): P
  */
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/__+/g, '_');
+}
+
+/**
+ * Construct CurseForge CDN download URL from file ID and filename
+ * CurseForge CDN format: https://mediafilez.forgecdn.net/files/{first4}/{remaining}/{filename}
+ */
+function constructDownloadUrl(fileId: number, filename: string): string {
+  const idStr = fileId.toString();
+  // Split file ID: first 4 digits, then remaining digits
+  const first = idStr.slice(0, 4);
+  const remaining = idStr.slice(4);
+  // URL encode the filename for special characters
+  const encodedFilename = encodeURIComponent(filename);
+  return `https://mediafilez.forgecdn.net/files/${first}/${remaining}/${encodedFilename}`;
 }
 
 export interface CFWidgetInstallResult {
@@ -692,12 +712,17 @@ export async function installTrackedMod(
     return { success: false, error: 'Invalid destination path' };
   }
 
+  // Construct proper CDN download URL (CFWidget returns website URL, not CDN URL)
+  const downloadUrl = constructDownloadUrl(latestFile.id, latestFile.name);
+
   console.log(`[CFWidget] Downloading ${modInfo.title} to ${destPath}`);
+  console.log(`[CFWidget] Download URL: ${downloadUrl}`);
 
   // Download the file
-  const downloaded = await downloadFile(latestFile.url, destPath);
+  const downloaded = await downloadFile(downloadUrl, destPath);
   if (!downloaded) {
-    return { success: false, error: 'Failed to download mod file' };
+    console.error(`[CFWidget] Download failed for URL: ${downloadUrl}`);
+    return { success: false, error: `Failed to download mod file from ${downloadUrl}` };
   }
 
   // If this was a wishlist item or an update, handle old file
