@@ -481,14 +481,16 @@ export async function checkAllUpdates(): Promise<ModUpdateStatus> {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  // Update last global check time
-  data.lastGlobalCheck = new Date().toISOString();
-  await saveTrackedMods(data);
+  // Reload data after all updates to get the correct state
+  // (checkModUpdate saves each mod individually, so we need fresh data)
+  const freshData = await loadTrackedMods();
+  freshData.lastGlobalCheck = new Date().toISOString();
+  await saveTrackedMods(freshData);
 
   return {
     totalTracked: updatedMods.length,
     updatesAvailable,
-    lastChecked: data.lastGlobalCheck,
+    lastChecked: freshData.lastGlobalCheck,
     mods: updatedMods,
   };
 }

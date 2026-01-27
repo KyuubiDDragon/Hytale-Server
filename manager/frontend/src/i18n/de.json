@@ -555,7 +555,8 @@
     "alpha": "Alpha",
     "gameVersions": "Spielversionen",
     "curseforgeApiSettings": "CurseForge API Einstellungen",
-    "thirdPartyDisabled": "Dieser Mod erlaubt keine Third-Party Downloads. Bitte lade ihn direkt von CurseForge herunter."
+    "thirdPartyDisabled": "Dieser Mod erlaubt keine Third-Party Downloads. Bitte lade ihn direkt von CurseForge herunter.",
+    "viewOnCurseforge": "Auf CurseForge anzeigen"
   },
   "modupdates": {
     "title": "Mod Updates",
