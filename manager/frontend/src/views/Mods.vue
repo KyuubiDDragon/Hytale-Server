@@ -312,6 +312,83 @@ async function updateInstalledMod(item: ModInfo) {
   }
 }
 
+// Universal update function for mods from any source
+async function updateModFromSource(item: any) {
+  const source = item.updateSource
+  const sourceId = item.updateSourceId
+  const modId = item.updateModId
+  const filename = item.filename
+
+  updatingModFilename.value = filename
+  error.value = ''
+
+  try {
+    let result: { success: boolean; error?: string }
+
+    switch (source) {
+      case 'modstore':
+        // Use existing store update
+        if (item.storeId) {
+          result = await modStoreApi.update(item.storeId)
+        } else {
+          error.value = 'No store ID found'
+          return
+        }
+        break
+
+      case 'cfwidget':
+        // Use CFWidget install (reinstall with latest)
+        result = await modupdatesApi.install(filename)
+        break
+
+      case 'curseforge':
+        // Reinstall from CurseForge API
+        if (modId) {
+          result = await curseforgeApi.install(modId)
+        } else {
+          error.value = 'No mod ID found'
+          return
+        }
+        break
+
+      case 'modtale':
+        // Reinstall from Modtale
+        if (sourceId) {
+          result = await modtaleApi.install(sourceId)
+        } else {
+          error.value = 'No project ID found'
+          return
+        }
+        break
+
+      case 'stackmart':
+        // Reinstall from StackMart
+        if (sourceId) {
+          result = await stackmartApi.install(sourceId)
+        } else {
+          error.value = 'No resource ID found'
+          return
+        }
+        break
+
+      default:
+        error.value = `Unknown source: ${source}`
+        return
+    }
+
+    if (result.success) {
+      // Reload all data
+      await Promise.all([loadData(), loadAllUpdates()])
+    } else {
+      error.value = result.error || t('errors.serverError')
+    }
+  } catch (e: any) {
+    error.value = e.response?.data?.error || t('errors.serverError')
+  } finally {
+    updatingModFilename.value = null
+  }
+}
+
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
     map: 'bg-blue-500/20 text-blue-400',
@@ -475,11 +552,16 @@ const enrichedItems = computed(() => {
         latestVersion: updateInfo.latestVersion,
         installedVersion: updateInfo.installedVersion || item.installedVersion,
         updateSource: updateInfo.source,
+        updateSourceId: updateInfo.sourceId,
+        updateModId: updateInfo.modId,
       }
     }
     return item
   })
 })
+
+// State for updating mods from different sources
+const updatingModFilename = ref<string | null>(null)
 
 function switchToStore() {
   activeTab.value = 'store'
@@ -929,7 +1011,7 @@ async function loadAllUpdates() {
 }
 
 // Get update info for a specific mod by filename
-function getModUpdateInfo(filename: string): { hasUpdate: boolean; latestVersion: string; installedVersion: string; source: string } | null {
+function getModUpdateInfo(filename: string): { hasUpdate: boolean; latestVersion: string; installedVersion: string; source: string; sourceId?: string; modId?: number } | null {
   if (!allUpdatesStatus.value) return null
   const mod = allUpdatesStatus.value.mods.find(m => m.filename === filename)
   if (!mod) return null
@@ -938,6 +1020,8 @@ function getModUpdateInfo(filename: string): { hasUpdate: boolean; latestVersion
     latestVersion: mod.latestVersion || '-',
     installedVersion: mod.installedVersion || '-',
     source: mod.source || 'unknown',
+    sourceId: mod.sourceId,
+    modId: mod.modId,
   }
 }
 
@@ -1307,14 +1391,15 @@ onMounted(() => {
 
           <!-- Actions -->
           <div class="flex items-center gap-3">
-            <!-- Update Button (Store mods) -->
+            <!-- Universal Update Button (all sources) -->
             <button
-              v-if="item.hasUpdate && item.storeId && authStore.hasPermission('mods.install')"
-              @click="updateInstalledMod(item)"
-              class="p-2 text-hytale-orange hover:text-hytale-orange-light transition-colors"
-              :title="t('mods.update') + ' (ModStore)'"
+              v-if="item.hasUpdate && authStore.hasPermission('mods.install')"
+              @click="updateModFromSource(item)"
+              :disabled="updatingModFilename === item.filename"
+              class="p-2 text-hytale-orange hover:text-hytale-orange-light transition-colors disabled:opacity-50"
+              :title="t('mods.update') + (item.updateSource ? ` (${item.updateSource})` : '')"
             >
-              <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg :class="['w-5 h-5', updatingModFilename === item.filename ? 'animate-spin' : '']" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
