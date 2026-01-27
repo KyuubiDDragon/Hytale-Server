@@ -6,7 +6,7 @@ import { useServerStats } from '@/composables/useServerStats'
 import { serverApi, type ServerMemoryStats, type UpdateCheckResponse, type PatchlineResponse, type DownloaderAuthStatus, type NewFeaturesStatus, type PanelVersionInfo } from '@/api/server'
 import { authApi, type HytaleAuthStatus } from '@/api/auth'
 import { schedulerApi, type SchedulerStatus } from '@/api/scheduler'
-import { modupdatesApi, type ModUpdateStatus } from '@/api/management'
+import { modupdatesApi, modsApi, type ModUpdateStatus } from '@/api/management'
 import StatusCard from '@/components/dashboard/StatusCard.vue'
 import QuickActions from '@/components/dashboard/QuickActions.vue'
 import PluginBanner from '@/components/dashboard/PluginBanner.vue'
@@ -49,8 +49,9 @@ const showPanelUpdateBanner = ref(false)
 // Scheduler status
 const schedulerStatus = ref<SchedulerStatus | null>(null)
 
-// Mod update status
+// Mod update status (unified from all sources)
 const modUpdateStatus = ref<ModUpdateStatus | null>(null)
+const checkingModUpdates = ref(false)
 
 // Panel patchline setting (fallback when plugin not available)
 const panelPatchline = ref<string | null>(null)
@@ -210,10 +211,28 @@ async function fetchSchedulerStatus() {
 
 async function fetchModUpdateStatus() {
   try {
-    modUpdateStatus.value = await modupdatesApi.getStatus()
+    // Use unified updates from all sources (not just CFWidget)
+    modUpdateStatus.value = await modsApi.getAllUpdates()
   } catch {
     // Silently fail
   }
+}
+
+async function checkModUpdates() {
+  checkingModUpdates.value = true
+  try {
+    // Check all updates and then refresh
+    await modupdatesApi.checkAll()
+    await fetchModUpdateStatus()
+  } catch {
+    // Silently fail
+  } finally {
+    checkingModUpdates.value = false
+  }
+}
+
+function goToMods() {
+  router.push('/mods')
 }
 
 async function fetchPanelPatchline() {
@@ -923,8 +942,8 @@ function refreshAll() {
       </div>
     </div>
 
-    <!-- Mod Updates Status -->
-    <div v-if="modUpdateStatus && modUpdateStatus.totalTracked > 0" class="card">
+    <!-- Mod Updates Status (Unified from all sources) -->
+    <div v-if="modUpdateStatus && (modUpdateStatus.totalTracked > 0 || modUpdateStatus.updatesAvailable > 0)" class="card">
       <div class="card-header flex items-center justify-between">
         <h3 class="text-lg font-semibold text-white flex items-center gap-2">
           <svg class="w-5 h-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1016,18 +1035,30 @@ function refreshAll() {
                 <p class="font-medium text-white">{{ mod.projectTitle || mod.filename }}</p>
                 <p class="text-xs text-gray-400">
                   {{ mod.installedVersion || 'Unknown' }} → {{ mod.latestVersion }}
+                  <span v-if="mod.source" class="ml-1 text-gray-500">({{ mod.source }})</span>
                 </p>
               </div>
             </div>
-            <a
-              v-if="mod.projectUrl"
-              :href="mod.projectUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-              class="px-3 py-1 text-sm bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded transition-colors"
-            >
-              {{ t('mods.viewOnCurseforge') }}
-            </a>
+            <div class="flex items-center gap-2">
+              <span
+                v-if="mod.source"
+                class="px-2 py-0.5 text-xs rounded"
+                :class="{
+                  'bg-orange-500/20 text-orange-400': mod.source === 'curseforge' || mod.source === 'cfwidget',
+                  'bg-cyan-500/20 text-cyan-400': mod.source === 'modtale',
+                  'bg-amber-500/20 text-amber-400': mod.source === 'stackmart',
+                  'bg-green-500/20 text-green-400': mod.source === 'modstore',
+                }"
+              >
+                {{ mod.source }}
+              </span>
+              <button
+                @click="goToMods"
+                class="px-3 py-1 text-sm bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 rounded transition-colors"
+              >
+                {{ t('mods.update') }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
