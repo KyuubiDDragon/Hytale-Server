@@ -692,3 +692,273 @@ export const stackmartApi = {
     return response.data
   },
 }
+
+// ============== CURSEFORGE API ==============
+
+export interface CurseForgeCategory {
+  id: number
+  gameId: number
+  name: string
+  slug: string
+  url: string
+  iconUrl: string
+  parentCategoryId?: number
+  isClass?: boolean
+}
+
+export interface CurseForgeMod {
+  id: number
+  gameId: number
+  name: string
+  slug: string
+  links: {
+    websiteUrl: string
+    wikiUrl?: string
+    issuesUrl?: string
+    sourceUrl?: string
+  }
+  summary: string
+  status: number
+  downloadCount: number
+  isFeatured: boolean
+  primaryCategoryId: number
+  categories: CurseForgeCategory[]
+  classId?: number
+  authors: Array<{
+    id: number
+    name: string
+    url: string
+  }>
+  logo?: {
+    id: number
+    modId: number
+    title: string
+    thumbnailUrl: string
+    url: string
+  }
+  screenshots?: Array<{
+    id: number
+    modId: number
+    title: string
+    thumbnailUrl: string
+    url: string
+  }>
+  mainFileId: number
+  latestFiles: CurseForgeFile[]
+  latestFilesIndexes: Array<{
+    gameVersion: string
+    fileId: number
+    filename: string
+    releaseType: number
+    gameVersionTypeId?: number
+    modLoader?: number
+  }>
+  dateCreated: string
+  dateModified: string
+  dateReleased: string
+  allowModDistribution?: boolean
+  gamePopularityRank: number
+  thumbsUpCount?: number
+}
+
+export interface CurseForgeFile {
+  id: number
+  gameId: number
+  modId: number
+  isAvailable: boolean
+  displayName: string
+  fileName: string
+  releaseType: 1 | 2 | 3 // 1=Release, 2=Beta, 3=Alpha
+  fileStatus: number
+  hashes: Array<{
+    value: string
+    algo: number
+  }>
+  fileDate: string
+  fileLength: number
+  downloadCount: number
+  downloadUrl: string | null
+  gameVersions: string[]
+  sortableGameVersions?: Array<{
+    gameVersionName: string
+    gameVersionPadded: string
+    gameVersion: string
+    gameVersionReleaseDate: string
+    gameVersionTypeId?: number
+  }>
+  dependencies?: Array<{
+    modId: number
+    relationType: number
+  }>
+  modules?: Array<{
+    name: string
+    fingerprint: number
+  }>
+  fileFingerprint: number
+}
+
+export interface CurseForgeSearchResult {
+  data: CurseForgeMod[]
+  pagination: {
+    index: number
+    pageSize: number
+    resultCount: number
+    totalCount: number
+  }
+}
+
+export interface CurseForgeStatus {
+  configured: boolean
+  hasApiKey: boolean
+  apiAvailable: boolean
+  gameId: number
+}
+
+export interface CurseForgeInstallResult {
+  success: boolean
+  error?: string
+  filename?: string
+  version?: string
+  modId?: number
+  modName?: string
+}
+
+export interface CurseForgeInstalledInfo {
+  modId: number
+  modName: string
+  fileId: number
+  version: string
+  filename: string
+  installedAt: string
+  releaseType: number
+  gameVersions: string[]
+}
+
+export interface CurseForgeUpdateInfo {
+  modId: number
+  modName: string
+  currentFileId: number
+  currentVersion: string
+  latestFileId: number
+  latestVersion: string
+  releaseType: number
+  hasUpdate: boolean
+}
+
+export type CurseForgeSortField =
+  | 'Featured'
+  | 'Popularity'
+  | 'LastUpdated'
+  | 'Name'
+  | 'Author'
+  | 'TotalDownloads'
+  | 'Category'
+  | 'GameVersion'
+
+export type CurseForgeSortOrder = 'asc' | 'desc'
+
+export const curseforgeApi = {
+  async getStatus(): Promise<CurseForgeStatus> {
+    const response = await api.get<CurseForgeStatus>('/management/curseforge/status')
+    return response.data
+  },
+
+  async search(options?: {
+    search?: string
+    gameId?: number
+    classId?: number
+    categoryId?: number
+    gameVersion?: string
+    sortField?: CurseForgeSortField
+    sortOrder?: CurseForgeSortOrder
+    pageSize?: number
+    index?: number
+  }): Promise<CurseForgeSearchResult> {
+    const params = new URLSearchParams()
+    if (options?.search) params.append('search', options.search)
+    if (options?.gameId !== undefined) params.append('gameId', options.gameId.toString())
+    if (options?.classId !== undefined) params.append('classId', options.classId.toString())
+    if (options?.categoryId !== undefined) params.append('categoryId', options.categoryId.toString())
+    if (options?.gameVersion) params.append('gameVersion', options.gameVersion)
+    if (options?.sortField) params.append('sortField', options.sortField)
+    if (options?.sortOrder) params.append('sortOrder', options.sortOrder)
+    if (options?.pageSize !== undefined) params.append('pageSize', options.pageSize.toString())
+    if (options?.index !== undefined) params.append('index', options.index.toString())
+
+    const response = await api.get<CurseForgeSearchResult>(`/management/curseforge/search?${params.toString()}`)
+    return response.data
+  },
+
+  async getMod(modId: number): Promise<CurseForgeMod> {
+    const response = await api.get<CurseForgeMod>(`/management/curseforge/mods/${modId}`)
+    return response.data
+  },
+
+  async getFiles(modId: number, options?: {
+    gameVersion?: string
+    pageSize?: number
+    index?: number
+  }): Promise<{ data: CurseForgeFile[] }> {
+    const params = new URLSearchParams()
+    if (options?.gameVersion) params.append('gameVersion', options.gameVersion)
+    if (options?.pageSize !== undefined) params.append('pageSize', options.pageSize.toString())
+    if (options?.index !== undefined) params.append('index', options.index.toString())
+
+    const response = await api.get<{ data: CurseForgeFile[] }>(`/management/curseforge/mods/${modId}/files?${params.toString()}`)
+    return response.data
+  },
+
+  async install(modId: number, fileId?: number): Promise<CurseForgeInstallResult> {
+    const response = await api.post<CurseForgeInstallResult>('/management/curseforge/install', { modId, fileId })
+    return response.data
+  },
+
+  async update(modId: number, fileId?: number): Promise<CurseForgeInstallResult> {
+    const response = await api.post<CurseForgeInstallResult>('/management/curseforge/update', { modId, fileId })
+    return response.data
+  },
+
+  async checkUpdates(): Promise<{ updates: CurseForgeUpdateInfo[] }> {
+    const response = await api.get<{ updates: CurseForgeUpdateInfo[] }>('/management/curseforge/updates')
+    return response.data
+  },
+
+  async getFeatured(limit?: number): Promise<{ data: CurseForgeMod[] }> {
+    const params = limit ? `?limit=${limit}` : ''
+    const response = await api.get<{ data: CurseForgeMod[] }>(`/management/curseforge/featured${params}`)
+    return response.data
+  },
+
+  async getRecent(limit?: number): Promise<{ data: CurseForgeMod[] }> {
+    const params = limit ? `?limit=${limit}` : ''
+    const response = await api.get<{ data: CurseForgeMod[] }>(`/management/curseforge/recent${params}`)
+    return response.data
+  },
+
+  async getPopular(limit?: number): Promise<{ data: CurseForgeMod[] }> {
+    const params = limit ? `?limit=${limit}` : ''
+    const response = await api.get<{ data: CurseForgeMod[] }>(`/management/curseforge/popular${params}`)
+    return response.data
+  },
+
+  async getCategories(gameId?: number): Promise<{ data: CurseForgeCategory[] }> {
+    const params = gameId ? `?gameId=${gameId}` : ''
+    const response = await api.get<{ data: CurseForgeCategory[] }>(`/management/curseforge/categories${params}`)
+    return response.data
+  },
+
+  async refresh(): Promise<{ success: boolean; message: string }> {
+    const response = await api.post<{ success: boolean; message: string }>('/management/curseforge/refresh')
+    return response.data
+  },
+
+  async getInstalled(): Promise<{ mods: Record<string, CurseForgeInstalledInfo> }> {
+    const response = await api.get<{ mods: Record<string, CurseForgeInstalledInfo> }>('/management/curseforge/installed')
+    return response.data
+  },
+
+  async uninstall(modId: number): Promise<{ success: boolean; error?: string }> {
+    const response = await api.delete<{ success: boolean; error?: string }>(`/management/curseforge/uninstall/${modId}`)
+    return response.data
+  },
+}

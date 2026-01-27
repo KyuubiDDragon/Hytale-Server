@@ -104,6 +104,25 @@ import {
   type StackMartSortOption,
   type StackMartCategory,
 } from '../services/stackmart.js';
+import {
+  searchMods as curseforgeSearch,
+  getModDetails as curseforgeGetDetails,
+  getModFiles as curseforgeGetFiles,
+  installModFromCurseForge,
+  uninstallCurseForge,
+  updateMod as curseforgeUpdateMod,
+  checkCurseForgeStatus,
+  getCategories as curseforgeGetCategories,
+  getFeaturedMods as curseforgeFeatured,
+  getRecentMods as curseforgeRecent,
+  getPopularMods as curseforgePopular,
+  checkForUpdates as curseforgeCheckUpdates,
+  clearCurseForgeCache,
+  isValidModId as isValidCurseForgeModId,
+  getInstalledCurseForgeInfo,
+  type CurseForgeSortField,
+  type CurseForgeSortOrder,
+} from '../services/curseforge.js';
 
 // SECURITY: Allowed file extensions for uploads
 // Removed .dll and .so as they are native executables
@@ -2713,6 +2732,465 @@ router.delete('/stackmart/uninstall/:resourceId', authMiddleware, requirePermiss
   } catch (error) {
     console.error('StackMart uninstall error:', error);
     res.status(500).json({ success: false, error: 'Failed to uninstall resource' });
+  }
+});
+
+// ============================================
+// CurseForge Integration Endpoints
+// ============================================
+
+// GET /api/management/curseforge/status - Check CurseForge API status
+router.get('/curseforge/status', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return simulated status
+  if (isDemoMode()) {
+    res.json({
+      configured: true,
+      hasApiKey: true,
+      apiAvailable: true,
+      gameId: 432,
+      demo: true,
+    });
+    return;
+  }
+
+  const status = await checkCurseForgeStatus();
+  res.json(status);
+});
+
+// GET /api/management/curseforge/search - Search mods on CurseForge
+router.get('/curseforge/search', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock search results
+  if (isDemoMode()) {
+    res.json({
+      data: [
+        {
+          id: 238222,
+          name: 'JEI (Just Enough Items)',
+          slug: 'jei',
+          summary: 'View items and recipes',
+          downloadCount: 150000000,
+          authors: [{ id: 1, name: 'mezz', url: '' }],
+          logo: { thumbnailUrl: 'https://via.placeholder.com/64' },
+          dateModified: new Date().toISOString(),
+          latestFiles: [],
+        },
+      ],
+      pagination: { index: 0, pageSize: 20, resultCount: 1, totalCount: 1 },
+      demo: true,
+    });
+    return;
+  }
+
+  try {
+    const {
+      search,
+      gameId,
+      classId,
+      categoryId,
+      gameVersion,
+      sortField = 'Popularity',
+      sortOrder = 'desc',
+      pageSize = '20',
+      index = '0',
+    } = req.query;
+
+    const result = await curseforgeSearch({
+      search: search as string | undefined,
+      gameId: gameId ? parseInt(gameId as string, 10) : undefined,
+      classId: classId ? parseInt(classId as string, 10) : undefined,
+      categoryId: categoryId ? parseInt(categoryId as string, 10) : undefined,
+      gameVersion: gameVersion as string | undefined,
+      sortField: sortField as CurseForgeSortField,
+      sortOrder: sortOrder as CurseForgeSortOrder,
+      pageSize: parseInt(pageSize as string, 10),
+      index: parseInt(index as string, 10),
+    });
+
+    if (result) {
+      res.json(result);
+    } else {
+      res.status(503).json({ error: 'CurseForge API unavailable' });
+    }
+  } catch (error) {
+    console.error('CurseForge search error:', error);
+    res.status(500).json({ error: 'Failed to search CurseForge' });
+  }
+});
+
+// GET /api/management/curseforge/mods/:modId - Get mod details
+router.get('/curseforge/mods/:modId', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock mod details
+  if (isDemoMode()) {
+    res.json({
+      id: parseInt(req.params.modId, 10),
+      name: 'Demo Mod',
+      slug: 'demo-mod',
+      summary: 'A demo mod for testing',
+      downloadCount: 10000,
+      authors: [{ id: 1, name: 'DemoAuthor', url: '' }],
+      latestFiles: [
+        {
+          id: 1234567,
+          displayName: 'demo-mod-1.0.0.jar',
+          fileName: 'demo-mod-1.0.0.jar',
+          releaseType: 1,
+          gameVersions: ['1.20.1'],
+          downloadUrl: null,
+        },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  try {
+    const modId = parseInt(req.params.modId, 10);
+
+    if (!isValidCurseForgeModId(modId)) {
+      res.status(400).json({ error: 'Invalid mod ID format' });
+      return;
+    }
+
+    const mod = await curseforgeGetDetails(modId);
+
+    if (mod) {
+      res.json(mod);
+    } else {
+      res.status(404).json({ error: 'Mod not found' });
+    }
+  } catch (error) {
+    console.error('CurseForge mod details error:', error);
+    res.status(500).json({ error: 'Failed to get mod details' });
+  }
+});
+
+// GET /api/management/curseforge/mods/:modId/files - Get mod files
+router.get('/curseforge/mods/:modId/files', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock files
+  if (isDemoMode()) {
+    res.json({
+      data: [
+        {
+          id: 1234567,
+          displayName: 'demo-mod-1.0.0.jar',
+          fileName: 'demo-mod-1.0.0.jar',
+          releaseType: 1,
+          gameVersions: ['1.20.1'],
+          fileDate: new Date().toISOString(),
+          downloadCount: 5000,
+          downloadUrl: null,
+        },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  try {
+    const modId = parseInt(req.params.modId, 10);
+    const { gameVersion, pageSize = '50', index = '0' } = req.query;
+
+    if (!isValidCurseForgeModId(modId)) {
+      res.status(400).json({ error: 'Invalid mod ID format' });
+      return;
+    }
+
+    const files = await curseforgeGetFiles(modId, {
+      gameVersion: gameVersion as string | undefined,
+      pageSize: parseInt(pageSize as string, 10),
+      index: parseInt(index as string, 10),
+    });
+
+    if (files) {
+      res.json({ data: files });
+    } else {
+      res.status(404).json({ error: 'Files not found' });
+    }
+  } catch (error) {
+    console.error('CurseForge files error:', error);
+    res.status(500).json({ error: 'Failed to get mod files' });
+  }
+});
+
+// POST /api/management/curseforge/install - Install mod from CurseForge
+router.post('/curseforge/install', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate install
+  if (isDemoMode()) {
+    const { modId, fileId } = req.body;
+    res.json({
+      success: true,
+      modId,
+      fileId,
+      filename: 'demo-mod-1.0.0.jar',
+      version: 'demo-mod-1.0.0',
+      modName: 'Demo Mod',
+      message: '[DEMO] CurseForge mod installed (simulated)',
+    });
+    return;
+  }
+
+  try {
+    const { modId, fileId } = req.body;
+
+    if (!modId || !isValidCurseForgeModId(modId)) {
+      res.status(400).json({ success: false, error: 'Invalid mod ID' });
+      return;
+    }
+
+    const result = await installModFromCurseForge(modId, fileId);
+
+    if (result.success) {
+      const user = req.user || 'system';
+      logActivity(
+        user,
+        'install_curseforge',
+        'mod',
+        true,
+        result.modName || modId.toString(),
+        `Installed ${result.modName} (${result.version}) from CurseForge`
+      );
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('CurseForge install error:', error);
+    res.status(500).json({ success: false, error: 'Failed to install mod' });
+  }
+});
+
+// POST /api/management/curseforge/update - Update mod to latest version
+router.post('/curseforge/update', authMiddleware, requirePermission('mods.install'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate update
+  if (isDemoMode()) {
+    const { modId, fileId } = req.body;
+    res.json({
+      success: true,
+      modId,
+      fileId,
+      filename: 'demo-mod-1.1.0.jar',
+      version: 'demo-mod-1.1.0',
+      modName: 'Demo Mod',
+      message: '[DEMO] CurseForge mod updated (simulated)',
+    });
+    return;
+  }
+
+  try {
+    const { modId, fileId } = req.body;
+
+    if (!modId || !isValidCurseForgeModId(modId)) {
+      res.status(400).json({ success: false, error: 'Invalid mod ID' });
+      return;
+    }
+
+    const result = await curseforgeUpdateMod(modId, fileId);
+
+    if (result.success) {
+      const user = req.user || 'system';
+      logActivity(
+        user,
+        'update_curseforge',
+        'mod',
+        true,
+        result.modName || modId.toString(),
+        `Updated ${result.modName} to ${result.version} from CurseForge`
+      );
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('CurseForge update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update mod' });
+  }
+});
+
+// GET /api/management/curseforge/updates - Check for updates for installed mods
+router.get('/curseforge/updates', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock updates
+  if (isDemoMode()) {
+    res.json({
+      updates: [
+        {
+          modId: 238222,
+          modName: 'JEI (Just Enough Items)',
+          currentFileId: 1234566,
+          currentVersion: 'jei-1.20.1-15.2.0.26',
+          latestFileId: 1234567,
+          latestVersion: 'jei-1.20.1-15.2.0.27',
+          releaseType: 1,
+          hasUpdate: true,
+        },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  try {
+    const updates = await curseforgeCheckUpdates();
+    res.json({ updates });
+  } catch (error) {
+    console.error('CurseForge updates check error:', error);
+    res.status(500).json({ error: 'Failed to check for updates' });
+  }
+});
+
+// GET /api/management/curseforge/featured - Get featured mods
+router.get('/curseforge/featured', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock featured mods
+  if (isDemoMode()) {
+    res.json({
+      data: [
+        {
+          id: 238222,
+          name: 'JEI (Just Enough Items)',
+          summary: 'View items and recipes',
+          downloadCount: 150000000,
+        },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  const limit = parseInt(req.query.limit as string, 10) || 10;
+  const mods = await curseforgeFeatured(limit);
+  res.json({ data: mods });
+});
+
+// GET /api/management/curseforge/recent - Get recently updated mods
+router.get('/curseforge/recent', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock recent mods
+  if (isDemoMode()) {
+    res.json({
+      data: [
+        {
+          id: 238223,
+          name: 'Recent Mod',
+          summary: 'A recently updated mod',
+          downloadCount: 5000000,
+        },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  const limit = parseInt(req.query.limit as string, 10) || 10;
+  const mods = await curseforgeRecent(limit);
+  res.json({ data: mods });
+});
+
+// GET /api/management/curseforge/popular - Get popular mods
+router.get('/curseforge/popular', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock popular mods
+  if (isDemoMode()) {
+    res.json({
+      data: [
+        {
+          id: 238224,
+          name: 'Popular Mod',
+          summary: 'A very popular mod',
+          downloadCount: 200000000,
+        },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  const limit = parseInt(req.query.limit as string, 10) || 10;
+  const mods = await curseforgePopular(limit);
+  res.json({ data: mods });
+});
+
+// GET /api/management/curseforge/categories - Get available categories
+router.get('/curseforge/categories', authMiddleware, requirePermission('mods.view'), async (req: Request, res: Response) => {
+  // Demo mode: return mock categories
+  if (isDemoMode()) {
+    res.json({
+      data: [
+        { id: 6, name: 'Mods', slug: 'mc-mods' },
+        { id: 12, name: 'Resource Packs', slug: 'texture-packs' },
+        { id: 17, name: 'Modpacks', slug: 'modpacks' },
+      ],
+      demo: true,
+    });
+    return;
+  }
+
+  const gameId = req.query.gameId ? parseInt(req.query.gameId as string, 10) : undefined;
+  const categories = await curseforgeGetCategories(gameId);
+  res.json({ data: categories || [] });
+});
+
+// POST /api/management/curseforge/refresh - Clear CurseForge cache
+router.post('/curseforge/refresh', authMiddleware, requirePermission('mods.install'), async (_req: Request, res: Response) => {
+  clearCurseForgeCache();
+  res.json({ success: true, message: 'CurseForge cache cleared' });
+});
+
+// GET /api/management/curseforge/installed - Get installed CurseForge mods
+router.get('/curseforge/installed', authMiddleware, requirePermission('mods.view'), async (_req: Request, res: Response) => {
+  // Demo mode: return mock installed mods
+  if (isDemoMode()) {
+    res.json({
+      mods: {
+        '238222': {
+          modId: 238222,
+          modName: 'JEI (Just Enough Items)',
+          fileId: 1234566,
+          version: 'jei-1.20.1-15.2.0.26',
+          filename: 'jei-1.20.1-15.2.0.26.jar',
+          installedAt: new Date().toISOString(),
+          releaseType: 1,
+          gameVersions: ['1.20.1'],
+        },
+      },
+      demo: true,
+    });
+    return;
+  }
+
+  const mods = await getInstalledCurseForgeInfo();
+  res.json({ mods });
+});
+
+// DELETE /api/management/curseforge/uninstall/:modId - Uninstall a CurseForge mod
+router.delete('/curseforge/uninstall/:modId', authMiddleware, requirePermission('mods.delete'), async (req: AuthenticatedRequest, res: Response) => {
+  // Demo mode: simulate uninstall
+  if (isDemoMode()) {
+    const { modId } = req.params;
+    res.json({ success: true, modId, message: '[DEMO] CurseForge mod uninstalled (simulated)' });
+    return;
+  }
+
+  try {
+    const modId = parseInt(req.params.modId, 10);
+
+    if (!isValidCurseForgeModId(modId)) {
+      res.status(400).json({ success: false, error: 'Invalid mod ID format' });
+      return;
+    }
+
+    const result = await uninstallCurseForge(modId);
+
+    if (result.success) {
+      const user = req.user || 'system';
+      logActivity(
+        user,
+        'uninstall_curseforge',
+        'mod',
+        true,
+        modId.toString(),
+        `Uninstalled CurseForge mod: ${modId}`
+      );
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('CurseForge uninstall error:', error);
+    res.status(500).json({ success: false, error: 'Failed to uninstall mod' });
   }
 });
 

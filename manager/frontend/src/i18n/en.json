@@ -518,7 +518,27 @@
     "stackmartApiKeyInstructions": "To use publisher features, create an API key on stackmart.org:",
     "stackmartApiKeyStep1": "Go to",
     "stackmartApiKeyStep2": "Create a publisher account",
-    "stackmartApiKeyStep3": "Generate a Publisher API Key"
+    "stackmartApiKeyStep3": "Generate a Publisher API Key",
+    "curseforgeDescription": "Browse and install mods from CurseForge - the largest gaming mod platform.",
+    "curseforgeUnavailable": "CurseForge API not available. Please configure API key.",
+    "searchCurseForge": "Search mods on CurseForge...",
+    "curseforgeResults": "CurseForge Results",
+    "noCurseForgeResults": "No mods found",
+    "curseforgeApiKeyInstructions": "To use CurseForge, you need an API key:",
+    "curseforgeApiKeyStep1": "Go to",
+    "curseforgeApiKeyStep2": "Apply for a Third-Party API key",
+    "curseforgeApiKeyStep3": "Add the key to your configuration",
+    "checkingUpdates": "Checking for updates...",
+    "updatesAvailable": "Updates available",
+    "noUpdatesAvailable": "All mods are up to date",
+    "updateAll": "Update all",
+    "releaseType": "Release Type",
+    "release": "Release",
+    "beta": "Beta",
+    "alpha": "Alpha",
+    "gameVersions": "Game Versions",
+    "curseforgeApiSettings": "CurseForge API Settings",
+    "thirdPartyDisabled": "This mod does not allow third-party downloads. Please download directly from CurseForge."
   },
   "performance": {
     "title": "Performance Monitor",
@@ -1600,6 +1620,13 @@
         "apiKey": "API Key",
         "apiKeyPlaceholder": "Enter your StackMart API key...",
         "hint": "Get your API key from stackmart.org for publisher features"
+      },
+      "curseforge": {
+        "title": "CurseForge",
+        "description": "Access CurseForge for browsing and installing mods with update checking",
+        "apiKey": "API Key",
+        "apiKeyPlaceholder": "Enter your CurseForge API key...",
+        "hint": "Apply for an API key at docs.curseforge.com"
       },
       "webmap": {
         "title": "Web Map",
