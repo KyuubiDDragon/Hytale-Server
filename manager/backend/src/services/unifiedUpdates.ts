@@ -14,6 +14,21 @@ import { getInstalledModtaleInfo, getModDetails as getModtaleDetails } from './m
 import { getInstalledStackMartInfo, getResourceDetails as getStackMartDetails } from './stackmart.js';
 import { getModRegistry, isModInstalled, getLatestRelease } from './modStore.js';
 
+/**
+ * Normalize version string for comparison (remove 'v' prefix and trim)
+ */
+function normalizeVersion(version: string): string {
+  return version.replace(/^v/i, '').trim();
+}
+
+/**
+ * Compare two version strings. Returns true if they are semantically equal.
+ * Handles 'v' prefix differences (v1.2.6 == 1.2.6)
+ */
+function versionsAreEqual(v1: string, v2: string): boolean {
+  return normalizeVersion(v1) === normalizeVersion(v2);
+}
+
 export interface UnifiedModUpdate {
   filename: string;
   name: string;
@@ -128,7 +143,8 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
         if (project && project.versions && project.versions.length > 0) {
           const latestVer = project.versions.find(v => v.channel === 'RELEASE') || project.versions[0];
           latestVersion = latestVer.versionNumber;
-          hasUpdate = latestVersion !== info.version;
+          // Use normalized version comparison to handle 'v' prefix differences
+          hasUpdate = !versionsAreEqual(info.version, latestVersion);
           // Get changelog from latest version
           if (hasUpdate && latestVer.changelog) {
             changelog = latestVer.changelog;
@@ -169,7 +185,8 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
         const result = await getStackMartDetails(info.resourceId);
         if (result && result.resource && result.resource.version) {
           latestVersion = result.resource.version;
-          hasUpdate = latestVersion !== info.version;
+          // Use normalized version comparison to handle 'v' prefix differences
+          hasUpdate = !versionsAreEqual(info.version, latestVersion);
         }
       } catch {
         // Failed to check, keep current version
@@ -210,7 +227,8 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
           const release = await getLatestRelease(mod.github);
           if (release) {
             latestVersion = release.tag_name;
-            hasUpdate = installed.installedVersion !== release.tag_name;
+            // Use normalized version comparison to handle 'v' prefix differences
+            hasUpdate = !versionsAreEqual(installed.installedVersion || '', release.tag_name);
             // Get changelog from GitHub release body
             if (hasUpdate && release.body) {
               changelog = release.body;

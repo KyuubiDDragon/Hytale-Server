@@ -9,7 +9,7 @@ import path from 'path';
 import https from 'https';
 import { config } from '../config.js';
 import { sanitizeFileName } from '../utils/pathSecurity.js';
-import { trackMod as cfwidgetTrackMod, untrackMod as cfwidgetUntrackMod } from './cfwidget.js';
+import { untrackMod as cfwidgetUntrackMod } from './cfwidget.js';
 
 // Security: Regex pattern for validating mod IDs (CurseForge uses numeric IDs)
 const MOD_ID_PATTERN = /^\d{1,10}$/;
@@ -838,14 +838,9 @@ export async function installModFromCurseForge(
     gameVersions: file.gameVersions,
   });
 
-  // Also track in CFWidget for unified update checking in Updates tab
-  try {
-    await cfwidgetTrackMod(filename, mod.slug, file.displayName);
-    console.log(`[CurseForge] Mod ${mod.name} also tracked in CFWidget for update checking`);
-  } catch (e) {
-    console.error('[CurseForge] Failed to track mod in CFWidget:', e);
-    // Don't fail the install if CFWidget tracking fails
-  }
+  // Note: CFWidget tracking is only for manually tracked mods via the "Mod Updates" menu.
+  // CurseForge-installed mods are tracked via curseforge-mods.json and show updates
+  // through the unified updates system without needing CFWidget tracking.
 
   return {
     success: true,
