@@ -9,7 +9,7 @@
  */
 
 import { getUpdateStatus as getCFWidgetStatus, type TrackedMod } from './cfwidget.js';
-import { getInstalledCurseForgeInfo, checkForUpdates as checkCurseForgeUpdates } from './curseforge.js';
+import { getInstalledCurseForgeInfo, checkForUpdates as checkCurseForgeUpdates, getFileChangelog as getCurseForgeChangelog } from './curseforge.js';
 import { getInstalledModtaleInfo, getModDetails as getModtaleDetails } from './modtale.js';
 import { getInstalledStackMartInfo, getResourceDetails as getStackMartDetails } from './stackmart.js';
 import { getModRegistry, isModInstalled, getLatestRelease } from './modStore.js';
@@ -27,6 +27,8 @@ export interface UnifiedModUpdate {
   // Source-specific IDs
   sourceId?: string;
   modId?: number;
+  // Changelog for the latest version
+  changelog?: string;
 }
 
 export interface UnifiedUpdateStatus {
@@ -79,6 +81,19 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
       const hasUpdate = updateInfo?.hasUpdate || false;
       const latestVersion = updateInfo?.latestVersion || info.version;
 
+      // Get changelog if update is available
+      let changelog: string | undefined;
+      if (hasUpdate && updateInfo?.latestFileId) {
+        try {
+          const changelogText = await getCurseForgeChangelog(info.modId, updateInfo.latestFileId);
+          if (changelogText) {
+            changelog = changelogText;
+          }
+        } catch {
+          // Failed to get changelog
+        }
+      }
+
       allMods.push({
         filename: info.filename,
         name: info.modName,
@@ -89,6 +104,7 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
         lastChecked: new Date().toISOString(),
         sourceId: modIdStr,
         modId: info.modId,
+        changelog,
       });
       if (hasUpdate) updatesAvailable++;
     }
@@ -106,12 +122,17 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
       // Check for updates
       let hasUpdate = false;
       let latestVersion = info.version;
+      let changelog: string | undefined;
       try {
         const project = await getModtaleDetails(info.projectId);
         if (project && project.versions && project.versions.length > 0) {
           const latestVer = project.versions.find(v => v.channel === 'RELEASE') || project.versions[0];
           latestVersion = latestVer.versionNumber;
           hasUpdate = latestVersion !== info.version;
+          // Get changelog from latest version
+          if (hasUpdate && latestVer.changelog) {
+            changelog = latestVer.changelog;
+          }
         }
       } catch {
         // Failed to check, keep current version
@@ -126,6 +147,7 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
         hasUpdate,
         sourceId: info.projectId,
         lastChecked: new Date().toISOString(),
+        changelog,
       });
       if (hasUpdate) updatesAvailable++;
     }
@@ -182,12 +204,17 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
       // Check for updates via GitHub
       let hasUpdate = false;
       let latestVersion = installed.installedVersion || mod.version || '-';
+      let changelog: string | undefined;
       if (mod.github) {
         try {
           const release = await getLatestRelease(mod.github);
           if (release) {
             latestVersion = release.tag_name;
             hasUpdate = installed.installedVersion !== release.tag_name;
+            // Get changelog from GitHub release body
+            if (hasUpdate && release.body) {
+              changelog = release.body;
+            }
           }
         } catch {
           // Failed to check
@@ -203,6 +230,7 @@ export async function getUnifiedUpdateStatus(): Promise<UnifiedUpdateStatus> {
         hasUpdate,
         sourceId: mod.id,
         lastChecked: new Date().toISOString(),
+        changelog,
       });
       if (hasUpdate) updatesAvailable++;
     }

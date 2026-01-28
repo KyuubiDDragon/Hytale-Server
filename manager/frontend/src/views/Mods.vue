@@ -554,6 +554,7 @@ const enrichedItems = computed(() => {
         updateSource: updateInfo.source,
         updateSourceId: updateInfo.sourceId,
         updateModId: updateInfo.modId,
+        updateChangelog: updateInfo.changelog,
       }
     }
     return item
@@ -562,6 +563,17 @@ const enrichedItems = computed(() => {
 
 // State for updating mods from different sources
 const updatingModFilename = ref<string | null>(null)
+
+// State for changelog modal
+const showChangelogModal = ref(false)
+const changelogModalContent = ref('')
+const changelogModalTitle = ref('')
+
+function openChangelogModal(name: string, changelog: string) {
+  changelogModalTitle.value = name
+  changelogModalContent.value = changelog
+  showChangelogModal.value = true
+}
 
 function switchToStore() {
   activeTab.value = 'store'
@@ -1011,7 +1023,7 @@ async function loadAllUpdates() {
 }
 
 // Get update info for a specific mod by filename
-function getModUpdateInfo(filename: string): { hasUpdate: boolean; latestVersion: string; installedVersion: string; source: string; sourceId?: string; modId?: number } | null {
+function getModUpdateInfo(filename: string): { hasUpdate: boolean; latestVersion: string; installedVersion: string; source: string; sourceId?: string; modId?: number; changelog?: string } | null {
   if (!allUpdatesStatus.value) return null
   const mod = allUpdatesStatus.value.mods.find(m => m.filename === filename)
   if (!mod) return null
@@ -1022,6 +1034,7 @@ function getModUpdateInfo(filename: string): { hasUpdate: boolean; latestVersion
     source: mod.source || 'unknown',
     sourceId: mod.sourceId,
     modId: mod.modId,
+    changelog: mod.changelog,
   }
 }
 
@@ -1377,13 +1390,22 @@ onMounted(() => {
                 <!-- Update badge -->
                 <span
                   v-if="item.hasUpdate"
-                  class="px-2 py-0.5 rounded text-xs bg-hytale-orange/20 text-hytale-orange animate-pulse"
-                  :class="{ 'cursor-pointer': item.storeId }"
+                  class="px-2 py-0.5 rounded text-xs bg-hytale-orange/20 text-hytale-orange animate-pulse inline-flex items-center gap-1"
                   :title="`${t('mods.updateAvailable')}: ${item.latestVersion}${item.updateSource ? ' (' + item.updateSource + ')' : ''}`"
-                  @click.stop="item.storeId ? updateInstalledMod(item) : null"
                 >
                   ↑ {{ item.latestVersion }}
-                  <span v-if="item.updateSource" class="text-[10px] opacity-70 ml-1">({{ item.updateSource }})</span>
+                  <span v-if="item.updateSource" class="text-[10px] opacity-70">({{ item.updateSource }})</span>
+                  <!-- Changelog button -->
+                  <button
+                    v-if="item.updateChangelog"
+                    @click.stop="openChangelogModal(item.name, item.updateChangelog)"
+                    class="ml-1 hover:text-white transition-colors"
+                    :title="t('mods.viewChangelog')"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </button>
                 </span>
               </div>
             </div>
@@ -3100,6 +3122,39 @@ onMounted(() => {
               />
             </template>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Changelog Modal -->
+    <div v-if="showChangelogModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="showChangelogModal = false">
+      <div class="bg-dark-200 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+        <!-- Modal Header -->
+        <div class="p-4 border-b border-dark-50/50 flex items-center justify-between shrink-0">
+          <h2 class="text-xl font-bold text-white">{{ t('mods.changelog') }}: {{ changelogModalTitle }}</h2>
+          <button @click="showChangelogModal = false" class="text-gray-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Modal Content -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <div
+            class="prose prose-invert prose-sm max-w-none text-gray-300"
+            v-html="changelogModalContent"
+          />
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-4 border-t border-dark-50/50 shrink-0">
+          <button
+            @click="showChangelogModal = false"
+            class="w-full px-4 py-2 bg-dark-100 hover:bg-dark-50 text-white rounded-lg transition-colors"
+          >
+            {{ t('common.close') }}
+          </button>
         </div>
       </div>
     </div>
