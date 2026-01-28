@@ -208,6 +208,7 @@ export interface GitHubRelease {
   tag_name: string;
   name: string;
   published_at: string;
+  body?: string; // Release notes / changelog
   assets: {
     name: string;
     browser_download_url: string;

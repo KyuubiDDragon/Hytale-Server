@@ -1036,6 +1036,37 @@ export async function uninstallCurseForge(modId: number): Promise<{ success: boo
   return { success: true };
 }
 
+/**
+ * Get the changelog for a specific file
+ */
+export async function getFileChangelog(modId: number, fileId: number): Promise<string | null> {
+  if (!config.curseforgeApiKey) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `${CURSEFORGE_API_BASE}/v1/mods/${modId}/files/${fileId}/changelog`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'x-api-key': config.curseforgeApiKey,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const result = await response.json() as { data: string };
+    return result.data || null;
+  } catch (e) {
+    console.error(`[CurseForge] Failed to get changelog for mod ${modId} file ${fileId}:`, e);
+    return null;
+  }
+}
+
 export default {
   searchMods,
   getModDetails,
@@ -1057,5 +1088,6 @@ export default {
   isValidVersion,
   getInstalledCurseForgeInfo,
   isCurseForgeModInstalled,
+  getFileChangelog,
   RELEASE_TYPES,
 };

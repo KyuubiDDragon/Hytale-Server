@@ -991,6 +991,7 @@ export interface TrackedMod {
   source?: 'cfwidget' | 'curseforge' | 'modtale' | 'stackmart' | 'modstore'
   sourceId?: string
   modId?: number
+  changelog?: string // Changelog for the latest version
 }
 
 export interface ModUpdateStatus {

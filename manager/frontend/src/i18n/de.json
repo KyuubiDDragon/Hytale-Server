@@ -486,6 +486,8 @@
     "updating": "Aktualisiere...",
     "updateAvailable": "Update verfügbar",
     "updateSuccess": "Aktualisiert!",
+    "changelog": "Änderungsprotokoll",
+    "viewChangelog": "Änderungen anzeigen",
     "by": "von",
     "ports": "Ports",
     "modtaleDescription": "Durchsuche und installiere Mods direkt von modtale.net - der offiziellen Hytale Mod-Plattform.",
