@@ -757,6 +757,19 @@ export async function installModFromCurseForge(
     return { success: false, error: 'Could not find a file to install' };
   }
 
+  // Check if this mod is already installed (for updates) and remove old file
+  const existingInstall = await isCurseForgeModInstalled(modId);
+  if (existingInstall && existingInstall.filename) {
+    const oldFilePath = path.join(config.modsPath, existingInstall.filename);
+    try {
+      await unlink(oldFilePath);
+      console.log(`[CurseForge] Removed old mod file: ${existingInstall.filename}`);
+    } catch (e) {
+      // File might not exist, that's ok
+      console.log(`[CurseForge] Could not remove old file ${existingInstall.filename}:`, e);
+    }
+  }
+
   // Get download URL
   let downloadUrl = file.downloadUrl;
   if (!downloadUrl) {
